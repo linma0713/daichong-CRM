@@ -1,0 +1,113 @@
+/** 业务枚举和显示文案，前后端共用，保证各端叫法一致 */
+
+export type FulfillmentType = 'RECHARGE' | 'ACCOUNT';
+export const FULFILLMENT_TYPES: FulfillmentType[] = ['RECHARGE', 'ACCOUNT'];
+export const FULFILLMENT_TYPE_LABELS: Record<FulfillmentType, string> = {
+  RECHARGE: '代充',
+  ACCOUNT: '成品号',
+};
+
+/** 服务时长的叫法：1 月付、3 季付、12 年付，其他显示为「N 个月」 */
+export function termLabel(months: number): string {
+  if (months === 1) return '月付';
+  if (months === 3) return '季付';
+  if (months === 6) return '半年付';
+  if (months === 12) return '年付';
+  return `${months} 个月`;
+}
+
+export const CUSTOMER_SOURCES = [
+  { value: 'organic', label: '自然流量' },
+  { value: 'referral', label: '老客推荐' },
+  { value: 'agent', label: '代理' },
+  { value: 'ads', label: '投放' },
+  { value: 'other', label: '其他' },
+] as const;
+export type CustomerSource = (typeof CUSTOMER_SOURCES)[number]['value'];
+export const CUSTOMER_SOURCE_VALUES = CUSTOMER_SOURCES.map((s) => s.value) as CustomerSource[];
+
+export const PAYMENT_METHODS = [
+  { value: 'wechat', label: '微信' },
+  { value: 'alipay', label: '支付宝' },
+  { value: 'usdt', label: 'USDT' },
+  { value: 'bank', label: '银行转账' },
+  { value: 'other', label: '其他' },
+] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value'];
+export const PAYMENT_METHOD_VALUES = PAYMENT_METHODS.map((m) => m.value) as PaymentMethod[];
+
+export type OrderKind = 'NEW' | 'RENEWAL';
+export const ORDER_KIND_LABELS: Record<OrderKind, string> = { NEW: '新购', RENEWAL: '续费' };
+
+export type OrderStatus = 'PENDING_PAYMENT' | 'FULFILLING' | 'COMPLETED' | 'CANCELLED';
+export const ORDER_STATUSES: OrderStatus[] = [
+  'PENDING_PAYMENT',
+  'FULFILLING',
+  'COMPLETED',
+  'CANCELLED',
+];
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  PENDING_PAYMENT: '待收款',
+  FULFILLING: '开通中',
+  COMPLETED: '已完成',
+  CANCELLED: '已取消',
+};
+
+export type TaskType =
+  | 'ACTIVATE'
+  | 'RENEW'
+  | 'INTERNAL_RENEW'
+  | 'CANCEL_AUTO_RENEW'
+  | 'RECLAIM_ACCOUNT';
+export const TASK_TYPES: TaskType[] = [
+  'ACTIVATE',
+  'RENEW',
+  'INTERNAL_RENEW',
+  'CANCEL_AUTO_RENEW',
+  'RECLAIM_ACCOUNT',
+];
+export const TASK_TYPE_LABELS: Record<TaskType, string> = {
+  ACTIVATE: '新开通',
+  RENEW: '客户续费',
+  INTERNAL_RENEW: '内部续费',
+  CANCEL_AUTO_RENEW: '取消自动续订',
+  RECLAIM_ACCOUNT: '回收成品号',
+};
+
+export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'FAILED' | 'CANCELLED';
+export const TASK_STATUSES: TaskStatus[] = ['PENDING', 'IN_PROGRESS', 'DONE', 'FAILED', 'CANCELLED'];
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  PENDING: '待处理',
+  IN_PROGRESS: '处理中',
+  DONE: '已完成',
+  FAILED: '失败',
+  CANCELLED: '已取消',
+};
+
+export type SubscriptionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+export const SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ['ACTIVE', 'EXPIRED', 'CANCELLED'];
+export const SUBSCRIPTION_STATUS_LABELS: Record<SubscriptionStatus, string> = {
+  ACTIVE: '服务中',
+  EXPIRED: '已到期',
+  CANCELLED: '已终止',
+};
+
+/** 金额（分）显示为 ¥1,234.50 */
+export function formatCents(cents: number, currency: '¥' | '$' = '¥'): string {
+  const sign = cents < 0 ? '-' : '';
+  const abs = Math.abs(cents);
+  const yuan = Math.floor(abs / 100).toLocaleString('en-US');
+  return `${sign}${currency}${yuan}.${String(abs % 100).padStart(2, '0')}`;
+}
+
+/** 编号显示：C00012（客户）、D00012（订单）、S00012（订阅）、T00012（任务） */
+export function displayNo(prefix: 'C' | 'D' | 'S' | 'T', no: number): string {
+  return `${prefix}${String(no).padStart(5, '0')}`;
+}
+
+/** 搜索框里输入 C12 / c00012 / 12 都能找到编号 12 */
+export function parseNo(keyword: string | undefined, prefix: string): number | undefined {
+  if (!keyword) return undefined;
+  const m = new RegExp(`^${prefix}?0*(\\d{1,9})$`, 'i').exec(keyword.trim());
+  return m ? Number(m[1]) : undefined;
+}

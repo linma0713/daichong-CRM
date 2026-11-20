@@ -35,16 +35,22 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     key: 'customer',
     name: '客户',
-    available: false,
+    available: true,
     permissions: [
       { code: 'customer:read', name: '查看客户' },
       { code: 'customer:write', name: '新增 / 编辑客户' },
     ],
   },
   {
+    key: 'product',
+    name: '商品与定价',
+    available: true,
+    permissions: [{ code: 'product:write', name: '管理套餐、商品与售价' }],
+  },
+  {
     key: 'order',
     name: '订单与收款',
-    available: false,
+    available: true,
     permissions: [
       { code: 'order:read', name: '查看订单' },
       { code: 'order:write', name: '录入 / 修改订单' },
@@ -54,10 +60,10 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     key: 'fulfillment',
     name: '履约与账号',
-    available: false,
+    available: true,
     permissions: [
-      { code: 'fulfillment:handle', name: '处理开通 / 发号任务' },
-      { code: 'subscription:read', name: '查看账号与订阅' },
+      { code: 'fulfillment:handle', name: '处理开通 / 发号 / 续费任务' },
+      { code: 'subscription:read', name: '查看全部账号与订阅（不受数据范围限制）' },
       { code: 'account:secret:view', name: '查看账号敏感信息（会记录日志）' },
     ],
   },
@@ -92,8 +98,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     key: 'settings',
     name: '业务设置',
-    available: false,
-    permissions: [{ code: 'settings:write', name: '修改汇率、提醒节奏、质保价、佣金比例' }],
+    available: true,
+    permissions: [{ code: 'settings:write', name: '修改汇率、提醒节奏、任务时限等业务设置' }],
   },
 ];
 

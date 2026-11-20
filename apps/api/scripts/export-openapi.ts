@@ -8,6 +8,7 @@ import { join } from 'node:path';
 
 process.env.DATABASE_URL ??= 'postgresql://unused:unused@localhost:5432/unused';
 process.env.JWT_ACCESS_SECRET ??= 'openapi-export-only-secret-0123456789abcdef';
+process.env.ACCOUNT_SECRET_KEY ??= '0'.repeat(64);
 
 async function main() {
   const { NestFactory } = await import('@nestjs/core');
