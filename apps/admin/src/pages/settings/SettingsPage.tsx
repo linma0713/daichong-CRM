@@ -11,7 +11,7 @@ import {
   Typography,
 } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { PAYMENT_METHODS, type PaymentMethod } from '@crm/shared';
+import { PAYMENT_METHODS, TICKET_TYPES, TICKET_TYPE_LABELS, type PaymentMethod } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { useBusinessSettings } from '../../api/queries';
 
@@ -74,6 +74,7 @@ export function SettingsPage() {
     mutationFn: () => unwrap(api.POST('/api/jobs/sweep')),
     onSuccess: (r) => {
       void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      void queryClient.invalidateQueries({ queryKey: ['tickets'] });
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       modal.info({
         title: r.skipped ? '另一个巡检正在运行，这次跳过' : '巡检完成',
@@ -85,6 +86,8 @@ export function SettingsPage() {
             <Descriptions.Item label="新建取消自动续订任务">
               {r.cancelAutoRenewTasks}
             </Descriptions.Item>
+            <Descriptions.Item label="超时升级的工单">{r.escalatedTickets}</Descriptions.Item>
+            <Descriptions.Item label="自动关闭的工单">{r.closedTickets}</Descriptions.Item>
           </Descriptions>
         ),
       });
@@ -160,6 +163,41 @@ export function SettingsPage() {
           >
             <InputNumber min={0} max={1000} style={{ width: 200 }} />
           </Form.Item>
+          <Form.Item
+            label="售后工单处理时限（小时）"
+            extra="按问题类型设置，超过时限还没解决的工单会自动升级、在首页标红；等客户回复期间不算"
+          >
+            <Space wrap>
+              {TICKET_TYPES.map((t) => (
+                <Form.Item
+                  key={t}
+                  name={['ticketSlaHours', t]}
+                  noStyle
+                  rules={[{ required: true }]}
+                >
+                  <InputNumber
+                    min={1}
+                    max={720}
+                    precision={0}
+                    prefix={
+                      <span style={{ color: '#8c8c8c', marginRight: 4 }}>
+                        {TICKET_TYPE_LABELS[t]}
+                      </span>
+                    }
+                    style={{ width: 150 }}
+                  />
+                </Form.Item>
+              ))}
+            </Space>
+          </Form.Item>
+          <Form.Item
+            name="ticketAutoCloseHours"
+            label="工单自动关闭（小时）"
+            rules={[{ required: true }]}
+            extra="工单标记「已解决」后，客户没有再反馈，超过这个时间自动关闭"
+          >
+            <InputNumber min={1} max={720} style={{ width: 200 }} />
+          </Form.Item>
           <Button type="primary" htmlType="submit" loading={save.isPending}>
             保存
           </Button>
@@ -167,7 +205,7 @@ export function SettingsPage() {
       </Card>
       <Card title="到期巡检">
         <Typography.Paragraph type="secondary">
-          系统每小时自动检查一次：把到期的订阅标记为「已到期」，并按上游扣费时间生成内部续费、取消自动续订、回收成品号任务。
+          系统每小时自动检查一次：把到期的订阅标记为「已到期」，并按上游扣费时间生成内部续费、取消自动续订、回收成品号任务；售后工单超时升级、已解决的到时自动关闭。
           改了设置或手动校正订阅后，可以立即运行一次。
         </Typography.Paragraph>
         <Button loading={sweep.isPending} onClick={() => sweep.mutate()}>

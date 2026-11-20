@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   Descriptions,
   Form,
   Input,
@@ -26,6 +27,7 @@ interface OrderForm {
   subscriptionId?: string;
   productId?: string;
   discount?: number;
+  withWarranty?: boolean;
   accountEmail?: string;
   accountPassword?: string;
   remark?: string;
@@ -40,6 +42,7 @@ export function NewOrderPage() {
   const subscriptionId = Form.useWatch('subscriptionId', form);
   const productId = Form.useWatch('productId', form);
   const discount = Form.useWatch('discount', form) ?? 0;
+  const withWarranty = Form.useWatch('withWarranty', form) ?? false;
 
   const presetCustomerId = params.get('customerId') ?? undefined;
   const presetCustomer = useQuery({
@@ -61,7 +64,9 @@ export function NewOrderPage() {
     (p) => kind === 'NEW' || !sub || p.fulfillmentType === sub.fulfillmentType,
   );
   const product = products.data?.find((p) => p.id === productId);
-  const amount = product ? product.priceCents - Math.round(discount * 100) : null;
+  const warrantyCents =
+    withWarranty && product?.warrantyPriceCents !== null ? (product?.warrantyPriceCents ?? 0) : 0;
+  const amount = product ? product.priceCents - Math.round(discount * 100) + warrantyCents : null;
   const seamless =
     kind === 'RENEWAL' &&
     sub &&
@@ -87,6 +92,7 @@ export function NewOrderPage() {
             productId: v.productId!,
             subscriptionId: v.kind === 'RENEWAL' ? v.subscriptionId : undefined,
             discountCents: Math.round((v.discount ?? 0) * 100),
+            withWarranty: v.withWarranty && product?.warrantyPriceCents !== null ? true : undefined,
             accountEmail: v.kind === 'NEW' ? v.accountEmail || undefined : undefined,
             accountPassword: v.kind === 'NEW' ? v.accountPassword || undefined : undefined,
             remark: v.remark || undefined,
@@ -223,6 +229,15 @@ export function NewOrderPage() {
             style={{ width: 200 }}
           />
         </Form.Item>
+        {product && product.warrantyPriceCents !== null && (
+          <Form.Item
+            name="withWarranty"
+            valuePropName="checked"
+            extra="服务期内包换 + 按剩余天数退款（质保费不退）"
+          >
+            <Checkbox>加购质保 +{formatCents(product.warrantyPriceCents)}</Checkbox>
+          </Form.Item>
+        )}
         <Form.Item name="remark" label="备注">
           <Input.TextArea rows={2} maxLength={500} />
         </Form.Item>
@@ -234,6 +249,9 @@ export function NewOrderPage() {
                 <FulfillmentTag type={product.fulfillmentType} />
               </Space>
             </Descriptions.Item>
+            {warrantyCents > 0 && (
+              <Descriptions.Item label="质保">{formatCents(warrantyCents)}</Descriptions.Item>
+            )}
             <Descriptions.Item label="应收">
               <Typography.Text strong style={{ fontSize: 18 }}>
                 {formatCents(Math.max(amount ?? 0, 0))}

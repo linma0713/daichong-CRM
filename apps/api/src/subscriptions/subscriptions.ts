@@ -38,6 +38,8 @@ import {
   FULFILLMENT_TYPES,
   ORDER_STATUSES,
   SUBSCRIPTION_STATUSES,
+  TICKET_STATUSES,
+  TICKET_TYPES,
   displayNo,
   hasPermission,
   parseNo,
@@ -45,6 +47,8 @@ import {
   type OrderKind,
   type OrderStatus,
   type SubscriptionStatus,
+  type TicketStatus,
+  type TicketType,
 } from '@crm/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -68,6 +72,8 @@ import { productName } from '../catalog/catalog';
 import { FollowUpDto, visibleCustomers } from '../customers/customers';
 import { RefDto, TaskBriefDto, toCustomerBrief } from '../orders/orders';
 import { SettingsModule, SettingsService } from '../settings/settings';
+import { orderForPeriod } from '../inventory/ledger';
+import { WarrantyDto, loadWarranty } from '../aftersales/warranty';
 import { EXPIRED_FOLLOW_DAYS, daysLeft, needsReminder } from './reminder';
 
 const toBool = ({ value }: { value: unknown }) => value === true || value === 'true';
@@ -180,6 +186,16 @@ export class SubscriptionOrderDto {
   @ApiProperty({ enum: ORDER_STATUSES, enumName: 'OrderStatus' }) status: OrderStatus;
   @ApiProperty() productName: string;
   @ApiProperty() amountCents: number;
+  @ApiProperty({ description: '加购了质保' }) withWarranty: boolean;
+  @ApiProperty() createdAt: Date;
+}
+
+export class SubscriptionTicketDto {
+  @ApiProperty() id: string;
+  @ApiProperty() code: string;
+  @ApiProperty({ enum: TICKET_TYPES, enumName: 'TicketType' }) type: TicketType;
+  @ApiProperty({ enum: TICKET_STATUSES, enumName: 'TicketStatus' }) status: TicketStatus;
+  @ApiProperty() description: string;
   @ApiProperty() createdAt: Date;
 }
 
@@ -187,6 +203,9 @@ export class SubscriptionDetailDto extends SubscriptionDto {
   @ApiProperty({ type: [SubscriptionOrderDto] }) orders: SubscriptionOrderDto[];
   @ApiProperty({ type: [TaskBriefDto] }) tasks: TaskBriefDto[];
   @ApiProperty({ type: [FollowUpDto], description: '续费提醒记录' }) reminders: FollowUpDto[];
+  @ApiProperty({ type: WarrantyDto, description: '按现在判断的质保情况' }) warranty: WarrantyDto;
+  @ApiProperty({ type: [SubscriptionTicketDto], description: '售后工单' })
+  tickets: SubscriptionTicketDto[];
 }
 
 export class AccountSecretDto {
@@ -333,7 +352,7 @@ export class SubscriptionsService {
       include: subscriptionInclude,
     });
     if (!row) throw notFound('订阅');
-    const [orders, tasks, reminders] = await Promise.all([
+    const [orders, tasks, reminders, tickets, coveringOrderId] = await Promise.all([
       this.prisma.order.findMany({
         where: { subscriptionId: id },
         orderBy: { createdAt: 'desc' },
@@ -350,8 +369,23 @@ export class SubscriptionsService {
         orderBy: { createdAt: 'desc' },
         take: 50,
       }),
+      this.prisma.ticket.findMany({
+        where: { subscriptionId: id },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      orderForPeriod(this.prisma, id, now),
     ]);
     return {
+      warranty: await loadWarranty(this.prisma, coveringOrderId, now, null),
+      tickets: tickets.map((t) => ({
+        id: t.id,
+        code: displayNo('G', t.no),
+        type: t.type,
+        status: t.status,
+        description: t.description,
+        createdAt: t.createdAt,
+      })),
       ...this.toDto(row, reminderDays, now),
       orders: orders.map((o) => ({
         id: o.id,
@@ -360,6 +394,7 @@ export class SubscriptionsService {
         status: o.status,
         productName: productName(o.planName, o.termMonths, o.fulfillmentType),
         amountCents: o.amountCents,
+        withWarranty: o.withWarranty,
         createdAt: o.createdAt,
       })),
       tasks: tasks.map((t) => ({

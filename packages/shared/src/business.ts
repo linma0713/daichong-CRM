@@ -54,13 +54,19 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 export type TaskType =
-  'ACTIVATE' | 'RENEW' | 'INTERNAL_RENEW' | 'CANCEL_AUTO_RENEW' | 'RECLAIM_ACCOUNT';
+  | 'ACTIVATE'
+  | 'RENEW'
+  | 'INTERNAL_RENEW'
+  | 'CANCEL_AUTO_RENEW'
+  | 'RECLAIM_ACCOUNT'
+  | 'REPLACE_ACCOUNT';
 export const TASK_TYPES: TaskType[] = [
   'ACTIVATE',
   'RENEW',
   'INTERNAL_RENEW',
   'CANCEL_AUTO_RENEW',
   'RECLAIM_ACCOUNT',
+  'REPLACE_ACCOUNT',
 ];
 export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   ACTIVATE: '新开通',
@@ -68,6 +74,7 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   INTERNAL_RENEW: '内部续费',
   CANCEL_AUTO_RENEW: '取消自动续订',
   RECLAIM_ACCOUNT: '回收成品号',
+  REPLACE_ACCOUNT: '售后换号',
 };
 
 export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'FAILED' | 'CANCELLED';
@@ -128,6 +135,89 @@ export const COST_KIND_LABELS: Record<CostKind, string> = {
   OTHER: '其他成本',
 };
 
+// ─── M2 售后与质保 ───
+
+export type TicketType = 'NOT_EFFECTIVE' | 'BANNED' | 'LIMITED' | 'REFUND' | 'REPLACE' | 'OTHER';
+export const TICKET_TYPES: TicketType[] = [
+  'NOT_EFFECTIVE',
+  'BANNED',
+  'LIMITED',
+  'REFUND',
+  'REPLACE',
+  'OTHER',
+];
+export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
+  NOT_EFFECTIVE: '未生效',
+  BANNED: '封号',
+  LIMITED: '限额',
+  REFUND: '退款',
+  REPLACE: '换号',
+  OTHER: '其他',
+};
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING_CUSTOMER' | 'RESOLVED' | 'CLOSED';
+export const TICKET_STATUSES: TicketStatus[] = [
+  'OPEN',
+  'IN_PROGRESS',
+  'WAITING_CUSTOMER',
+  'RESOLVED',
+  'CLOSED',
+];
+export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
+  OPEN: '待处理',
+  IN_PROGRESS: '处理中',
+  WAITING_CUSTOMER: '等客户回复',
+  RESOLVED: '已解决',
+  CLOSED: '已关闭',
+};
+
+/** 不在质保范围内的客户自身原因 */
+export const CUSTOMER_FAULTS = [
+  { value: 'VIOLATION', label: '客户违规使用' },
+  { value: 'CHANGED_PASSWORD', label: '客户自行改密码' },
+  { value: 'BOUND_CARD', label: '客户自行绑卡' },
+  { value: 'OTHER', label: '其他客户原因' },
+] as const;
+export type CustomerFault = (typeof CUSTOMER_FAULTS)[number]['value'];
+export const CUSTOMER_FAULT_VALUES = CUSTOMER_FAULTS.map((f) => f.value) as CustomerFault[];
+
+export type RefundStatus = 'PENDING' | 'PAID' | 'REJECTED';
+export const REFUND_STATUSES: RefundStatus[] = ['PENDING', 'PAID', 'REJECTED'];
+export const REFUND_STATUS_LABELS: Record<RefundStatus, string> = {
+  PENDING: '待审批',
+  PAID: '已退款',
+  REJECTED: '已驳回',
+};
+
+const DAY_MS = 24 * 3600 * 1000;
+
+/**
+ * 质保按天退款：退款 = 套餐实付 × 剩余天数 ÷ 服务总天数（质保费不退）。
+ * 剩余天数按整天向下取整，当天不算；已经退过的钱要扣掉。
+ */
+export function proratedRefund(input: {
+  planPaidCents: number;
+  periodStartAt: Date;
+  periodEndAt: Date;
+  at: Date;
+  refundedCents?: number;
+}): { totalDays: number; remainingDays: number; amountCents: number } {
+  const totalDays = Math.max(
+    1,
+    Math.round((input.periodEndAt.getTime() - input.periodStartAt.getTime()) / DAY_MS),
+  );
+  const remainingDays = Math.min(
+    totalDays,
+    Math.max(0, Math.floor((input.periodEndAt.getTime() - input.at.getTime()) / DAY_MS)),
+  );
+  const gross = Math.round((Math.max(0, input.planPaidCents) * remainingDays) / totalDays);
+  return {
+    totalDays,
+    remainingDays,
+    amountCents: Math.max(0, gross - (input.refundedCents ?? 0)),
+  };
+}
+
 /** 按比例 + 固定金额计算手续费；比例用万分比（150 = 1.5%） */
 export function feeOf(amount: number, bp: number, fixed = 0): number {
   if (amount <= 0) return 0;
@@ -142,7 +232,10 @@ export function formatCents(cents: number, currency: '¥' | '$' = '¥'): string 
   return `${sign}${currency}${yuan}.${String(abs % 100).padStart(2, '0')}`;
 }
 
-/** 编号显示：C00012（客户）、D00012（订单）、S00012（订阅）、T00012（任务）、R00012（付款资源） */
+/**
+ * 编号显示：C00012（客户）、D00012（订单）、S00012（订阅）、T00012（任务）、
+ * R00012（付款资源）、G00012（售后工单）、K00012（退款）
+ */
 export function displayNo(prefix: 'C' | 'D' | 'S' | 'T' | 'R' | 'G' | 'K', no: number): string {
   return `${prefix}${String(no).padStart(5, '0')}`;
 }

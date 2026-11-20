@@ -26,6 +26,16 @@ export class PaymentFeeRatesDto {
   @ApiProperty({ example: 0 }) @IsInt() @Min(0) @Max(2000) other: number = 0;
 }
 
+/** 各类售后工单的处理时限（小时） */
+export class TicketSlaHoursDto {
+  @ApiProperty({ example: 2 }) @IsInt() @Min(1) @Max(720) NOT_EFFECTIVE: number = 2;
+  @ApiProperty({ example: 4 }) @IsInt() @Min(1) @Max(720) BANNED: number = 4;
+  @ApiProperty({ example: 8 }) @IsInt() @Min(1) @Max(720) LIMITED: number = 8;
+  @ApiProperty({ example: 24 }) @IsInt() @Min(1) @Max(720) REFUND: number = 24;
+  @ApiProperty({ example: 4 }) @IsInt() @Min(1) @Max(720) REPLACE: number = 4;
+  @ApiProperty({ example: 24 }) @IsInt() @Min(1) @Max(720) OTHER: number = 24;
+}
+
 /** 业务设置及默认值。新增设置项时在这里加一项即可 */
 export class BusinessSettingsDto {
   @ApiProperty({ description: '美元兑人民币汇率，用于估算成本和毛利', example: 7.2 })
@@ -75,6 +85,20 @@ export class BusinessSettingsDto {
   @Min(0)
   @Max(1000)
   accountStockLow: number = 2;
+
+  @ApiProperty({
+    type: TicketSlaHoursDto,
+    description: '售后工单按类型的处理时限（小时），超时自动升级',
+  })
+  @ValidateNested()
+  @Type(() => TicketSlaHoursDto)
+  ticketSlaHours: TicketSlaHoursDto = new TicketSlaHoursDto();
+
+  @ApiProperty({ description: '工单标记「已解决」后多少小时自动关闭', example: 48 })
+  @IsInt()
+  @Min(1)
+  @Max(720)
+  ticketAutoCloseHours: number = 48;
 }
 
 export class UpdateSettingsDto {
@@ -122,6 +146,19 @@ export class UpdateSettingsDto {
   @Min(0)
   @Max(1000)
   accountStockLow?: number;
+
+  @ApiProperty({ required: false, type: TicketSlaHoursDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TicketSlaHoursDto)
+  ticketSlaHours?: TicketSlaHoursDto;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(720)
+  ticketAutoCloseHours?: number;
 }
 
 type SettingKey = keyof BusinessSettingsDto;
@@ -132,7 +169,14 @@ const KEYS: SettingKey[] = [
   'upstreamLeadDays',
   'paymentFeeBp',
   'accountStockLow',
+  'ticketSlaHours',
+  'ticketAutoCloseHours',
 ];
+/** 存成对象的设置项：读取时和默认值合并，新增字段有默认值 */
+const OBJECT_DEFAULTS: Partial<Record<SettingKey, () => object>> = {
+  paymentFeeBp: () => new PaymentFeeRatesDto(),
+  ticketSlaHours: () => new TicketSlaHoursDto(),
+};
 
 @Injectable()
 export class SettingsService {
@@ -142,13 +186,15 @@ export class SettingsService {
     const rows = await this.prisma.setting.findMany({ where: { key: { in: KEYS } } });
     const result = new BusinessSettingsDto();
     for (const row of rows) {
-      const value =
-        row.key === 'paymentFeeBp'
-          ? { ...new PaymentFeeRatesDto(), ...(row.value as object) }
-          : row.value;
+      const defaults = OBJECT_DEFAULTS[row.key as SettingKey];
+      const value = defaults ? { ...defaults(), ...(row.value as object) } : row.value;
       (result as unknown as Record<string, unknown>)[row.key] = value;
     }
-    return { ...result, paymentFeeBp: { ...result.paymentFeeBp } };
+    return {
+      ...result,
+      paymentFeeBp: { ...result.paymentFeeBp },
+      ticketSlaHours: { ...result.ticketSlaHours },
+    };
   }
 
   async update(dto: UpdateSettingsDto, userId: string): Promise<BusinessSettingsDto> {
@@ -159,8 +205,8 @@ export class SettingsService {
       const json = (
         key === 'reminderDays'
           ? [...new Set(value as number[])].sort((a, b) => b - a)
-          : key === 'paymentFeeBp'
-            ? { ...(value as PaymentFeeRatesDto) }
+          : OBJECT_DEFAULTS[key]
+            ? { ...(value as object) }
             : value
       ) as Prisma.InputJsonValue;
       ops.push(

@@ -120,6 +120,16 @@ export function CatalogPage() {
       ),
     },
     {
+      title: '质保价',
+      key: 'warranty',
+      render: (_, p) =>
+        p.warrantyPriceCents === null ? (
+          <Typography.Text type="secondary">不提供</Typography.Text>
+        ) : (
+          <Money cents={p.warrantyPriceCents} />
+        ),
+    },
+    {
       title: '状态',
       key: 'active',
       render: (_, p) => (p.active ? <Tag color="green">在售</Tag> : <Tag>已下架</Tag>),
@@ -299,8 +309,13 @@ interface ProductForm {
   termMonths: number;
   fulfillmentType: Schemas['FulfillmentType'];
   price: number;
+  /** 质保价（元）；空 = 不提供质保 */
+  warranty?: number | null;
   active: boolean;
 }
+
+const warrantyCents = (v: number | null | undefined) =>
+  v === undefined || v === null ? null : toCents(v);
 
 function ProductModal({
   product,
@@ -331,7 +346,11 @@ function ProductModal({
         ? unwrap(
             api.PATCH('/api/products/{id}', {
               params: { path: { id: product.id } },
-              body: { priceCents: toCents(v.price), active: v.active },
+              body: {
+                priceCents: toCents(v.price),
+                warrantyPriceCents: warrantyCents(v.warranty),
+                active: v.active,
+              },
             }),
           )
         : unwrap(
@@ -341,6 +360,7 @@ function ProductModal({
                 termMonths: v.termMonths,
                 fulfillmentType: v.fulfillmentType,
                 priceCents: toCents(v.price),
+                warrantyPriceCents: warrantyCents(v.warranty),
                 active: v.active,
               },
             }),
@@ -366,7 +386,12 @@ function ProductModal({
         layout="vertical"
         initialValues={
           product
-            ? { ...product, price: toYuan(product.priceCents) }
+            ? {
+                ...product,
+                price: toYuan(product.priceCents),
+                warranty:
+                  product.warrantyPriceCents === null ? null : toYuan(product.warrantyPriceCents),
+              }
             : { termMonths: 1, fulfillmentType: 'RECHARGE', active: true }
         }
         onFinish={(v) => save.mutate(v)}
@@ -416,6 +441,13 @@ function ProductModal({
             }
           />
         )}
+        <Form.Item
+          name="warranty"
+          label="质保价（元）"
+          extra="客户下单时可以加购：服务期内包换 + 按剩余天数退款，质保费不退。留空 = 这个商品不提供质保"
+        >
+          <InputNumber min={0} max={1000000} precision={2} prefix="¥" style={{ width: '100%' }} />
+        </Form.Item>
         <Form.Item name="active" label="在售" valuePropName="checked">
           <Switch />
         </Form.Item>

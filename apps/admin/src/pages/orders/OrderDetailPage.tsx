@@ -19,6 +19,7 @@ import {
   Spin,
   Statistic,
   Table,
+  Tag,
   Tooltip,
   Typography,
 } from 'antd';
@@ -43,6 +44,8 @@ import {
   TaskTypeTag,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
+import { RefundRequestModal } from '../aftersales/modals';
+import { RefundTable } from '../aftersales/TicketDetailPage';
 
 const METHOD_LABELS = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.label]));
 
@@ -52,6 +55,7 @@ export function OrderDetailPage() {
   const { modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [paying, setPaying] = useState(false);
+  const [refunding, setRefunding] = useState(false);
   const order = useQuery({
     queryKey: ['order', id],
     queryFn: () => unwrap(api.GET('/api/orders/{id}', { params: { path: { id } } })),
@@ -117,6 +121,9 @@ export function OrderDetailPage() {
                 确认收款
               </Button>
             )}
+            {can('ticket:handle') &&
+              (o.status === 'FULFILLING' || o.status === 'COMPLETED') &&
+              o.refundableCents > 0 && <Button onClick={() => setRefunding(true)}>申请退款</Button>}
             {o.status === 'PENDING_PAYMENT' && o.paidCents === 0 && can('order:write') && (
               <Button danger onClick={askCancel}>
                 取消订单
@@ -157,10 +164,25 @@ export function OrderDetailPage() {
               </Typography.Text>
             )}
           </Descriptions.Item>
+          <Descriptions.Item label="质保">
+            {o.withWarranty ? (
+              <Space size={4}>
+                <Tag color="green">已加购</Tag>
+                <Money cents={o.warrantyCents} />
+              </Space>
+            ) : (
+              <Typography.Text type="secondary">未加购</Typography.Text>
+            )}
+          </Descriptions.Item>
           <Descriptions.Item label="应收 / 已收">
             <Money cents={o.amountCents} strong />
             <Typography.Text type="secondary"> / </Typography.Text>
             <Money cents={o.paidCents} />
+            {o.refundedCents > 0 && (
+              <Typography.Text type="danger" style={{ marginLeft: 8 }}>
+                已退 {formatCents(o.refundedCents)}
+              </Typography.Text>
+            )}
           </Descriptions.Item>
           <Descriptions.Item label="订阅">
             {o.subscription ? (
@@ -244,7 +266,21 @@ export function OrderDetailPage() {
         />
       </Card>
 
+      {o.refunds.length > 0 && (
+        <Card title="退款" size="small">
+          <RefundTable refunds={o.refunds} />
+        </Card>
+      )}
+
       {o.profit && <ProfitCard profit={o.profit} status={o.status} />}
+
+      {refunding && (
+        <RefundRequestModal
+          order={o}
+          refundableCents={o.refundableCents}
+          onClose={() => setRefunding(false)}
+        />
+      )}
 
       {paying && (
         <PaymentModal
@@ -355,6 +391,15 @@ function ProfitCard({
         <Col xs={12} md={4}>
           <Statistic title="已收" value={formatCents(p.revenueCents)} />
         </Col>
+        {p.refundedCents > 0 && (
+          <Col xs={12} md={4}>
+            <Statistic
+              title="已退款"
+              value={formatCents(p.refundedCents)}
+              valueStyle={{ color: '#cf1322' }}
+            />
+          </Col>
+        )}
         <Col xs={12} md={4}>
           <Statistic title="收款手续费" value={formatCents(p.feeCents)} />
         </Col>

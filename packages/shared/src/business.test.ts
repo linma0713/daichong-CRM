@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayNo, feeOf, formatCents, parseNo, termLabel } from './business';
+import { displayNo, feeOf, formatCents, parseNo, proratedRefund, termLabel } from './business';
 
 describe('business helpers', () => {
   it('formatCents', () => {
@@ -32,5 +32,28 @@ describe('feeOf', () => {
   });
   it('金额为 0 或负数时没有手续费', () => {
     expect(feeOf(0, 150, 20)).toBe(0);
+  });
+});
+
+describe('proratedRefund', () => {
+  const start = new Date('2026-11-01T04:00:00Z');
+  const end = new Date('2026-12-01T04:00:00Z');
+  it('按剩余整天数折算', () => {
+    const r = proratedRefund({
+      planPaidCents: 30000,
+      periodStartAt: start,
+      periodEndAt: end,
+      at: new Date('2026-11-11T10:00:00Z'),
+    });
+    expect(r).toEqual({ totalDays: 30, remainingDays: 19, amountCents: 19000 });
+  });
+  it('扣掉已退金额，不会退成负数；过期为 0', () => {
+    const base = { planPaidCents: 30000, periodStartAt: start, periodEndAt: end };
+    expect(proratedRefund({ ...base, at: start, refundedCents: 5000 }).amountCents).toBe(25000);
+    expect(proratedRefund({ ...base, at: start, refundedCents: 40000 }).amountCents).toBe(0);
+    expect(proratedRefund({ ...base, at: new Date('2026-12-05T00:00:00Z') })).toMatchObject({
+      remainingDays: 0,
+      amountCents: 0,
+    });
   });
 });

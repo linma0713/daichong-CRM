@@ -367,7 +367,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 修改商品售价或上下架（只影响之后的订单） */
+        /** 修改商品售价、质保价或上下架（只影响之后的订单） */
         patch: operations["Catalog_updateProduct"];
         trace?: never;
     };
@@ -716,6 +716,196 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 工单列表（按数据范围） */
+        get: operations["Tickets_list"];
+        put?: never;
+        /** 登记售后工单（自动派给售后） */
+        post: operations["Tickets_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tickets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 工单详情（含质保判断、时间线、退款、换号任务） */
+        get: operations["Tickets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 修改工单状态、处理人或客户原因 */
+        patch: operations["Tickets_update"];
+        trace?: never;
+    };
+    "/api/tickets/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 添加备注（沟通记录） */
+        post: operations["Tickets_comment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tickets/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 标记已解决（超过设置的小时数自动关闭） */
+        post: operations["Tickets_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tickets/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 关闭工单 */
+        post: operations["Tickets_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tickets/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 重新打开（客户反馈问题没解决） */
+        post: operations["Tickets_reopen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tickets/{id}/replace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 派换号任务给充值员（服务期不变） */
+        post: operations["Tickets_replace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tickets/{id}/compensate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 补偿服务天数（订阅到期时间往后延） */
+        post: operations["Tickets_compensate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 退款列表（按数据范围） */
+        get: operations["Refunds_list"];
+        put?: never;
+        /** 申请退款（等财务审批） */
+        post: operations["Refunds_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/refunds/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 审批通过并登记出账（选了终止服务的同时派对应任务） */
+        post: operations["Refunds_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/refunds/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 驳回退款 */
+        post: operations["Refunds_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard": {
         parameters: {
             query?: never;
@@ -1034,6 +1224,8 @@ export interface components {
             teamId: string | null;
             /** @description 能处理开通任务（有充值员权限） */
             canFulfill: boolean;
+            /** @description 能处理售后工单 */
+            canHandleTickets: boolean;
         };
         PermissionItemDto: {
             code: string;
@@ -1111,6 +1303,20 @@ export interface components {
             /** @example 0 */
             other: number;
         };
+        TicketSlaHoursDto: {
+            /** @example 2 */
+            NOT_EFFECTIVE: number;
+            /** @example 4 */
+            BANNED: number;
+            /** @example 8 */
+            LIMITED: number;
+            /** @example 24 */
+            REFUND: number;
+            /** @example 4 */
+            REPLACE: number;
+            /** @example 24 */
+            OTHER: number;
+        };
         BusinessSettingsDto: {
             /**
              * @description 美元兑人民币汇率，用于估算成本和毛利
@@ -1143,6 +1349,13 @@ export interface components {
              * @example 2
              */
             accountStockLow: number;
+            /** @description 售后工单按类型的处理时限（小时），超时自动升级 */
+            ticketSlaHours: components["schemas"]["TicketSlaHoursDto"];
+            /**
+             * @description 工单标记「已解决」后多少小时自动关闭
+             * @example 48
+             */
+            ticketAutoCloseHours: number;
         };
         UpdateSettingsDto: {
             exchangeRate?: number;
@@ -1151,6 +1364,8 @@ export interface components {
             upstreamLeadDays?: number;
             paymentFeeBp?: components["schemas"]["PaymentFeeRatesDto"];
             accountStockLow?: number;
+            ticketSlaHours?: components["schemas"]["TicketSlaHoursDto"];
+            ticketAutoCloseHours?: number;
         };
         PlanDto: {
             id: string;
@@ -1199,6 +1414,8 @@ export interface components {
             estCostCents: number;
             /** @description 估算毛利（分）= 售价 − 估算成本 */
             estMarginCents: number;
+            /** @description 加购质保的价格（分）；为空 = 不提供质保 */
+            warrantyPriceCents: number | null;
             active: boolean;
         };
         CreateProductDto: {
@@ -1211,11 +1428,15 @@ export interface components {
             fulfillmentType: components["schemas"]["FulfillmentType"];
             /** @description 售价（分） */
             priceCents: number;
+            /** @description 加购质保的价格（分）；null = 不提供质保。只影响之后的订单 */
+            warrantyPriceCents?: number | null;
             active?: boolean;
         };
         UpdateProductDto: {
             /** @description 售价（分）。只影响之后的订单 */
             priceCents?: number;
+            /** @description 加购质保的价格（分）；null = 不提供质保。只影响之后的订单 */
+            warrantyPriceCents?: number | null;
             active?: boolean;
         };
         UserBriefDto: {
@@ -1359,10 +1580,16 @@ export interface components {
             fulfillmentType: components["schemas"]["FulfillmentType"];
             listPriceCents: number;
             discountCents: number;
-            /** @description 应收（分） */
+            /** @description 是否加购质保 */
+            withWarranty: boolean;
+            /** @description 质保费（分），已含在应收里 */
+            warrantyCents: number;
+            /** @description 应收（分）= 标价 − 优惠 + 质保费 */
             amountCents: number;
             /** @description 已收（分） */
             paidCents: number;
+            /** @description 已退款（分） */
+            refundedCents: number;
             accountId: string | null;
             accountEmail: string | null;
             subscription: components["schemas"]["RefDto"] | null;
@@ -1374,7 +1601,7 @@ export interface components {
             completedAt: string | null;
             cancelledAt: string | null;
             cancelReason: string | null;
-            /** @description 毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
+            /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
             marginCents: number | null;
             /** Format: date-time */
             createdAt: string;
@@ -1398,7 +1625,7 @@ export interface components {
             createdAt: string;
         };
         /** @enum {string} */
-        TaskType: "ACTIVATE" | "RENEW" | "INTERNAL_RENEW" | "CANCEL_AUTO_RENEW" | "RECLAIM_ACCOUNT";
+        TaskType: "ACTIVATE" | "RENEW" | "INTERNAL_RENEW" | "CANCEL_AUTO_RENEW" | "RECLAIM_ACCOUNT" | "REPLACE_ACCOUNT";
         /** @enum {string} */
         TaskStatus: "PENDING" | "IN_PROGRESS" | "DONE" | "FAILED" | "CANCELLED";
         TaskBriefDto: {
@@ -1411,6 +1638,27 @@ export interface components {
             dueAt: string;
             finishedAt: string | null;
             note: string | null;
+        };
+        /** @enum {string} */
+        RefundStatus: "PENDING" | "PAID" | "REJECTED";
+        OrderRefundDto: {
+            id: string;
+            /** @example K00003 */
+            code: string;
+            amountCents: number;
+            status: components["schemas"]["RefundStatus"];
+            reason: string;
+            /** @description 退款后终止服务 */
+            terminate: boolean;
+            /** @description 来自哪个售后工单 */
+            ticket: components["schemas"]["RefDto"] | null;
+            requestedBy: components["schemas"]["UserBriefDto"];
+            /** @description 退款方式 */
+            method: string | null;
+            paidAt: string | null;
+            rejectReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
         };
         /** @enum {string} */
         CostKind: "UPSTREAM_CHARGE" | "ACCOUNT_STOCK" | "OTHER";
@@ -1431,11 +1679,13 @@ export interface components {
         OrderProfitDto: {
             /** @description 已收（分） */
             revenueCents: number;
+            /** @description 已退款（分） */
+            refundedCents: number;
             /** @description 收款手续费（分） */
             feeCents: number;
             /** @description 已发生成本（分） */
             costCents: number;
-            /** @description 毛利（分）= 已收 − 手续费 − 已发生成本 */
+            /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 */
             marginCents: number;
             /** @description 毛利率（0–1） */
             marginRate: number | null;
@@ -1464,10 +1714,16 @@ export interface components {
             fulfillmentType: components["schemas"]["FulfillmentType"];
             listPriceCents: number;
             discountCents: number;
-            /** @description 应收（分） */
+            /** @description 是否加购质保 */
+            withWarranty: boolean;
+            /** @description 质保费（分），已含在应收里 */
+            warrantyCents: number;
+            /** @description 应收（分）= 标价 − 优惠 + 质保费 */
             amountCents: number;
             /** @description 已收（分） */
             paidCents: number;
+            /** @description 已退款（分） */
+            refundedCents: number;
             accountId: string | null;
             accountEmail: string | null;
             subscription: components["schemas"]["RefDto"] | null;
@@ -1479,12 +1735,15 @@ export interface components {
             completedAt: string | null;
             cancelledAt: string | null;
             cancelReason: string | null;
-            /** @description 毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
+            /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
             marginCents: number | null;
             /** Format: date-time */
             createdAt: string;
             payments: components["schemas"]["PaymentDto"][];
             tasks: components["schemas"]["TaskBriefDto"][];
+            refunds: components["schemas"]["OrderRefundDto"][];
+            /** @description 还可以申请退款的金额（分）= 已收 − 已退 − 审批中 */
+            refundableCents: number;
             /** @description 有「查看成本」权限时返回 */
             profit: components["schemas"]["OrderProfitDto"] | null;
         };
@@ -1499,6 +1758,8 @@ export interface components {
              * @default 0
              */
             discountCents: number;
+            /** @description 加购质保（按商品设置的质保价计入应收） */
+            withWarranty?: boolean;
             /** @description 代充新购：客户的 Claude 账号邮箱 */
             accountEmail?: string;
             /** @description 代充新购：客户的 Claude 账号密码（加密保存） */
@@ -1554,6 +1815,13 @@ export interface components {
             /** @description 是否录入了其他敏感信息 */
             hasSecretNote: boolean;
         };
+        TaskTicketDto: {
+            id: string;
+            /** @example G00003 */
+            code: string;
+            /** @description 工单问题描述 */
+            description: string;
+        };
         TaskDto: {
             id: string;
             /** @example T00012 */
@@ -1566,6 +1834,8 @@ export interface components {
             subscription: components["schemas"]["TaskSubscriptionDto"] | null;
             /** @description 要操作的 Claude 账号 */
             account: components["schemas"]["AccountBriefDto"] | null;
+            /** @description 售后换号任务对应的工单 */
+            ticket: components["schemas"]["TaskTicketDto"] | null;
             assignee: components["schemas"]["UserBriefDto"] | null;
             /** @description 涉及的套餐（成品号开通按它选库存） */
             planId: string | null;
@@ -1602,13 +1872,13 @@ export interface components {
             activatedAt?: string;
             /** @description 上游（官方）下次扣费时间。不填时：开通 = 开通时间 + 1 个月；内部续费 = 原扣费时间 + 1 个月 */
             upstreamRenewAt?: string;
-            /** @description 成品号开通：交付给客户的账号邮箱 */
+            /** @description 成品号开通 / 换号：交付给客户的账号邮箱；代充换号：客户新的 Claude 账号邮箱 */
             accountEmail?: string;
             /** @description 成品号开通 / 回收后改密：账号密码（加密保存） */
             accountPassword?: string;
             /** @description 成品号：恢复邮箱、备用码等其他敏感信息（加密保存） */
             accountSecretNote?: string;
-            /** @description 成品号开通：从库存里选的成品号 ID（和 accountEmail 二选一） */
+            /** @description 成品号开通 / 换号：从库存里选的成品号 ID（和 accountEmail 二选一） */
             stockAccountId?: string;
             /** @description 这次上游扣费用的付款资源 */
             resourceId?: string;
@@ -1617,7 +1887,7 @@ export interface components {
             /** @description 这次没有产生上游扣费（例如账号本来就在付费期内） */
             noCharge?: boolean;
             /**
-             * @description 回收成品号：STOCK 回库继续卖（默认）；VOID 作废
+             * @description 回收成品号 / 成品号换号时旧号的去向：STOCK 回库继续卖；VOID 作废。回收默认回库，换号默认作废
              * @enum {string}
              */
             reclaimTo?: "STOCK" | "VOID";
@@ -1665,6 +1935,53 @@ export interface components {
             status: components["schemas"]["OrderStatus"];
             productName: string;
             amountCents: number;
+            /** @description 加购了质保 */
+            withWarranty: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WarrantyOrderDto: {
+            id: string;
+            /** @example D00012 */
+            code: string;
+        };
+        WarrantyDto: {
+            /** @description 是否在质保内 */
+            covered: boolean;
+            /**
+             * @description 一句话结论
+             * @example 可包换 · 可退 ¥190.00
+             */
+            summary: string;
+            /** @description 不在质保内的原因 */
+            reason: string | null;
+            /** @description 按哪笔订单算 */
+            order: components["schemas"]["WarrantyOrderDto"] | null;
+            /** @description 这笔订单是否加购了质保 */
+            withWarranty: boolean;
+            /** @description 质保费（分），默认不退 */
+            warrantyCents: number;
+            periodStartAt: string | null;
+            periodEndAt: string | null;
+            totalDays: number;
+            remainingDays: number;
+            /** @description 套餐实付（分）= 已收 − 质保费 */
+            planPaidCents: number;
+            /** @description 按天折算可退（分），已扣掉之前退过的 */
+            refundableCents: number;
+            /** @description 可以包换 */
+            canReplace: boolean;
+        };
+        /** @enum {string} */
+        TicketType: "NOT_EFFECTIVE" | "BANNED" | "LIMITED" | "REFUND" | "REPLACE" | "OTHER";
+        /** @enum {string} */
+        TicketStatus: "OPEN" | "IN_PROGRESS" | "WAITING_CUSTOMER" | "RESOLVED" | "CLOSED";
+        SubscriptionTicketDto: {
+            id: string;
+            code: string;
+            type: components["schemas"]["TicketType"];
+            status: components["schemas"]["TicketStatus"];
+            description: string;
             /** Format: date-time */
             createdAt: string;
         };
@@ -1699,6 +2016,10 @@ export interface components {
             tasks: components["schemas"]["TaskBriefDto"][];
             /** @description 续费提醒记录 */
             reminders: components["schemas"]["FollowUpDto"][];
+            /** @description 按现在判断的质保情况 */
+            warranty: components["schemas"]["WarrantyDto"];
+            /** @description 售后工单 */
+            tickets: components["schemas"]["SubscriptionTicketDto"][];
         };
         UpdateSubscriptionDto: {
             /** @description 服务到期时间 */
@@ -1737,6 +2058,213 @@ export interface components {
             internalRenewTasks: number;
             /** @description 新建的「取消自动续订」任务数 */
             cancelAutoRenewTasks: number;
+            /** @description 超时升级的售后工单数 */
+            escalatedTickets: number;
+            /** @description 自动关闭的售后工单数 */
+            closedTickets: number;
+        };
+        TicketSubscriptionDto: {
+            id: string;
+            code: string;
+            planName: string;
+            status: components["schemas"]["SubscriptionStatus"];
+            fulfillmentType: components["schemas"]["FulfillmentType"];
+            /** Format: date-time */
+            endAt: string;
+            accountEmail: string;
+        };
+        TicketDto: {
+            id: string;
+            /** @example G00012 */
+            code: string;
+            type: components["schemas"]["TicketType"];
+            status: components["schemas"]["TicketStatus"];
+            customer: components["schemas"]["CustomerBriefDto"];
+            subscription: components["schemas"]["TicketSubscriptionDto"] | null;
+            /** @description 质保按这笔订单算 */
+            order: components["schemas"]["RefDto"] | null;
+            description: string;
+            /** @enum {string|null} */
+            customerFault: "VIOLATION" | "CHANGED_PASSWORD" | "BOUND_CARD" | "OTHER" | null;
+            customerFaultLabel: string | null;
+            resolution: string | null;
+            /** @description 售后处理人 */
+            assignee: components["schemas"]["UserBriefDto"] | null;
+            /** @description 客户负责人 */
+            owner: components["schemas"]["UserBriefDto"];
+            createdBy: components["schemas"]["UserBriefDto"];
+            /**
+             * Format: date-time
+             * @description 处理时限
+             */
+            dueAt: string;
+            /** @description 未解决且已过处理时限（等客户回复时不算） */
+            overdue: boolean;
+            /** @description 超时升级的时间 */
+            escalatedAt: string | null;
+            resolvedAt: string | null;
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        TicketListDto: {
+            items: components["schemas"]["TicketDto"][];
+            total: number;
+        };
+        TicketEventDto: {
+            id: string;
+            /** @example comment */
+            kind: string;
+            content: string | null;
+            /** @description 为空 = 系统自动 */
+            user: components["schemas"]["UserBriefDto"] | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RefundDto: {
+            id: string;
+            /** @example K00003 */
+            code: string;
+            order: components["schemas"]["RefDto"];
+            /** @description 订单已收（分） */
+            orderPaidCents: number;
+            /** @description 订单已退（分） */
+            orderRefundedCents: number;
+            customer: components["schemas"]["CustomerBriefDto"];
+            subscription: components["schemas"]["RefDto"] | null;
+            ticket: components["schemas"]["RefDto"] | null;
+            amountCents: number;
+            reason: string;
+            /** @description 退款后终止服务 */
+            terminate: boolean;
+            status: components["schemas"]["RefundStatus"];
+            requestedBy: components["schemas"]["UserBriefDto"];
+            /** @description 审批人 */
+            approvedBy: components["schemas"]["UserBriefDto"] | null;
+            method: string | null;
+            reference: string | null;
+            paidAt: string | null;
+            rejectReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        TicketDetailDto: {
+            id: string;
+            /** @example G00012 */
+            code: string;
+            type: components["schemas"]["TicketType"];
+            status: components["schemas"]["TicketStatus"];
+            customer: components["schemas"]["CustomerBriefDto"];
+            subscription: components["schemas"]["TicketSubscriptionDto"] | null;
+            /** @description 质保按这笔订单算 */
+            order: components["schemas"]["RefDto"] | null;
+            description: string;
+            /** @enum {string|null} */
+            customerFault: "VIOLATION" | "CHANGED_PASSWORD" | "BOUND_CARD" | "OTHER" | null;
+            customerFaultLabel: string | null;
+            resolution: string | null;
+            /** @description 售后处理人 */
+            assignee: components["schemas"]["UserBriefDto"] | null;
+            /** @description 客户负责人 */
+            owner: components["schemas"]["UserBriefDto"];
+            createdBy: components["schemas"]["UserBriefDto"];
+            /**
+             * Format: date-time
+             * @description 处理时限
+             */
+            dueAt: string;
+            /** @description 未解决且已过处理时限（等客户回复时不算） */
+            overdue: boolean;
+            /** @description 超时升级的时间 */
+            escalatedAt: string | null;
+            resolvedAt: string | null;
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description 按问题登记时间判断的质保情况 */
+            warranty: components["schemas"]["WarrantyDto"];
+            /** @description 对应订单还能申请退款的金额（分） */
+            refundableCents: number;
+            events: components["schemas"]["TicketEventDto"][];
+            refunds: components["schemas"]["RefundDto"][];
+            /** @description 换号任务 */
+            tasks: components["schemas"]["TaskBriefDto"][];
+        };
+        CreateTicketDto: {
+            customerId: string;
+            /** @description 出问题的订阅（换号、补偿、按质保退款都要选） */
+            subscriptionId?: string;
+            type: components["schemas"]["TicketType"];
+            /** @example 客户反馈登录提示账号被停用 */
+            description: string;
+        };
+        UpdateTicketDto: {
+            /**
+             * @description 解决、关闭、重新打开用单独的接口
+             * @enum {string}
+             */
+            status?: "OPEN" | "IN_PROGRESS" | "WAITING_CUSTOMER";
+            /** @description null = 放回待领取 */
+            assigneeId?: string | null;
+            /**
+             * @description 客户自身原因（设置后不在质保内）；null = 取消
+             * @enum {string|null}
+             */
+            customerFault?: "VIOLATION" | "CHANGED_PASSWORD" | "BOUND_CARD" | "OTHER" | null;
+        };
+        TicketCommentDto: {
+            content: string;
+        };
+        ResolveTicketDto: {
+            /** @example 客户重新登录后恢复正常 */
+            resolution: string;
+        };
+        TicketReasonDto: {
+            note?: string;
+        };
+        ReopenTicketDto: {
+            reason: string;
+        };
+        CompensateDto: {
+            /**
+             * @description 补偿天数（服务期往后延）
+             * @example 3
+             */
+            days: number;
+            note?: string;
+        };
+        RefundListDto: {
+            items: components["schemas"]["RefundDto"][];
+            total: number;
+        };
+        CreateRefundDto: {
+            orderId: string;
+            /** @description 来自哪个售后工单 */
+            ticketId?: string;
+            /** @description 退款金额（分） */
+            amountCents: number;
+            /** @example 封号，按质保剩余天数退款 */
+            reason: string;
+            /** @description 退款后终止服务：已开通的取消自动续订 / 回收成品号；还没开通的取消开通 */
+            terminate?: boolean;
+        };
+        ApproveRefundDto: {
+            /**
+             * @description 退款方式
+             * @enum {string}
+             */
+            method: "wechat" | "alipay" | "usdt" | "bank" | "other";
+            /** @description 退款单号或备注 */
+            reference?: string;
+            /** @description 退款时间，不填为现在 */
+            paidAt?: string;
+        };
+        RejectRefundDto: {
+            reason: string;
         };
         OrderStatsDto: {
             /** @description 待收款订单数 */
@@ -1783,6 +2311,18 @@ export interface components {
             /** @description 在库成品号总数 */
             inStock: number;
         };
+        AftersalesStatsDto: {
+            /** @description 未解决的工单（数据范围内） */
+            open: number;
+            /** @description 我处理的未解决工单 */
+            mine: number;
+            /** @description 没人处理的 */
+            unassigned: number;
+            /** @description 已超时（含已升级） */
+            overdue: number;
+            /** @description 待审批的退款（有审批权限时才统计，否则为 0） */
+            pendingRefunds: number;
+        };
         DashboardDto: {
             /** @description 有「查看订单」权限时返回 */
             orders: components["schemas"]["OrderStatsDto"] | null;
@@ -1792,6 +2332,8 @@ export interface components {
             customers: components["schemas"]["CustomerStatsDto"] | null;
             /** @description 有「查看库存」权限时返回 */
             inventory: components["schemas"]["InventoryAlertDto"] | null;
+            /** @description 有售后或退款审批权限时返回 */
+            aftersales: components["schemas"]["AftersalesStatsDto"] | null;
         };
         StockPoolDto: {
             planId: string;
@@ -3293,6 +3835,358 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SweepResultDto"];
+                };
+            };
+        };
+    };
+    Tickets_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description open 未解决（待处理 / 处理中 / 等客户回复）；closed 已解决或已关闭 */
+                view?: "open" | "closed" | "all";
+                status?: components["schemas"]["TicketStatus"];
+                type?: components["schemas"]["TicketType"];
+                /** @description me 我处理的；unassigned 没人处理的；或员工 ID */
+                assignee?: string;
+                /** @description 只看已超时的 */
+                overdue?: boolean;
+                /** @description 工单编号、客户称呼或账号邮箱 */
+                keyword?: string;
+                customerId?: string;
+                subscriptionId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketListDto"];
+                };
+            };
+        };
+    };
+    Tickets_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTicketDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailDto"];
+                };
+            };
+        };
+    };
+    Tickets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailDto"];
+                };
+            };
+        };
+    };
+    Tickets_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTicketDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailDto"];
+                };
+            };
+        };
+    };
+    Tickets_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TicketCommentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailDto"];
+                };
+            };
+        };
+    };
+    Tickets_resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveTicketDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailDto"];
+                };
+            };
+        };
+    };
+    Tickets_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TicketReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailDto"];
+                };
+            };
+        };
+    };
+    Tickets_reopen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReopenTicketDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailDto"];
+                };
+            };
+        };
+    };
+    Tickets_replace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TicketReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailDto"];
+                };
+            };
+        };
+    };
+    Tickets_compensate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompensateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailDto"];
+                };
+            };
+        };
+    };
+    Refunds_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                status?: components["schemas"]["RefundStatus"];
+                /** @description 退款编号或客户称呼 */
+                keyword?: string;
+                orderId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundListDto"];
+                };
+            };
+        };
+    };
+    Refunds_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRefundDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundDto"];
+                };
+            };
+        };
+    };
+    Refunds_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveRefundDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundDto"];
+                };
+            };
+        };
+    };
+    Refunds_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectRefundDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundDto"];
                 };
             };
         };

@@ -79,10 +79,11 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     key: 'aftersales',
     name: '售后',
-    available: false,
+    available: true,
     permissions: [
-      { code: 'ticket:handle', name: '处理售后工单' },
-      { code: 'refund:approve', name: '审批退款' },
+      { code: 'ticket:create', name: '登记售后工单、查看自己范围内的工单' },
+      { code: 'ticket:handle', name: '处理售后工单（换号、补偿、申请退款）' },
+      { code: 'refund:approve', name: '审批退款并登记出账' },
     ],
   },
   {

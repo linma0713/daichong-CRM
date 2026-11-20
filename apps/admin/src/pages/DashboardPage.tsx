@@ -59,7 +59,7 @@ function StatCard({
 const colProps = { xs: 12, sm: 8, lg: 6, xl: 4 };
 
 export function DashboardPage() {
-  const { profile } = useAuth();
+  const { profile, can } = useAuth();
   const dashboard = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => unwrap(api.GET('/api/dashboard')),
@@ -171,6 +171,48 @@ export function DashboardPage() {
                 danger={d.inventory.lowResources > 0}
               />
             </Col>
+          </Row>
+        </Card>
+      )}
+
+      {d?.aftersales && (
+        <Card title="售后" size="small">
+          <Row gutter={[12, 12]}>
+            {can('ticket:handle') && (
+              <>
+                <Col {...colProps}>
+                  <StatCard title="我处理的工单" value={d.aftersales.mine} to="/tickets" />
+                </Col>
+                <Col {...colProps}>
+                  <StatCard title="待领取工单" value={d.aftersales.unassigned} to="/tickets" />
+                </Col>
+              </>
+            )}
+            {(can('ticket:handle') || can('ticket:create')) && (
+              <>
+                <Col {...colProps}>
+                  <StatCard
+                    title="已超时工单"
+                    value={d.aftersales.overdue}
+                    to="/tickets"
+                    danger={d.aftersales.overdue > 0}
+                  />
+                </Col>
+                <Col {...colProps}>
+                  <StatCard title="未解决工单" value={d.aftersales.open} to="/tickets" />
+                </Col>
+              </>
+            )}
+            {can('refund:approve') && (
+              <Col {...colProps}>
+                <StatCard
+                  title="待审批退款"
+                  value={d.aftersales.pendingRefunds}
+                  to="/refunds"
+                  danger={d.aftersales.pendingRefunds > 0}
+                />
+              </Col>
+            )}
           </Row>
         </Card>
       )}

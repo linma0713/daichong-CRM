@@ -37,6 +37,11 @@ export function localDateKey(date: Date): string {
   return new Date(date.getTime() + TZ_OFFSET_MS).toISOString().slice(0, 10);
 }
 
+/** 北京时间，例如 2026-11-20 18:30，用于写进时间线等文字里 */
+export function localDateTimeText(date: Date): string {
+  return new Date(date.getTime() + TZ_OFFSET_MS).toISOString().slice(0, 16).replace('T', ' ');
+}
+
 export function maxDate(a: Date, b: Date): Date {
   return a.getTime() >= b.getTime() ? a : b;
 }

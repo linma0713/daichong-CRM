@@ -8,6 +8,7 @@ export class StaffOptionDto {
   @ApiProperty() displayName: string;
   @ApiProperty({ type: String, nullable: true }) teamId: string | null;
   @ApiProperty({ description: '能处理开通任务（有充值员权限）' }) canFulfill: boolean;
+  @ApiProperty({ description: '能处理售后工单' }) canHandleTickets: boolean;
 }
 
 /** 员工下拉选项：选负责人、派任务时使用，所有员工可查看（只含姓名） */
@@ -33,6 +34,7 @@ export class StaffController {
         displayName: u.displayName,
         teamId: u.teamId,
         canFulfill: perms.includes('fulfillment:handle') || perms.includes(ALL_PERMISSIONS),
+        canHandleTickets: perms.includes('ticket:handle') || perms.includes(ALL_PERMISSIONS),
       };
     });
   }

@@ -29,6 +29,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { Prisma } from '@prisma/client';
 import {
@@ -120,6 +121,12 @@ export class ProductDto {
   @ApiProperty({ description: '按当前汇率估算的上游成本（分），不含付款手续费' })
   estCostCents: number;
   @ApiProperty({ description: '估算毛利（分）= 售价 − 估算成本' }) estMarginCents: number;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '加购质保的价格（分）；为空 = 不提供质保',
+  })
+  warrantyPriceCents: number | null;
   @ApiProperty() active: boolean;
 }
 
@@ -152,6 +159,18 @@ export class CreateProductDto {
   @Max(100_000_00)
   priceCents: number;
 
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: '加购质保的价格（分）；null = 不提供质保。只影响之后的订单',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsInt()
+  @Min(0)
+  @Max(100_000_00)
+  warrantyPriceCents?: number | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
@@ -165,6 +184,18 @@ export class UpdateProductDto {
   @Min(0)
   @Max(100_000_00)
   priceCents?: number;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: '加购质保的价格（分）；null = 不提供质保。只影响之后的订单',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsInt()
+  @Min(0)
+  @Max(100_000_00)
+  warrantyPriceCents?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -260,6 +291,7 @@ export class CatalogService {
       priceCents: p.priceCents,
       estCostCents,
       estMarginCents: p.priceCents - estCostCents,
+      warrantyPriceCents: p.warrantyPriceCents,
       active: p.active,
     };
   }
@@ -316,8 +348,8 @@ export class CatalogController {
 
   @Patch('products/:id')
   @RequirePermissions('product:write')
-  @Audit('product.update', '修改商品售价或上下架')
-  @ApiOperation({ summary: '修改商品售价或上下架（只影响之后的订单）' })
+  @Audit('product.update', '修改商品售价、质保价或上下架')
+  @ApiOperation({ summary: '修改商品售价、质保价或上下架（只影响之后的订单）' })
   @ApiOkResponse({ type: ProductDto })
   updateProduct(@Param('id') id: string, @Body() dto: UpdateProductDto): Promise<ProductDto> {
     return this.catalog.updateProduct(id, dto);

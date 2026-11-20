@@ -3,6 +3,7 @@ import type { CostKind, PaymentResource, ResourceTransaction } from '@prisma/cli
 import { feeOf } from '@crm/shared';
 import { badRequest, notFound } from '../common/errors';
 import type { Tx } from '../fulfillment/fulfillment.service';
+import type { PrismaService } from '../prisma/prisma.service';
 
 const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -14,6 +15,34 @@ export function averageCost(
   if (r.balanceUsdCents <= 0 || usdCents <= 0) return 0;
   if (usdCents >= r.balanceUsdCents) return r.costPoolCents;
   return Math.round((r.costPoolCents * usdCents) / r.balanceUsdCents);
+}
+
+/**
+ * 某个时间点的上游扣费 / 售后问题归哪笔订单：服务期覆盖这个时间点的已完成订单；
+ * 找不到（例如 M1 时期的老订单没有服务期）就归最近一笔已完成订单。
+ */
+export async function orderForPeriod(
+  tx: Tx | PrismaService,
+  subscriptionId: string,
+  at: Date,
+): Promise<string | null> {
+  const covering = await tx.order.findFirst({
+    where: {
+      subscriptionId,
+      status: 'COMPLETED',
+      periodStartAt: { lte: at },
+      periodEndAt: { gt: at },
+    },
+    orderBy: { periodStartAt: 'desc' },
+    select: { id: true },
+  });
+  if (covering) return covering.id;
+  const latest = await tx.order.findFirst({
+    where: { subscriptionId, status: 'COMPLETED' },
+    orderBy: { completedAt: 'desc' },
+    select: { id: true },
+  });
+  return latest?.id ?? null;
 }
 
 export interface ConsumeResult {
@@ -209,28 +238,9 @@ export class LedgerService {
     return result;
   }
 
-  /**
-   * 某个时间点的上游扣费归哪笔订单：服务期覆盖这个时间点的已完成订单；
-   * 找不到（例如 M1 时期的老订单没有服务期）就归最近一笔已完成订单。
-   */
-  async orderForPeriod(tx: Tx, subscriptionId: string, at: Date): Promise<string | null> {
-    const covering = await tx.order.findFirst({
-      where: {
-        subscriptionId,
-        status: 'COMPLETED',
-        periodStartAt: { lte: at },
-        periodEndAt: { gt: at },
-      },
-      orderBy: { periodStartAt: 'desc' },
-      select: { id: true },
-    });
-    if (covering) return covering.id;
-    const latest = await tx.order.findFirst({
-      where: { subscriptionId, status: 'COMPLETED' },
-      orderBy: { completedAt: 'desc' },
-      select: { id: true },
-    });
-    return latest?.id ?? null;
+  /** 见 {@link orderForPeriod} */
+  orderForPeriod(tx: Tx, subscriptionId: string, at: Date): Promise<string | null> {
+    return orderForPeriod(tx, subscriptionId, at);
   }
 
   /** 是否已经配置了可用的付款资源（还没配置时不强制登记扣费，方便先用起来） */

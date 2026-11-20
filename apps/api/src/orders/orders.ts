@@ -18,6 +18,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsIn,
@@ -35,6 +36,7 @@ import {
   FULFILLMENT_TYPES,
   ORDER_STATUSES,
   PAYMENT_METHOD_VALUES,
+  REFUND_STATUSES,
   TASK_STATUSES,
   TASK_TYPES,
   displayNo,
@@ -46,6 +48,7 @@ import {
   type OrderKind,
   type OrderStatus,
   type PaymentMethod,
+  type RefundStatus,
   type TaskStatus,
   type TaskType,
 } from '@crm/shared';
@@ -123,6 +126,11 @@ export class CreateOrderDto {
   @Min(0)
   discountCents?: number;
 
+  @ApiPropertyOptional({ description: '加购质保（按商品设置的质保价计入应收）' })
+  @IsOptional()
+  @IsBoolean()
+  withWarranty?: boolean;
+
   @ApiPropertyOptional({ description: '代充新购：客户的 Claude 账号邮箱' })
   @IsOptional()
   @IsEmail({}, { message: 'Claude 账号邮箱格式不正确' })
@@ -191,8 +199,11 @@ export class OrderDto {
   fulfillmentType: FulfillmentType;
   @ApiProperty() listPriceCents: number;
   @ApiProperty() discountCents: number;
-  @ApiProperty({ description: '应收（分）' }) amountCents: number;
+  @ApiProperty({ description: '是否加购质保' }) withWarranty: boolean;
+  @ApiProperty({ description: '质保费（分），已含在应收里' }) warrantyCents: number;
+  @ApiProperty({ description: '应收（分）= 标价 − 优惠 + 质保费' }) amountCents: number;
   @ApiProperty({ description: '已收（分）' }) paidCents: number;
+  @ApiProperty({ description: '已退款（分）' }) refundedCents: number;
   @ApiProperty({ type: String, nullable: true }) accountId: string | null;
   @ApiProperty({ type: String, nullable: true }) accountEmail: string | null;
   @ApiProperty({ type: RefDto, nullable: true }) subscription: RefDto | null;
@@ -206,7 +217,7 @@ export class OrderDto {
   @ApiProperty({
     type: Number,
     nullable: true,
-    description: '毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空',
+    description: '毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空',
   })
   marginCents: number | null;
   @ApiProperty() createdAt: Date;
@@ -254,9 +265,11 @@ export class CostEntryDto {
 
 export class OrderProfitDto {
   @ApiProperty({ description: '已收（分）' }) revenueCents: number;
+  @ApiProperty({ description: '已退款（分）' }) refundedCents: number;
   @ApiProperty({ description: '收款手续费（分）' }) feeCents: number;
   @ApiProperty({ description: '已发生成本（分）' }) costCents: number;
-  @ApiProperty({ description: '毛利（分）= 已收 − 手续费 − 已发生成本' }) marginCents: number;
+  @ApiProperty({ description: '毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本' })
+  marginCents: number;
   @ApiProperty({ type: Number, nullable: true, description: '毛利率（0–1）' }) marginRate:
     number | null;
   @ApiProperty({ description: '已登记的上游扣费次数（含成品号成本）' }) chargesDone: number;
@@ -267,9 +280,28 @@ export class OrderProfitDto {
   @ApiProperty({ type: [CostEntryDto] }) costs: CostEntryDto[];
 }
 
+export class OrderRefundDto {
+  @ApiProperty() id: string;
+  @ApiProperty({ example: 'K00003' }) code: string;
+  @ApiProperty() amountCents: number;
+  @ApiProperty({ enum: REFUND_STATUSES, enumName: 'RefundStatus' }) status: RefundStatus;
+  @ApiProperty() reason: string;
+  @ApiProperty({ description: '退款后终止服务' }) terminate: boolean;
+  @ApiProperty({ type: RefDto, nullable: true, description: '来自哪个售后工单' })
+  ticket: RefDto | null;
+  @ApiProperty({ type: UserBriefDto }) requestedBy: UserBriefDto;
+  @ApiProperty({ type: String, nullable: true, description: '退款方式' }) method: string | null;
+  @ApiProperty({ type: String, nullable: true }) paidAt: Date | null;
+  @ApiProperty({ type: String, nullable: true }) rejectReason: string | null;
+  @ApiProperty() createdAt: Date;
+}
+
 export class OrderDetailDto extends OrderDto {
   @ApiProperty({ type: [PaymentDto] }) payments: PaymentDto[];
   @ApiProperty({ type: [TaskBriefDto] }) tasks: TaskBriefDto[];
+  @ApiProperty({ type: [OrderRefundDto] }) refunds: OrderRefundDto[];
+  @ApiProperty({ description: '还可以申请退款的金额（分）= 已收 − 已退 − 审批中' })
+  refundableCents: number;
   @ApiProperty({ type: OrderProfitDto, nullable: true, description: '有「查看成本」权限时返回' })
   profit: OrderProfitDto | null;
 }
@@ -300,9 +332,14 @@ export function toCustomerBrief(c: {
   };
 }
 
-/** 毛利 = 已收 − 手续费 − 已发生成本 */
-export function orderMargin(o: { paidCents: number; feeCents: number; costCents: number }): number {
-  return o.paidCents - o.feeCents - o.costCents;
+/** 毛利 = 已收 − 已退款 − 手续费 − 已发生成本 */
+export function orderMargin(o: {
+  paidCents: number;
+  refundedCents: number;
+  feeCents: number;
+  costCents: number;
+}): number {
+  return o.paidCents - o.refundedCents - o.feeCents - o.costCents;
 }
 
 export const canSeeCost = (user: AuthUser) => hasPermission(user.permissions, 'finance:read');
@@ -321,8 +358,11 @@ function toOrderDto(o: OrderRow, user: AuthUser): OrderDto {
     fulfillmentType: o.fulfillmentType,
     listPriceCents: o.listPriceCents,
     discountCents: o.discountCents,
+    withWarranty: o.withWarranty,
+    warrantyCents: o.warrantyCents,
     amountCents: o.amountCents,
     paidCents: o.paidCents,
+    refundedCents: o.refundedCents,
     accountId: o.accountId,
     accountEmail: o.accountEmail,
     subscription: o.subscription
@@ -395,12 +435,38 @@ export class OrdersService {
           include: { assignee: { select: userBriefSelect } },
           orderBy: { createdAt: 'asc' },
         },
+        refunds: {
+          include: {
+            requestedBy: { select: userBriefSelect },
+            ticket: { select: { id: true, no: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
     if (!o) throw notFound('订单');
+    const pending = o.refunds
+      .filter((r) => r.status === 'PENDING')
+      .reduce((sum, r) => sum + r.amountCents, 0);
+    const terminated = o.refunds.some((r) => r.status === 'PAID' && r.terminate);
     return {
       ...toOrderDto(o, user),
-      profit: canSeeCost(user) ? await this.profit(o) : null,
+      profit: canSeeCost(user) ? await this.profit(o, terminated) : null,
+      refunds: o.refunds.map((r) => ({
+        id: r.id,
+        code: displayNo('K', r.no),
+        amountCents: r.amountCents,
+        status: r.status,
+        reason: r.reason,
+        terminate: r.terminate,
+        ticket: r.ticket ? { id: r.ticket.id, code: displayNo('G', r.ticket.no) } : null,
+        requestedBy: r.requestedBy,
+        method: r.method,
+        paidAt: r.paidAt,
+        rejectReason: r.rejectReason,
+        createdAt: r.createdAt,
+      })),
+      refundableCents: Math.max(0, o.paidCents - o.refundedCents - pending),
       payments: o.payments.map((p) => ({
         id: p.id,
         amountCents: p.amountCents,
@@ -424,16 +490,20 @@ export class OrdersService {
     };
   }
 
-  /** 每单毛利：已发生的成本 + 按服务月数估算还要发生的上游扣费 */
-  private async profit(o: {
-    id: string;
-    status: OrderStatus;
-    productId: string;
-    termMonths: number;
-    paidCents: number;
-    feeCents: number;
-    costCents: number;
-  }): Promise<OrderProfitDto> {
+  /** 每单毛利：已发生的成本 + 按服务月数估算还要发生的上游扣费（退款终止服务后不再估算） */
+  private async profit(
+    o: {
+      id: string;
+      status: OrderStatus;
+      productId: string;
+      termMonths: number;
+      paidCents: number;
+      refundedCents: number;
+      feeCents: number;
+      costCents: number;
+    },
+    terminated: boolean,
+  ): Promise<OrderProfitDto> {
     const [entries, product, { exchangeRate }] = await Promise.all([
       this.prisma.costEntry.findMany({
         where: { orderId: o.id },
@@ -448,13 +518,14 @@ export class OrdersService {
     ]);
     const marginCents = orderMargin(o);
     const chargesDone = entries.filter((e) => e.kind !== 'OTHER').length;
-    const chargesExpected = o.status === 'CANCELLED' ? chargesDone : o.termMonths;
+    const chargesExpected = o.status === 'CANCELLED' || terminated ? chargesDone : o.termMonths;
     const monthly = product?.plan.upstreamMonthlyUsdCents ?? 0;
     const estRemainingCostCents = Math.round(
       Math.max(0, chargesExpected - chargesDone) * monthly * exchangeRate,
     );
     return {
       revenueCents: o.paidCents,
+      refundedCents: o.refundedCents,
       feeCents: o.feeCents,
       costCents: o.costCents,
       marginCents,
@@ -489,6 +560,10 @@ export class OrdersService {
     if (!product || !product.active || !product.plan.active) throw badRequest('商品不存在或已下架');
     const discount = dto.discountCents ?? 0;
     if (discount > product.priceCents) throw badRequest('优惠不能超过售价');
+    if (dto.withWarranty && product.warrantyPriceCents === null) {
+      throw badRequest('这个商品没有设置质保价，不能加购质保');
+    }
+    const warrantyCents = dto.withWarranty ? (product.warrantyPriceCents ?? 0) : 0;
 
     const id = await this.prisma.$transaction(async (tx) => {
       let accountId: string | null = null;
@@ -538,7 +613,9 @@ export class OrdersService {
           fulfillmentType: product.fulfillmentType,
           listPriceCents: product.priceCents,
           discountCents: discount,
-          amountCents: product.priceCents - discount,
+          withWarranty: !!dto.withWarranty,
+          warrantyCents,
+          amountCents: product.priceCents - discount + warrantyCents,
           accountId,
           accountEmail,
           remark: dto.remark?.trim() || null,
