@@ -1095,6 +1095,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 财务对账：现金口径汇总、每日对账、按收款方式、按商品 / 客服 / 来源 */
+        get: operations["Finance_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 收支明细（收款、退款出账、成本），用于导出对账 */
+        get: operations["Finance_journal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 经营数据：趋势、续费率、开通时效、售后率、员工业绩、客户价值 */
+        get: operations["Analytics_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2529,6 +2580,269 @@ export interface components {
             usdCents?: number;
             /** @description 付费后上游下次扣费时间，默认顺延一个月 */
             upstreamRenewAt?: string;
+        };
+        FinanceTotalsDto: {
+            /** @description 收款（分） */
+            receivedCents: number;
+            /** @description 收款笔数 */
+            paymentCount: number;
+            /** @description 收款手续费（分） */
+            feeCents: number;
+            /** @description 退款出账（分） */
+            refundedCents: number;
+            /** @description 退款笔数 */
+            refundCount: number;
+            /** @description 净收入 = 收款 − 退款 − 手续费 */
+            netCents: number;
+            /** @description 当期发生的成本（上游扣费、成品号等） */
+            costCents: number;
+            /** @description 毛利 = 净收入 − 成本 */
+            profitCents: number;
+            /** @description 付款资源入库支出（买卡、充值的实际花费）。只对能看全部数据的人返回 */
+            resourceSpendCents: number | null;
+        };
+        FinanceDayDto: {
+            /** @description 收款（分） */
+            receivedCents: number;
+            /** @description 收款笔数 */
+            paymentCount: number;
+            /** @description 收款手续费（分） */
+            feeCents: number;
+            /** @description 退款出账（分） */
+            refundedCents: number;
+            /** @description 退款笔数 */
+            refundCount: number;
+            /** @description 净收入 = 收款 − 退款 − 手续费 */
+            netCents: number;
+            /** @description 当期发生的成本（上游扣费、成品号等） */
+            costCents: number;
+            /** @description 毛利 = 净收入 − 成本 */
+            profitCents: number;
+            /** @example 2026-11-20 */
+            date: string;
+        };
+        FinanceMethodDto: {
+            /** @example wechat */
+            method: string;
+            /** @example 微信 */
+            label: string;
+            receivedCents: number;
+            paymentCount: number;
+            feeCents: number;
+            refundedCents: number;
+            refundCount: number;
+            /** @description 到账净额 = 收款 − 手续费 − 退款 */
+            netCents: number;
+        };
+        FinanceGroupDto: {
+            key: string;
+            label: string;
+            orderCount: number;
+            paidCents: number;
+            refundedCents: number;
+            feeCents: number;
+            costCents: number;
+            marginCents: number;
+        };
+        FinanceReportDto: {
+            from: string;
+            to: string;
+            totals: components["schemas"]["FinanceTotalsDto"];
+            /** @description 每日对账 */
+            days: components["schemas"]["FinanceDayDto"][];
+            /** @description 按收款方式 */
+            methods: components["schemas"]["FinanceMethodDto"][];
+            byProduct: components["schemas"]["FinanceGroupDto"][];
+            /** @description 按负责客服 */
+            byStaff: components["schemas"]["FinanceGroupDto"][];
+            /** @description 按客户来源 */
+            bySource: components["schemas"]["FinanceGroupDto"][];
+        };
+        JournalEntryDto: {
+            /** @enum {string} */
+            kind: "payment" | "refund" | "cost";
+            id: string;
+            /** Format: date-time */
+            at: string;
+            orderId: string | null;
+            /** @example D00012 */
+            orderCode: string | null;
+            customer: components["schemas"]["CustomerBriefDto"] | null;
+            /** @description 收款 / 退款方式，或成本类型 */
+            category: string;
+            /** @description 金额（分），收款为正、退款和成本为负 */
+            amountCents: number;
+            /** @description 手续费（分），仅收款 */
+            feeCents: number;
+            /** @description 单号 / 退款编号 / 说明 */
+            reference: string | null;
+            userName: string | null;
+        };
+        JournalDto: {
+            items: components["schemas"]["JournalEntryDto"][];
+            /** @description 超过 5000 条时只返回最早的部分 */
+            truncated: boolean;
+        };
+        TrendDayDto: {
+            /** @example 2026-11-20 */
+            date: string;
+            /** @description 收款（分） */
+            receivedCents: number;
+            /** @description 退款出账（分） */
+            refundedCents: number;
+            /** @description 收齐款的订单数 */
+            paidOrders: number;
+            /** @description 其中续费订单数 */
+            renewalOrders: number;
+            /** @description 新客户数 */
+            newCustomers: number;
+            /** @description 完成开通数 */
+            activations: number;
+            /** @description 新售后工单数 */
+            tickets: number;
+        };
+        RenewalGroupDto: {
+            key: string;
+            label: string;
+            /** @description 服务期在统计区间内结束的订单数 */
+            due: number;
+            /** @description 其中已续费的 */
+            renewed: number;
+            /** @description 续费率（0–1） */
+            rate: number | null;
+        };
+        RenewalStatsDto: {
+            key: string;
+            label: string;
+            /** @description 服务期在统计区间内结束的订单数 */
+            due: number;
+            /** @description 其中已续费的 */
+            renewed: number;
+            /** @description 续费率（0–1） */
+            rate: number | null;
+            byPlan: components["schemas"]["RenewalGroupDto"][];
+        };
+        ActivationStatsDto: {
+            /** @description 区间内完成的开通任务数 */
+            done: number;
+            /** @description 在时限内完成的 */
+            onTime: number;
+            onTimeRate: number | null;
+            /** @description 收齐款到开通完成的平均分钟数 */
+            avgMinutes: number | null;
+            /** @description 中位数（分钟） */
+            medianMinutes: number | null;
+        };
+        TicketTypeCountDto: {
+            type: string;
+            count: number;
+        };
+        AftersalesRateDto: {
+            /** @description 新工单数 */
+            tickets: number;
+            /** @description 出过工单的订阅数 */
+            subscriptionsWithTickets: number;
+            /** @description 区间内在服务的订阅数 */
+            activeSubscriptions: number;
+            /** @description 售后率 = 出过工单的订阅 ÷ 在服务订阅 */
+            ticketRate: number | null;
+            /** @description 退款出账（分） */
+            refundedCents: number;
+            /** @description 收款（分） */
+            receivedCents: number;
+            /** @description 退款率 = 退款 ÷ 收款 */
+            refundRate: number | null;
+            /** @description 区间内解决的工单数 */
+            resolved: number;
+            /** @description 平均解决用时（小时） */
+            avgResolveHours: number | null;
+            /** @description 按时解决率（没有被升级） */
+            onTimeRate: number | null;
+            byType: components["schemas"]["TicketTypeCountDto"][];
+        };
+        SalesPerfDto: {
+            userId: string;
+            name: string;
+            /** @description 收齐款的订单数 */
+            paidOrders: number;
+            /** @description 其中续费订单 */
+            renewalOrders: number;
+            /** @description 订单实收（分） */
+            paidCents: number;
+            /** @description 毛利（分），没有财务权限时为空 */
+            marginCents: number | null;
+            /** @description 新客户数 */
+            newCustomers: number;
+        };
+        FulfillmentPerfDto: {
+            userId: string;
+            name: string;
+            /** @description 完成的任务数（所有类型） */
+            done: number;
+            onTimeRate: number | null;
+            /** @description 其中开通任务数 */
+            activations: number;
+            /** @description 开通平均用时（分钟） */
+            avgActivationMinutes: number | null;
+        };
+        AftersalesPerfDto: {
+            userId: string;
+            name: string;
+            /** @description 解决的工单数 */
+            resolved: number;
+            /** @description 平均解决用时（小时） */
+            avgHours: number | null;
+            /** @description 被升级过的工单数 */
+            escalated: number;
+        };
+        StaffPerfDto: {
+            sales: components["schemas"]["SalesPerfDto"][];
+            fulfillment: components["schemas"]["FulfillmentPerfDto"][];
+            aftersales: components["schemas"]["AftersalesPerfDto"][];
+        };
+        LtvSourceDto: {
+            source: string;
+            label: string;
+            customers: number;
+            /** @description 平均净收入（分） */
+            avgNetCents: number;
+        };
+        LtvCustomerDto: {
+            customer: components["schemas"]["CustomerBriefDto"];
+            orders: number;
+            /** @description 累计净收入 = 实收 − 退款（分） */
+            netCents: number;
+            marginCents: number | null;
+            /** Format: date-time */
+            firstPaidAt: string;
+            /** Format: date-time */
+            lastPaidAt: string;
+        };
+        LtvStatsDto: {
+            /** @description 付过款的客户数 */
+            payingCustomers: number;
+            /** @description 复购客户数（收齐款的订单 ≥ 2） */
+            repeatCustomers: number;
+            /** @description 平均客户净收入（分） */
+            avgNetCents: number | null;
+            /** @description 平均客户毛利（分） */
+            avgMarginCents: number | null;
+            /** @description 平均订单数 */
+            avgOrders: number | null;
+            bySource: components["schemas"]["LtvSourceDto"][];
+            /** @description 净收入最高的 10 个客户 */
+            top: components["schemas"]["LtvCustomerDto"][];
+        };
+        AnalyticsDto: {
+            from: string;
+            to: string;
+            days: number;
+            trend: components["schemas"]["TrendDayDto"][];
+            renewal: components["schemas"]["RenewalStatsDto"];
+            activation: components["schemas"]["ActivationStatsDto"];
+            aftersales: components["schemas"]["AftersalesRateDto"];
+            staff: components["schemas"]["StaffPerfDto"];
+            ltv: components["schemas"]["LtvStatsDto"];
         };
     };
     responses: never;
@@ -4487,6 +4801,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StockAccountDto"];
+                };
+            };
+        };
+    };
+    Finance_report: {
+        parameters: {
+            query: {
+                /** @description 开始日期（北京时间，含当天） */
+                from: string;
+                /** @description 结束日期（北京时间，含当天） */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceReportDto"];
+                };
+            };
+        };
+    };
+    Finance_journal: {
+        parameters: {
+            query: {
+                /** @description 开始日期（北京时间，含当天） */
+                from: string;
+                /** @description 结束日期（北京时间，含当天） */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalDto"];
+                };
+            };
+        };
+    };
+    Analytics_overview: {
+        parameters: {
+            query?: {
+                /** @description 统计最近多少天（含今天） */
+                days?: 7 | 30 | 90;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsDto"];
                 };
             };
         };

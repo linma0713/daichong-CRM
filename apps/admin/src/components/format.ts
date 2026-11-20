@@ -20,3 +20,8 @@ export function randomPassword(): string {
   }
   return chars.join('');
 }
+
+/** 北京时间的「今天」（按日期，不带时刻）。统计都按北京日历算，避免电脑时区不同导致差一天 */
+export function beijingToday(now = Date.now()): dayjs.Dayjs {
+  return dayjs(new Date(now + 8 * 3600 * 1000).toISOString().slice(0, 10));
+}

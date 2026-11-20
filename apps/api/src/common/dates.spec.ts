@@ -1,4 +1,10 @@
-import { addMonths, localDateKey, startOfLocalDay, startOfLocalMonth } from './dates';
+import {
+  addMonths,
+  localDateKey,
+  parseLocalDate,
+  startOfLocalDay,
+  startOfLocalMonth,
+} from './dates';
 
 // 北京时间 = UTC+8
 const bj = (s: string) => new Date(`${s}+08:00`);
@@ -27,5 +33,18 @@ describe('startOfLocalDay / startOfLocalMonth', () => {
     expect(startOfLocalDay(bj('2026-12-01T01:00:00'))).toEqual(bj('2026-12-01T00:00:00'));
     expect(startOfLocalMonth(bj('2026-12-01T01:00:00'))).toEqual(bj('2026-12-01T00:00:00'));
     expect(startOfLocalMonth(bj('2026-11-30T23:59:00'))).toEqual(bj('2026-11-01T00:00:00'));
+  });
+});
+
+describe('parseLocalDate', () => {
+  it('返回北京时间那天 0 点', () => {
+    expect(parseLocalDate('2026-11-20')?.toISOString()).toBe('2026-11-19T16:00:00.000Z');
+    expect(parseLocalDate('2024-02-29')?.toISOString()).toBe('2024-02-28T16:00:00.000Z');
+  });
+
+  it('格式不对或日期不存在返回 null', () => {
+    for (const bad of ['2026-02-30', '2026-13-01', '2026-1-1', '20261120', '']) {
+      expect(parseLocalDate(bad)).toBeNull();
+    }
   });
 });
