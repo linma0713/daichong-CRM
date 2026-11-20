@@ -84,7 +84,7 @@ export class FulfillmentService {
    * 订单收齐款之后：
    * - 新购：建「新开通」任务
    * - 续费：订阅还在服务中、上游自动续订开着、套餐没变 → 直接延长服务期，不用人工处理；
-   *   否则（已到期、已取消自动续订、换套餐）建「客户续费」任务
+   *   否则（已到期、已取消或正在取消自动续订、换套餐）建「客户续费」任务
    */
   async onOrderPaid(tx: Tx, order: Order, now = new Date()): Promise<void> {
     const { activateSlaHours } = await this.settings.getAll();
@@ -102,7 +102,13 @@ export class FulfillmentService {
       tx.subscription.findUniqueOrThrow({ where: { id: order.subscriptionId! } }),
       tx.product.findUniqueOrThrow({ where: { id: order.productId } }),
     ]);
-    const seamless = sub.status === 'ACTIVE' && sub.autoRenewOn && product.planId === sub.planId;
+    // 充值员正在取消自动续订时，上游状态说不准，交给人工确认
+    const cancelling = await tx.fulfillmentTask.findFirst({
+      where: { subscriptionId: sub.id, type: 'CANCEL_AUTO_RENEW', status: 'IN_PROGRESS' },
+      select: { id: true },
+    });
+    const seamless =
+      sub.status === 'ACTIVE' && sub.autoRenewOn && product.planId === sub.planId && !cancelling;
     if (seamless) {
       await this.applyRenewal(tx, order, sub, product.planId, {}, now);
       return;

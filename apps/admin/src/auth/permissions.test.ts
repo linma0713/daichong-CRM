@@ -42,3 +42,18 @@ describe('firstPath', () => {
     expect(firstPath([])).toBeUndefined();
   });
 });
+
+describe('anyPermission', () => {
+  it('拥有其中任意一个权限就能看到', () => {
+    const nodes: MenuNode[] = [
+      {
+        key: 'subs',
+        label: '订阅',
+        path: '/subs',
+        anyPermission: ['customer:read', 'subscription:read'],
+      },
+    ];
+    expect(filterMenu(nodes, ['subscription:read'])).toHaveLength(1);
+    expect(filterMenu(nodes, ['order:read'])).toHaveLength(0);
+  });
+});

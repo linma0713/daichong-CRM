@@ -32,6 +32,7 @@ export class SubscriptionStatsDto {
   @ApiProperty({ description: '服务中' }) active: number;
   @ApiProperty({ description: '7 天内到期' }) expiringIn7Days: number;
   @ApiProperty({ description: '需要提醒续费（我负责的）' }) needsReminder: number;
+  @ApiProperty({ description: '需要提醒续费（数据范围内全部）' }) needsReminderAll: number;
 }
 
 export class CustomerStatsDto {
@@ -106,15 +107,15 @@ export class DashboardService {
       can('customer:read') || can('subscription:read')
         ? (async (): Promise<SubscriptionStatsDto> => {
             const scope = visibleSubscriptions(user);
-            const [active, expiringIn7Days, needsReminder] = await Promise.all([
+            const [active, expiringIn7Days, needsReminder, needsReminderAll] = await Promise.all([
               this.prisma.subscription.count({ where: { ...scope, status: 'ACTIVE' } }),
               this.prisma.subscription.count({
                 where: { ...scope, status: 'ACTIVE', endAt: { lte: addDays(now, 7) } },
               }),
-              // 续费提醒是客服的事：只统计自己负责的
               this.subs.countNeedsReminder(user, user.id),
+              this.subs.countNeedsReminder(user),
             ]);
-            return { active, expiringIn7Days, needsReminder };
+            return { active, expiringIn7Days, needsReminder, needsReminderAll };
           })()
         : null;
 

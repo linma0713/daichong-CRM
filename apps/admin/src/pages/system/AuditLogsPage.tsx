@@ -43,9 +43,40 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'team.create', label: '新增小组' },
   { value: 'team.update', label: '重命名小组' },
   { value: 'team.delete', label: '删除小组' },
+  { value: 'customer.create', label: '新增客户' },
+  { value: 'customer.update', label: '修改客户' },
+  { value: 'customer.transfer', label: '更换客户负责人' },
+  { value: 'customer.delete', label: '删除客户' },
+  { value: 'customer.follow_up', label: '客户跟进' },
+  { value: 'plan.create', label: '新增套餐' },
+  { value: 'plan.update', label: '修改套餐' },
+  { value: 'product.create', label: '新增商品' },
+  { value: 'product.update', label: '修改商品售价' },
+  { value: 'order.create', label: '录入订单' },
+  { value: 'order.payment', label: '确认收款' },
+  { value: 'order.cancel', label: '取消订单' },
+  { value: 'task.claim', label: '领取任务' },
+  { value: 'task.assign', label: '转交任务' },
+  { value: 'task.complete', label: '完成任务' },
+  { value: 'task.fail', label: '任务失败' },
+  { value: 'task.cancel', label: '作废任务' },
+  { value: 'subscription.update', label: '手动校正订阅' },
+  { value: 'account.secret_view', label: '查看账号密码' },
+  { value: 'account.update', label: '修改账号信息' },
+  { value: 'settings.update', label: '修改业务设置' },
+  { value: 'job.sweep', label: '手动运行到期巡检' },
 ];
 
-const DANGER_ACTIONS = new Set(['auth.login_failed', 'user.delete', 'role.delete', 'team.delete']);
+const DANGER_ACTIONS = new Set([
+  'auth.login_failed',
+  'user.delete',
+  'role.delete',
+  'team.delete',
+  'customer.delete',
+  'order.cancel',
+  'account.secret_view',
+  'subscription.update',
+]);
 
 export function AuditLogsPage() {
   const { can } = useAuth();

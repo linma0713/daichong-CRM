@@ -336,6 +336,9 @@ describe('M1 主链路', () => {
       expect(due.body.items[0].daysLeft).toBeGreaterThan(0);
       const dash = await as('sales1').get('/dashboard').expect(200);
       expect(dash.body.subscriptions.needsReminder).toBe(1);
+      // 管理员自己不负责，但能看到全部待提醒的数量
+      const adminDash = await as('admin').get('/dashboard').expect(200);
+      expect(adminDash.body.subscriptions).toMatchObject({ needsReminder: 0, needsReminderAll: 1 });
       expect(dash.body.tasks).toBeNull();
 
       // 其他客服看不到；充值员能看到全部订阅

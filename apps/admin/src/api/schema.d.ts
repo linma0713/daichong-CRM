@@ -1507,6 +1507,8 @@ export interface components {
             expiringIn7Days: number;
             /** @description 需要提醒续费（我负责的） */
             needsReminder: number;
+            /** @description 需要提醒续费（数据范围内全部） */
+            needsReminderAll: number;
         };
         CustomerStatsDto: {
             total: number;
