@@ -23,6 +23,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions';
 import { SchedulerModule } from './scheduler/sweep';
 import { DashboardModule } from './dashboard/dashboard';
 import { InventoryModule } from './inventory/inventory';
+import { AftersalesModule } from './aftersales/aftersales';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { InventoryModule } from './inventory/inventory';
     SchedulerModule,
     DashboardModule,
     InventoryModule,
+    AftersalesModule,
   ],
   providers: [
     // 顺序就是执行顺序：限流 → 登录 → 权限

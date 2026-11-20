@@ -32,7 +32,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { Prisma, type FulfillmentTask, type Order } from '@prisma/client';
+import { Prisma, type FulfillmentTask } from '@prisma/client';
 import {
   ALL_PERMISSIONS,
   FULFILLMENT_TYPES,
@@ -62,6 +62,7 @@ import {
   userBriefSelect,
 } from '../common/briefs';
 import { addMonths } from '../common/dates';
+import { recordTicketEvent, resolveTicketBySystem } from '../aftersales/ticket-events';
 import { badRequest, notFound } from '../common/errors';
 import { PageQueryDto, skipTake } from '../common/pagination';
 import { SecretBox } from '../common/secret-box';
@@ -86,7 +87,9 @@ const CANCELLABLE: TaskType[] = ['CANCEL_AUTO_RENEW', 'RECLAIM_ACCOUNT'];
  */
 export type ChargeMode = 'required' | 'optional' | 'none';
 export function chargeModeOf(type: TaskType, fulfillmentType: FulfillmentType): ChargeMode {
-  if (type === 'ACTIVATE') return fulfillmentType === 'ACCOUNT' ? 'optional' : 'required';
+  if (type === 'ACTIVATE' || type === 'REPLACE_ACCOUNT') {
+    return fulfillmentType === 'ACCOUNT' ? 'optional' : 'required';
+  }
   if (type === 'RENEW' || type === 'INTERNAL_RENEW') return 'required';
   return 'none';
 }
@@ -157,7 +160,9 @@ export class CompleteTaskDto {
   @IsDateString()
   upstreamRenewAt?: string;
 
-  @ApiPropertyOptional({ description: '成品号开通：交付给客户的账号邮箱' })
+  @ApiPropertyOptional({
+    description: '成品号开通 / 换号：交付给客户的账号邮箱；代充换号：客户新的 Claude 账号邮箱',
+  })
   @IsOptional()
   @IsEmail({}, { message: '账号邮箱格式不正确' })
   accountEmail?: string;
@@ -175,7 +180,7 @@ export class CompleteTaskDto {
   accountSecretNote?: string;
 
   @ApiPropertyOptional({
-    description: '成品号开通：从库存里选的成品号 ID（和 accountEmail 二选一）',
+    description: '成品号开通 / 换号：从库存里选的成品号 ID（和 accountEmail 二选一）',
   })
   @IsOptional()
   @IsString()
@@ -200,7 +205,8 @@ export class CompleteTaskDto {
 
   @ApiPropertyOptional({
     enum: ['STOCK', 'VOID'],
-    description: '回收成品号：STOCK 回库继续卖（默认）；VOID 作废',
+    description:
+      '回收成品号 / 成品号换号时旧号的去向：STOCK 回库继续卖；VOID 作废。回收默认回库，换号默认作废',
   })
   @IsOptional()
   @IsIn(['STOCK', 'VOID'])
@@ -247,6 +253,12 @@ export class TaskSubscriptionDto {
   @ApiProperty() autoRenewOn: boolean;
 }
 
+export class TaskTicketDto {
+  @ApiProperty() id: string;
+  @ApiProperty({ example: 'G00003' }) code: string;
+  @ApiProperty({ description: '工单问题描述' }) description: string;
+}
+
 export class TaskDto {
   @ApiProperty() id: string;
   @ApiProperty({ example: 'T00012' }) code: string;
@@ -260,6 +272,8 @@ export class TaskDto {
   subscription: TaskSubscriptionDto | null;
   @ApiProperty({ type: AccountBriefDto, nullable: true, description: '要操作的 Claude 账号' })
   account: AccountBriefDto | null;
+  @ApiProperty({ type: TaskTicketDto, nullable: true, description: '售后换号任务对应的工单' })
+  ticket: TaskTicketDto | null;
   @ApiProperty({ type: UserBriefDto, nullable: true }) assignee: UserBriefDto | null;
   @ApiProperty({ type: String, nullable: true, description: '涉及的套餐（成品号开通按它选库存）' })
   planId: string | null;
@@ -320,6 +334,7 @@ const taskInclude = {
     },
   },
   subscription: { select: subscriptionSelect },
+  ticket: { select: { id: true, no: true, description: true } },
 } satisfies Prisma.FulfillmentTaskInclude;
 type TaskRow = Prisma.FulfillmentTaskGetPayload<{ include: typeof taskInclude }>;
 
@@ -361,6 +376,9 @@ function toTaskDto(t: TaskRow, now = new Date()): TaskDto {
         }
       : null,
     account: account ? toAccountBrief(account) : null,
+    ticket: t.ticket
+      ? { id: t.ticket.id, code: displayNo('G', t.ticket.no), description: t.ticket.description }
+      : null,
     assignee: t.assignee,
     planId: plan?.id ?? null,
     upstreamMonthlyUsdCents: plan?.upstreamMonthlyUsdCents ?? null,
@@ -498,6 +516,14 @@ export class TasksService {
           assigneeId: task.assigneeId ?? user.id,
         },
       });
+      if (task.ticketId) {
+        await recordTicketEvent(tx, {
+          ticketId: task.ticketId,
+          kind: 'replace',
+          content: `换号任务 ${displayNo('T', task.no)} 处理失败：${note.trim()}`,
+          userId: user.id,
+        });
+      }
     });
     return this.get(id);
   }
@@ -566,6 +592,9 @@ export class TasksService {
           await tx.subscription.update({ where: { id: sub.id }, data: { autoRenewOn: false } });
           break;
         }
+        case 'REPLACE_ACCOUNT':
+          charge = await this.completeReplace(tx, task, dto, now, user.id);
+          break;
         case 'RECLAIM_ACCOUNT': {
           const sub = await this.requireSubscription(tx, task.subscriptionId);
           if (sub.status === 'ACTIVE') {
@@ -659,7 +688,14 @@ export class TasksService {
     let accountId = order.accountId;
     let stockRenewAt: Date | null = null;
     if (order.fulfillmentType === 'ACCOUNT') {
-      const delivered = await this.deliverCompanyAccount(tx, order, product.plan, dto, now, userId);
+      const delivered = await this.deliverCompanyAccount(
+        tx,
+        { customerId: order.customerId, orderId: order.id },
+        product.plan,
+        dto,
+        now,
+        userId,
+      );
       accountId = delivered.accountId;
       stockRenewAt = delivered.upstreamRenewAt;
     }
@@ -748,12 +784,143 @@ export class TasksService {
   }
 
   /**
-   * 成品号开通：从库存选号（或登记一个新号）交付给客户。
+   * 售后换号：给客户换一个账号，服务期不变。
+   * 成品号从库存选新号（旧号默认作废）；代充换成客户提供的新账号，一般要重新付费。
+   * 成本归到服务期覆盖现在的那笔订单；完成后关联的工单自动标记已解决。
+   */
+  private async completeReplace(
+    tx: Tx,
+    task: FulfillmentTask,
+    dto: CompleteTaskDto,
+    now: Date,
+    userId: string,
+  ): Promise<ChargeTarget> {
+    const sub = await this.requireSubscription(tx, task.subscriptionId);
+    if (sub.status !== 'ACTIVE') throw badRequest('订阅已不在服务中，不能换号');
+    const [plan, old] = await Promise.all([
+      tx.plan.findUniqueOrThrow({ where: { id: sub.planId } }),
+      tx.claudeAccount.findUniqueOrThrow({ where: { id: sub.accountId } }),
+    ]);
+    const orderId = await this.ledger.orderForPeriod(tx, sub.id, now);
+
+    let accountId: string;
+    let paidThrough: Date | null = null;
+    if (sub.fulfillmentType === 'ACCOUNT') {
+      if (dto.accountEmail?.trim().toLowerCase() === old.email || dto.stockAccountId === old.id) {
+        throw badRequest('新账号和原账号是同一个');
+      }
+      const delivered = await this.deliverCompanyAccount(
+        tx,
+        { customerId: sub.customerId, orderId },
+        plan,
+        dto,
+        now,
+        userId,
+      );
+      accountId = delivered.accountId;
+      paidThrough = delivered.upstreamRenewAt;
+    } else {
+      if (!dto.accountEmail) throw badRequest('代充换号要填写客户新的 Claude 账号邮箱');
+      accountId = await this.replacementCustomerAccount(tx, sub.customerId, old.id, dto);
+    }
+    const busy = await tx.subscription.findFirst({
+      where: { accountId, status: 'ACTIVE', id: { not: sub.id } },
+    });
+    if (busy) throw badRequest(`新账号已有服务中的订阅 ${displayNo('S', busy.no)}`);
+
+    if (sub.fulfillmentType === 'ACCOUNT') {
+      const toStock = dto.reclaimTo === 'STOCK';
+      await tx.claudeAccount.update({
+        where: { id: old.id },
+        data: {
+          customerId: null,
+          stockStatus: toStock ? 'IN_STOCK' : 'VOID',
+          planId: sub.planId,
+          stockCostCents: 0,
+          upstreamRenewAt: toStock ? sub.upstreamRenewAt : null,
+          stockedAt: now,
+        },
+      });
+    }
+    const charged = !!dto.resourceId && !dto.noCharge;
+    const updated = await tx.subscription.update({
+      where: { id: sub.id },
+      data: {
+        accountId,
+        autoRenewOn: true,
+        upstreamRenewAt:
+          optionalDate(dto.upstreamRenewAt) ?? (charged ? null : paidThrough) ?? addMonths(now, 1),
+      },
+      include: { account: { select: { email: true } } },
+    });
+    if (task.ticketId) {
+      await recordTicketEvent(tx, {
+        ticketId: task.ticketId,
+        kind: 'replace',
+        content: `换号完成（${displayNo('T', task.no)}）：${old.email} → ${updated.account.email}`,
+        userId,
+      });
+      await resolveTicketBySystem(tx, task.ticketId, '已换号', userId, now);
+    }
+    return {
+      mode: chargeModeOf('REPLACE_ACCOUNT', sub.fulfillmentType),
+      orderId,
+      subscriptionId: sub.id,
+      accountId,
+      planId: sub.planId,
+    };
+  }
+
+  /** 代充换号：登记客户新的 Claude 账号（同一个邮箱只能属于一个客户） */
+  private async replacementCustomerAccount(
+    tx: Tx,
+    customerId: string,
+    oldAccountId: string,
+    dto: CompleteTaskDto,
+  ): Promise<string> {
+    const email = dto.accountEmail!.trim().toLowerCase();
+    const existing = await tx.claudeAccount.findUnique({
+      where: { email },
+      include: { customer: { select: { no: true } } },
+    });
+    if (!existing) {
+      const created = await tx.claudeAccount.create({
+        data: {
+          email,
+          ownership: 'CUSTOMER',
+          customerId,
+          passwordEnc: this.secrets.encryptOptional(dto.accountPassword),
+          ...(dto.accountSecretNote
+            ? { secretNoteEnc: this.secrets.encrypt(dto.accountSecretNote) }
+            : {}),
+        },
+      });
+      return created.id;
+    }
+    if (existing.id === oldAccountId) throw badRequest('新账号和原账号是同一个');
+    if (existing.ownership === 'COMPANY') {
+      throw badRequest('这个邮箱是公司的成品号，代充换号要填客户自己的账号');
+    }
+    if (existing.customerId && existing.customerId !== customerId) {
+      throw badRequest(`这个账号已登记在客户 ${displayNo('C', existing.customer!.no)} 名下`);
+    }
+    await tx.claudeAccount.update({
+      where: { id: existing.id },
+      data: {
+        customerId,
+        ...(dto.accountPassword ? { passwordEnc: this.secrets.encrypt(dto.accountPassword) } : {}),
+      },
+    });
+    return existing.id;
+  }
+
+  /**
+   * 成品号开通 / 换号：从库存选号（或登记一个新号）交付给客户。
    * 在库期间累计的备号成本在这里结转到订单。
    */
   private async deliverCompanyAccount(
     tx: Tx,
-    order: Order,
+    target: { customerId: string; orderId: string | null },
     plan: { id: string; name: string },
     dto: CompleteTaskDto,
     now: Date,
@@ -775,7 +942,7 @@ export class TasksService {
           data: {
             email,
             ownership: 'COMPANY',
-            customerId: order.customerId,
+            customerId: target.customerId,
             stockStatus: 'IN_USE',
             planId: plan.id,
             passwordEnc: this.secrets.encrypt(dto.accountPassword),
@@ -798,7 +965,7 @@ export class TasksService {
       throw badRequest('这个邮箱是客户自己的账号，不能当成品号交付');
     }
     if (existing.stockStatus === 'VOID') throw badRequest('这个成品号已作废，不能再发');
-    if (existing.customerId && existing.customerId !== order.customerId) {
+    if (existing.customerId && existing.customerId !== target.customerId) {
       throw badRequest(`这个成品号正在给客户 ${displayNo('C', existing.customer!.no)} 使用`);
     }
     if (existing.planId && existing.planId !== plan.id) {
@@ -809,7 +976,7 @@ export class TasksService {
     await tx.claudeAccount.update({
       where: { id: existing.id },
       data: {
-        customerId: order.customerId,
+        customerId: target.customerId,
         stockStatus: 'IN_USE',
         planId: plan.id,
         stockCostCents: 0,
@@ -822,7 +989,7 @@ export class TasksService {
       await this.ledger.recordCost(tx, {
         kind: 'ACCOUNT_STOCK',
         amountCents: existing.stockCostCents,
-        orderId: order.id,
+        orderId: target.orderId,
         accountId: existing.id,
         note: `成品号 ${existing.email} 的备号成本`,
         userId,

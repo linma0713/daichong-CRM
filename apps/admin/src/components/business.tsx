@@ -1,24 +1,31 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { App, Button, Descriptions, Select, Tag, Tooltip, Typography } from 'antd';
+import { Alert, App, Button, Descriptions, Select, Tag, Tooltip, Typography } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import dayjs from 'dayjs';
 import {
   ACCOUNT_STOCK_STATUS_LABELS,
   FULFILLMENT_TYPE_LABELS,
   ORDER_KIND_LABELS,
   ORDER_STATUS_LABELS,
+  REFUND_STATUS_LABELS,
   SUBSCRIPTION_STATUS_LABELS,
   TASK_STATUS_LABELS,
   TASK_TYPE_LABELS,
+  TICKET_STATUS_LABELS,
+  TICKET_TYPE_LABELS,
   formatCents,
   type AccountStockStatus,
   type FulfillmentType,
   type OrderKind,
   type OrderStatus,
+  type RefundStatus,
   type SubscriptionStatus,
   type TaskStatus,
   type TaskType,
+  type TicketStatus,
+  type TicketType,
 } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../api/client';
 import { useAuth } from '../auth/AuthProvider';
@@ -96,6 +103,7 @@ const TASK_TYPE_COLORS: Record<TaskType, string> = {
   INTERNAL_RENEW: 'cyan',
   CANCEL_AUTO_RENEW: 'volcano',
   RECLAIM_ACCOUNT: 'magenta',
+  REPLACE_ACCOUNT: 'orange',
 };
 export function TaskTypeTag({ type }: { type: TaskType }) {
   return <Tag color={TASK_TYPE_COLORS[type]}>{TASK_TYPE_LABELS[type]}</Tag>;
@@ -119,6 +127,70 @@ const SUB_STATUS_COLORS: Record<SubscriptionStatus, string> = {
 };
 export function SubscriptionStatusTag({ status }: { status: SubscriptionStatus }) {
   return <Tag color={SUB_STATUS_COLORS[status]}>{SUBSCRIPTION_STATUS_LABELS[status]}</Tag>;
+}
+
+const TICKET_TYPE_COLORS: Record<TicketType, string> = {
+  NOT_EFFECTIVE: 'orange',
+  BANNED: 'red',
+  LIMITED: 'volcano',
+  REFUND: 'purple',
+  REPLACE: 'gold',
+  OTHER: 'default',
+};
+export function TicketTypeTag({ type }: { type: TicketType }) {
+  return <Tag color={TICKET_TYPE_COLORS[type]}>{TICKET_TYPE_LABELS[type]}</Tag>;
+}
+
+const TICKET_STATUS_COLORS: Record<TicketStatus, string> = {
+  OPEN: 'orange',
+  IN_PROGRESS: 'processing',
+  WAITING_CUSTOMER: 'warning',
+  RESOLVED: 'success',
+  CLOSED: 'default',
+};
+export function TicketStatusTag({ status }: { status: TicketStatus }) {
+  return <Tag color={TICKET_STATUS_COLORS[status]}>{TICKET_STATUS_LABELS[status]}</Tag>;
+}
+
+const REFUND_STATUS_COLORS: Record<RefundStatus, string> = {
+  PENDING: 'orange',
+  PAID: 'success',
+  REJECTED: 'default',
+};
+export function RefundStatusTag({ status }: { status: RefundStatus }) {
+  return <Tag color={REFUND_STATUS_COLORS[status]}>{REFUND_STATUS_LABELS[status]}</Tag>;
+}
+
+/** 质保结论：可包换 / 可退多少 / 不在质保内（原因） */
+export function WarrantyAlert({
+  warranty,
+  title = '质保',
+}: {
+  warranty: Schemas['WarrantyDto'];
+  title?: string;
+}) {
+  const period =
+    warranty.periodStartAt && warranty.periodEndAt
+      ? `服务期 ${dayjs(warranty.periodStartAt).format('YYYY-MM-DD')} 至 ${dayjs(warranty.periodEndAt).format('YYYY-MM-DD')}`
+      : null;
+  const detail = [
+    warranty.order ? `按订单 ${warranty.order.code} 计算` : null,
+    period,
+    warranty.withWarranty ? `质保费 ${formatCents(warranty.warrantyCents)}（不退）` : null,
+    warranty.covered
+      ? `套餐实付 ${formatCents(warranty.planPaidCents)} × 剩余 ${warranty.remainingDays} 天 ÷ ${warranty.totalDays} 天`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <Alert
+      type={warranty.covered ? 'success' : 'warning'}
+      showIcon
+      message={`${title}：${warranty.summary}`}
+      description={detail || undefined}
+    />
+  );
 }
 
 /** 剩余天数：7 天内橙色，3 天内红色，已到期灰色 */

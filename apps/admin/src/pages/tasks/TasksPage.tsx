@@ -59,6 +59,8 @@ const TASK_GUIDE: Record<TaskType, string> = {
   CANCEL_AUTO_RENEW:
     '客户付费的服务期快结束且还没续费：在上游下次扣费前取消自动续订，避免替客户垫付',
   RECLAIM_ACCOUNT: '成品号到期未续费：收回账号（建议修改密码），之后可以再卖给其他客户',
+  REPLACE_ACCOUNT:
+    '售后换号：给客户换一个能用的账号，服务期不变。成品号从库存选新号；代充换成客户提供的新账号，一般要重新付费',
 };
 
 export function TasksPage() {
@@ -225,6 +227,11 @@ function TaskTable({
           ) : (
             <Typography.Text type="secondary">成品号待分配</Typography.Text>
           )}
+          {t.ticket && (
+            <Typography.Text type="warning">
+              售后 {t.ticket.code}：{t.ticket.description}
+            </Typography.Text>
+          )}
           {t.subscription?.upstreamRenewAt &&
             (t.type === 'INTERNAL_RENEW' || t.type === 'CANCEL_AUTO_RENEW') && (
               <Typography.Text type="warning">
@@ -384,7 +391,11 @@ function CompleteModal({
   const queryClient = useQueryClient();
   const [form] = Form.useForm<CompleteForm>();
   const isActivate = task.type === 'ACTIVATE';
-  const deliversAccount = isActivate && task.fulfillmentType === 'ACCOUNT';
+  const isReplace = task.type === 'REPLACE_ACCOUNT';
+  const deliversAccount = (isActivate || isReplace) && task.fulfillmentType === 'ACCOUNT';
+  const newCustomerAccount = isReplace && task.fulfillmentType === 'RECHARGE';
+  const movesOldAccount =
+    task.type === 'RECLAIM_ACCOUNT' || (isReplace && task.fulfillmentType === 'ACCOUNT');
   const resources = useResources(task.chargeMode !== 'none');
   const activeResources = resources.data?.filter((r) => r.active) ?? [];
   const stock = useQuery({
@@ -410,8 +421,10 @@ function CompleteModal({
     !!pickedStock?.upstreamRenewAt && dayjs(pickedStock.upstreamRenewAt).isBefore(dayjs());
   const chargeRequired = task.chargeMode === 'required' || stockLapsed;
   const defaultUsd = task.upstreamMonthlyUsdCents ? task.upstreamMonthlyUsdCents / 100 : undefined;
-  const askUpstream = isActivate || task.type === 'RENEW' || task.type === 'INTERNAL_RENEW';
+  const askUpstream =
+    isActivate || isReplace || task.type === 'RENEW' || task.type === 'INTERNAL_RENEW';
   const upstreamHint: Record<string, string> = {
+    REPLACE_ACCOUNT: '不填：这次登记了扣费 = 现在 + 1 个月；从库存发的号沿用号上的付费日',
     ACTIVATE: '不填 = 开通时间 + 1 个月',
     RENEW: '不填 = 保持原来的扣费时间（之前取消过自动续订的，默认现在 + 1 个月）',
     INTERNAL_RENEW: `不填 = 原扣费时间 + 1 个月${
@@ -435,7 +448,7 @@ function CompleteModal({
             accountEmail:
               deliversAccount && accountSource === 'stock'
                 ? undefined
-                : v.accountEmail || undefined,
+                : v.accountEmail?.trim() || undefined,
             accountPassword: v.accountPassword || undefined,
             accountSecretNote: v.accountSecretNote || undefined,
             resourceId: v.noCharge ? undefined : v.resourceId,
@@ -444,7 +457,7 @@ function CompleteModal({
                 ? undefined
                 : Math.round(v.chargeUsd * 100),
             noCharge: v.noCharge || undefined,
-            reclaimTo: task.type === 'RECLAIM_ACCOUNT' ? v.reclaimTo : undefined,
+            reclaimTo: movesOldAccount ? v.reclaimTo : undefined,
           },
         }),
       ),
@@ -452,9 +465,11 @@ function CompleteModal({
       message.success(
         t.type === 'ACTIVATE' && t.subscription
           ? `已完成，订阅 ${t.subscription.code} 开始计时`
-          : '已完成',
+          : t.type === 'REPLACE_ACCOUNT'
+            ? `已换号，${t.ticket?.code ?? '工单'} 自动标记为已解决`
+            : '已完成',
       );
-      for (const key of ['resources', 'stock-accounts', 'inventory-summary']) {
+      for (const key of ['resources', 'stock-accounts', 'inventory-summary', 'tickets']) {
         void queryClient.invalidateQueries({ queryKey: [key] });
       }
       onDone();
@@ -488,7 +503,7 @@ function CompleteModal({
       <Form<CompleteForm>
         form={form}
         layout="vertical"
-        initialValues={{ chargeUsd: defaultUsd, reclaimTo: 'STOCK' }}
+        initialValues={{ chargeUsd: defaultUsd, reclaimTo: isReplace ? 'VOID' : 'STOCK' }}
         onFinish={(v) => complete.mutate(v)}
       >
         {deliversAccount && (
@@ -556,6 +571,39 @@ function CompleteModal({
               <Input.TextArea rows={2} maxLength={1000} />
             </Form.Item>
           </>
+        )}
+        {isReplace && task.ticket && (
+          <Typography.Paragraph type="secondary" style={{ marginTop: -4 }}>
+            售后 {task.ticket.code}：{task.ticket.description}
+          </Typography.Paragraph>
+        )}
+        {newCustomerAccount && (
+          <>
+            <Form.Item
+              name="accountEmail"
+              label="客户新的 Claude 账号邮箱"
+              rules={[
+                { required: true, message: '请填写客户新的账号' },
+                { type: 'email', message: '邮箱格式不正确' },
+              ]}
+              extra="原账号如果还绑着我们的付款资源，记得顺手解绑"
+            >
+              <Input autoComplete="off" />
+            </Form.Item>
+            <Form.Item name="accountPassword" label="新账号密码" extra="可不填；加密保存">
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+          </>
+        )}
+        {isReplace && task.fulfillmentType === 'ACCOUNT' && (
+          <Form.Item name="reclaimTo" label="原来的号">
+            <Radio.Group
+              options={[
+                { value: 'VOID', label: '作废（封号 / 不能用了）' },
+                { value: 'STOCK', label: '回库，之后再卖' },
+              ]}
+            />
+          </Form.Item>
         )}
         {task.chargeMode !== 'none' && (
           <>

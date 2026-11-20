@@ -8,6 +8,7 @@ import { addDays, startOfLocalDay, startOfLocalMonth } from '../common/dates';
 import { visibleCustomers } from '../customers/customers';
 import { visibleOrders } from '../orders/orders';
 import { InventoryModule, InventoryService } from '../inventory/inventory';
+import { visibleRefunds, visibleTickets } from '../aftersales/aftersales';
 import {
   SubscriptionsModule,
   SubscriptionsService,
@@ -47,6 +48,15 @@ export class InventoryAlertDto {
   @ApiProperty({ description: '在库成品号总数' }) inStock: number;
 }
 
+export class AftersalesStatsDto {
+  @ApiProperty({ description: '未解决的工单（数据范围内）' }) open: number;
+  @ApiProperty({ description: '我处理的未解决工单' }) mine: number;
+  @ApiProperty({ description: '没人处理的' }) unassigned: number;
+  @ApiProperty({ description: '已超时（含已升级）' }) overdue: number;
+  @ApiProperty({ description: '待审批的退款（有审批权限时才统计，否则为 0）' })
+  pendingRefunds: number;
+}
+
 export class DashboardDto {
   @ApiProperty({ type: OrderStatsDto, nullable: true, description: '有「查看订单」权限时返回' })
   orders: OrderStatsDto | null;
@@ -57,6 +67,12 @@ export class DashboardDto {
   @ApiProperty({ type: CustomerStatsDto, nullable: true }) customers: CustomerStatsDto | null;
   @ApiProperty({ type: InventoryAlertDto, nullable: true, description: '有「查看库存」权限时返回' })
   inventory: InventoryAlertDto | null;
+  @ApiProperty({
+    type: AftersalesStatsDto,
+    nullable: true,
+    description: '有售后或退款审批权限时返回',
+  })
+  aftersales: AftersalesStatsDto | null;
 }
 
 const OPEN = { in: ['PENDING' as const, 'IN_PROGRESS' as const, 'FAILED' as const] };
@@ -148,8 +164,41 @@ export class DashboardService {
         }))
       : null;
 
-    const [o, t, s, c, i] = await Promise.all([orders, tasks, subscriptions, customers, inventory]);
-    return { orders: o, tasks: t, subscriptions: s, customers: c, inventory: i };
+    const aftersales =
+      can('ticket:create') || can('ticket:handle') || can('refund:approve')
+        ? (async (): Promise<AftersalesStatsDto> => {
+            const scope = visibleTickets(user);
+            const unresolved = {
+              in: ['OPEN' as const, 'IN_PROGRESS' as const, 'WAITING_CUSTOMER' as const],
+            };
+            const [open, mine, unassigned, overdue, pendingRefunds] = await Promise.all([
+              this.prisma.ticket.count({ where: { ...scope, status: unresolved } }),
+              this.prisma.ticket.count({ where: { status: unresolved, assigneeId: user.id } }),
+              this.prisma.ticket.count({
+                where: { ...scope, status: unresolved, assigneeId: null },
+              }),
+              this.prisma.ticket.count({
+                where: { ...scope, status: { in: ['OPEN', 'IN_PROGRESS'] }, dueAt: { lt: now } },
+              }),
+              can('refund:approve')
+                ? this.prisma.refund.count({
+                    where: { ...visibleRefunds(user), status: 'PENDING' },
+                  })
+                : Promise.resolve(0),
+            ]);
+            return { open, mine, unassigned, overdue, pendingRefunds };
+          })()
+        : null;
+
+    const [o, t, s, c, i, a] = await Promise.all([
+      orders,
+      tasks,
+      subscriptions,
+      customers,
+      inventory,
+      aftersales,
+    ]);
+    return { orders: o, tasks: t, subscriptions: s, customers: c, inventory: i, aftersales: a };
   }
 }
 

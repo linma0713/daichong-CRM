@@ -1175,7 +1175,7 @@
             "bearer": []
           }
         ],
-        "summary": "修改商品售价或上下架（只影响之后的订单）",
+        "summary": "修改商品售价、质保价或上下架（只影响之后的订单）",
         "tags": [
           "商品与套餐"
         ]
@@ -2434,6 +2434,721 @@
         ]
       }
     },
+    "/api/tickets": {
+      "get": {
+        "operationId": "Tickets_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "view",
+            "required": false,
+            "in": "query",
+            "description": "open 未解决（待处理 / 处理中 / 等客户回复）；closed 已解决或已关闭",
+            "schema": {
+              "default": "open",
+              "type": "string",
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TicketStatus"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TicketType"
+            }
+          },
+          {
+            "name": "assignee",
+            "required": false,
+            "in": "query",
+            "description": "me 我处理的；unassigned 没人处理的；或员工 ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "overdue",
+            "required": false,
+            "in": "query",
+            "description": "只看已超时的",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "工单编号、客户称呼或账号邮箱",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subscriptionId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "工单列表（按数据范围）",
+        "tags": [
+          "售后工单"
+        ]
+      },
+      "post": {
+        "operationId": "Tickets_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTicketDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "登记售后工单（自动派给售后）",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/tickets/{id}": {
+      "get": {
+        "operationId": "Tickets_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "工单详情（含质保判断、时间线、退款、换号任务）",
+        "tags": [
+          "售后工单"
+        ]
+      },
+      "patch": {
+        "operationId": "Tickets_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTicketDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改工单状态、处理人或客户原因",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/tickets/{id}/comments": {
+      "post": {
+        "operationId": "Tickets_comment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "添加备注（沟通记录）",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/tickets/{id}/resolve": {
+      "post": {
+        "operationId": "Tickets_resolve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveTicketDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "标记已解决（超过设置的小时数自动关闭）",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/tickets/{id}/close": {
+      "post": {
+        "operationId": "Tickets_close",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "关闭工单",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/tickets/{id}/reopen": {
+      "post": {
+        "operationId": "Tickets_reopen",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReopenTicketDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "重新打开（客户反馈问题没解决）",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/tickets/{id}/replace": {
+      "post": {
+        "operationId": "Tickets_replace",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "派换号任务给充值员（服务期不变）",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/tickets/{id}/compensate": {
+      "post": {
+        "operationId": "Tickets_compensate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompensateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "补偿服务天数（订阅到期时间往后延）",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/refunds": {
+      "get": {
+        "operationId": "Refunds_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/RefundStatus"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "退款编号或客户称呼",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "退款列表（按数据范围）",
+        "tags": [
+          "售后工单"
+        ]
+      },
+      "post": {
+        "operationId": "Refunds_request",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRefundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "申请退款（等财务审批）",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/refunds/{id}/approve": {
+      "post": {
+        "operationId": "Refunds_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRefundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "审批通过并登记出账（选了终止服务的同时派对应任务）",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
+    "/api/refunds/{id}/reject": {
+      "post": {
+        "operationId": "Refunds_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRefundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "驳回退款",
+        "tags": [
+          "售后工单"
+        ]
+      }
+    },
     "/api/dashboard": {
       "get": {
         "operationId": "Dashboard_summary",
@@ -3466,13 +4181,18 @@
           "canFulfill": {
             "type": "boolean",
             "description": "能处理开通任务（有充值员权限）"
+          },
+          "canHandleTickets": {
+            "type": "boolean",
+            "description": "能处理售后工单"
           }
         },
         "required": [
           "id",
           "displayName",
           "teamId",
-          "canFulfill"
+          "canFulfill",
+          "canHandleTickets"
         ]
       },
       "PermissionItemDto": {
@@ -3746,6 +4466,43 @@
           "other"
         ]
       },
+      "TicketSlaHoursDto": {
+        "type": "object",
+        "properties": {
+          "NOT_EFFECTIVE": {
+            "type": "number",
+            "example": 2
+          },
+          "BANNED": {
+            "type": "number",
+            "example": 4
+          },
+          "LIMITED": {
+            "type": "number",
+            "example": 8
+          },
+          "REFUND": {
+            "type": "number",
+            "example": 24
+          },
+          "REPLACE": {
+            "type": "number",
+            "example": 4
+          },
+          "OTHER": {
+            "type": "number",
+            "example": 24
+          }
+        },
+        "required": [
+          "NOT_EFFECTIVE",
+          "BANNED",
+          "LIMITED",
+          "REFUND",
+          "REPLACE",
+          "OTHER"
+        ]
+      },
       "BusinessSettingsDto": {
         "type": "object",
         "properties": {
@@ -3788,6 +4545,19 @@
             "type": "number",
             "description": "每个套餐的成品号在库数量低于这个值时预警",
             "example": 2
+          },
+          "ticketSlaHours": {
+            "description": "售后工单按类型的处理时限（小时），超时自动升级",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketSlaHoursDto"
+              }
+            ]
+          },
+          "ticketAutoCloseHours": {
+            "type": "number",
+            "description": "工单标记「已解决」后多少小时自动关闭",
+            "example": 48
           }
         },
         "required": [
@@ -3796,7 +4566,9 @@
           "activateSlaHours",
           "upstreamLeadDays",
           "paymentFeeBp",
-          "accountStockLow"
+          "accountStockLow",
+          "ticketSlaHours",
+          "ticketAutoCloseHours"
         ]
       },
       "UpdateSettingsDto": {
@@ -3821,6 +4593,12 @@
             "$ref": "#/components/schemas/PaymentFeeRatesDto"
           },
           "accountStockLow": {
+            "type": "number"
+          },
+          "ticketSlaHours": {
+            "$ref": "#/components/schemas/TicketSlaHoursDto"
+          },
+          "ticketAutoCloseHours": {
             "type": "number"
           }
         }
@@ -3951,6 +4729,11 @@
             "type": "number",
             "description": "估算毛利（分）= 售价 − 估算成本"
           },
+          "warrantyPriceCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "加购质保的价格（分）；为空 = 不提供质保"
+          },
           "active": {
             "type": "boolean"
           }
@@ -3965,6 +4748,7 @@
           "priceCents",
           "estCostCents",
           "estMarginCents",
+          "warrantyPriceCents",
           "active"
         ]
       },
@@ -3990,6 +4774,11 @@
             "type": "number",
             "description": "售价（分）"
           },
+          "warrantyPriceCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "加购质保的价格（分）；null = 不提供质保。只影响之后的订单"
+          },
           "active": {
             "type": "boolean"
           }
@@ -4007,6 +4796,11 @@
           "priceCents": {
             "type": "number",
             "description": "售价（分）。只影响之后的订单"
+          },
+          "warrantyPriceCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "加购质保的价格（分）；null = 不提供质保。只影响之后的订单"
           },
           "active": {
             "type": "boolean"
@@ -4551,13 +5345,25 @@
           "discountCents": {
             "type": "number"
           },
+          "withWarranty": {
+            "type": "boolean",
+            "description": "是否加购质保"
+          },
+          "warrantyCents": {
+            "type": "number",
+            "description": "质保费（分），已含在应收里"
+          },
           "amountCents": {
             "type": "number",
-            "description": "应收（分）"
+            "description": "应收（分）= 标价 − 优惠 + 质保费"
           },
           "paidCents": {
             "type": "number",
             "description": "已收（分）"
+          },
+          "refundedCents": {
+            "type": "number",
+            "description": "已退款（分）"
           },
           "accountId": {
             "type": "string",
@@ -4610,7 +5416,7 @@
           "marginCents": {
             "type": "number",
             "nullable": true,
-            "description": "毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空"
+            "description": "毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空"
           },
           "createdAt": {
             "format": "date-time",
@@ -4630,8 +5436,11 @@
           "fulfillmentType",
           "listPriceCents",
           "discountCents",
+          "withWarranty",
+          "warrantyCents",
           "amountCents",
           "paidCents",
+          "refundedCents",
           "accountId",
           "accountEmail",
           "subscription",
@@ -4721,7 +5530,8 @@
           "RENEW",
           "INTERNAL_RENEW",
           "CANCEL_AUTO_RENEW",
-          "RECLAIM_ACCOUNT"
+          "RECLAIM_ACCOUNT",
+          "REPLACE_ACCOUNT"
         ]
       },
       "TaskStatus": {
@@ -4790,6 +5600,87 @@
           "note"
         ]
       },
+      "RefundStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "PAID",
+          "REJECTED"
+        ]
+      },
+      "OrderRefundDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "K00003"
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefundStatus"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "terminate": {
+            "type": "boolean",
+            "description": "退款后终止服务"
+          },
+          "ticket": {
+            "nullable": true,
+            "description": "来自哪个售后工单",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "method": {
+            "type": "string",
+            "nullable": true,
+            "description": "退款方式"
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "rejectReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "amountCents",
+          "status",
+          "reason",
+          "terminate",
+          "ticket",
+          "requestedBy",
+          "method",
+          "paidAt",
+          "rejectReason",
+          "createdAt"
+        ]
+      },
       "CostKind": {
         "type": "string",
         "enum": [
@@ -4855,6 +5746,10 @@
             "type": "number",
             "description": "已收（分）"
           },
+          "refundedCents": {
+            "type": "number",
+            "description": "已退款（分）"
+          },
           "feeCents": {
             "type": "number",
             "description": "收款手续费（分）"
@@ -4865,7 +5760,7 @@
           },
           "marginCents": {
             "type": "number",
-            "description": "毛利（分）= 已收 − 手续费 − 已发生成本"
+            "description": "毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本"
           },
           "marginRate": {
             "type": "number",
@@ -4897,6 +5792,7 @@
         },
         "required": [
           "revenueCents",
+          "refundedCents",
           "feeCents",
           "costCents",
           "marginCents",
@@ -4961,13 +5857,25 @@
           "discountCents": {
             "type": "number"
           },
+          "withWarranty": {
+            "type": "boolean",
+            "description": "是否加购质保"
+          },
+          "warrantyCents": {
+            "type": "number",
+            "description": "质保费（分），已含在应收里"
+          },
           "amountCents": {
             "type": "number",
-            "description": "应收（分）"
+            "description": "应收（分）= 标价 − 优惠 + 质保费"
           },
           "paidCents": {
             "type": "number",
             "description": "已收（分）"
+          },
+          "refundedCents": {
+            "type": "number",
+            "description": "已退款（分）"
           },
           "accountId": {
             "type": "string",
@@ -5020,7 +5928,7 @@
           "marginCents": {
             "type": "number",
             "nullable": true,
-            "description": "毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空"
+            "description": "毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空"
           },
           "createdAt": {
             "format": "date-time",
@@ -5037,6 +5945,16 @@
             "items": {
               "$ref": "#/components/schemas/TaskBriefDto"
             }
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderRefundDto"
+            }
+          },
+          "refundableCents": {
+            "type": "number",
+            "description": "还可以申请退款的金额（分）= 已收 − 已退 − 审批中"
           },
           "profit": {
             "nullable": true,
@@ -5062,8 +5980,11 @@
           "fulfillmentType",
           "listPriceCents",
           "discountCents",
+          "withWarranty",
+          "warrantyCents",
           "amountCents",
           "paidCents",
+          "refundedCents",
           "accountId",
           "accountEmail",
           "subscription",
@@ -5078,6 +5999,8 @@
           "createdAt",
           "payments",
           "tasks",
+          "refunds",
+          "refundableCents",
           "profit"
         ]
       },
@@ -5105,6 +6028,10 @@
             "type": "number",
             "description": "优惠（分）",
             "default": 0
+          },
+          "withWarranty": {
+            "type": "boolean",
+            "description": "加购质保（按商品设置的质保价计入应收）"
           },
           "accountEmail": {
             "type": "string",
@@ -5294,6 +6221,27 @@
           "hasSecretNote"
         ]
       },
+      "TaskTicketDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "G00003"
+          },
+          "description": {
+            "type": "string",
+            "description": "工单问题描述"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "description"
+        ]
+      },
       "TaskDto": {
         "type": "object",
         "properties": {
@@ -5353,6 +6301,16 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/AccountBriefDto"
+              }
+            ]
+          },
+          "ticket": {
+            "nullable": true,
+            "description": "售后换号任务对应的工单",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskTicketDto"
               }
             ]
           },
@@ -5422,6 +6380,7 @@
           "order",
           "subscription",
           "account",
+          "ticket",
           "assignee",
           "planId",
           "upstreamMonthlyUsdCents",
@@ -5480,7 +6439,7 @@
           },
           "accountEmail": {
             "type": "string",
-            "description": "成品号开通：交付给客户的账号邮箱"
+            "description": "成品号开通 / 换号：交付给客户的账号邮箱；代充换号：客户新的 Claude 账号邮箱"
           },
           "accountPassword": {
             "type": "string",
@@ -5492,7 +6451,7 @@
           },
           "stockAccountId": {
             "type": "string",
-            "description": "成品号开通：从库存里选的成品号 ID（和 accountEmail 二选一）"
+            "description": "成品号开通 / 换号：从库存里选的成品号 ID（和 accountEmail 二选一）"
           },
           "resourceId": {
             "type": "string",
@@ -5512,7 +6471,7 @@
               "STOCK",
               "VOID"
             ],
-            "description": "回收成品号：STOCK 回库继续卖（默认）；VOID 作废"
+            "description": "回收成品号 / 成品号换号时旧号的去向：STOCK 回库继续卖；VOID 作废。回收默认回库，换号默认作废"
           }
         }
       },
@@ -5682,6 +6641,10 @@
           "amountCents": {
             "type": "number"
           },
+          "withWarranty": {
+            "type": "boolean",
+            "description": "加购了质保"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -5694,6 +6657,162 @@
           "status",
           "productName",
           "amountCents",
+          "withWarranty",
+          "createdAt"
+        ]
+      },
+      "WarrantyOrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "D00012"
+          }
+        },
+        "required": [
+          "id",
+          "code"
+        ]
+      },
+      "WarrantyDto": {
+        "type": "object",
+        "properties": {
+          "covered": {
+            "type": "boolean",
+            "description": "是否在质保内"
+          },
+          "summary": {
+            "type": "string",
+            "example": "可包换 · 可退 ¥190.00",
+            "description": "一句话结论"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "不在质保内的原因"
+          },
+          "order": {
+            "nullable": true,
+            "description": "按哪笔订单算",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WarrantyOrderDto"
+              }
+            ]
+          },
+          "withWarranty": {
+            "type": "boolean",
+            "description": "这笔订单是否加购了质保"
+          },
+          "warrantyCents": {
+            "type": "number",
+            "description": "质保费（分），默认不退"
+          },
+          "periodStartAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "periodEndAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalDays": {
+            "type": "number"
+          },
+          "remainingDays": {
+            "type": "number"
+          },
+          "planPaidCents": {
+            "type": "number",
+            "description": "套餐实付（分）= 已收 − 质保费"
+          },
+          "refundableCents": {
+            "type": "number",
+            "description": "按天折算可退（分），已扣掉之前退过的"
+          },
+          "canReplace": {
+            "type": "boolean",
+            "description": "可以包换"
+          }
+        },
+        "required": [
+          "covered",
+          "summary",
+          "reason",
+          "order",
+          "withWarranty",
+          "warrantyCents",
+          "periodStartAt",
+          "periodEndAt",
+          "totalDays",
+          "remainingDays",
+          "planPaidCents",
+          "refundableCents",
+          "canReplace"
+        ]
+      },
+      "TicketType": {
+        "type": "string",
+        "enum": [
+          "NOT_EFFECTIVE",
+          "BANNED",
+          "LIMITED",
+          "REFUND",
+          "REPLACE",
+          "OTHER"
+        ]
+      },
+      "TicketStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "IN_PROGRESS",
+          "WAITING_CUSTOMER",
+          "RESOLVED",
+          "CLOSED"
+        ]
+      },
+      "SubscriptionTicketDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketType"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketStatus"
+              }
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "status",
+          "description",
           "createdAt"
         ]
       },
@@ -5800,6 +6919,21 @@
             "items": {
               "$ref": "#/components/schemas/FollowUpDto"
             }
+          },
+          "warranty": {
+            "description": "按现在判断的质保情况",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WarrantyDto"
+              }
+            ]
+          },
+          "tickets": {
+            "description": "售后工单",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionTicketDto"
+            }
           }
         },
         "required": [
@@ -5823,7 +6957,9 @@
           "createdAt",
           "orders",
           "tasks",
-          "reminders"
+          "reminders",
+          "warranty",
+          "tickets"
         ]
       },
       "UpdateSubscriptionDto": {
@@ -5919,6 +7055,14 @@
           "cancelAutoRenewTasks": {
             "type": "number",
             "description": "新建的「取消自动续订」任务数"
+          },
+          "escalatedTickets": {
+            "type": "number",
+            "description": "超时升级的售后工单数"
+          },
+          "closedTickets": {
+            "type": "number",
+            "description": "自动关闭的售后工单数"
           }
         },
         "required": [
@@ -5926,7 +7070,746 @@
           "expired",
           "reclaimTasks",
           "internalRenewTasks",
-          "cancelAutoRenewTasks"
+          "cancelAutoRenewTasks",
+          "escalatedTickets",
+          "closedTickets"
+        ]
+      },
+      "TicketSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionStatus"
+              }
+            ]
+          },
+          "fulfillmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FulfillmentType"
+              }
+            ]
+          },
+          "endAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "accountEmail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "planName",
+          "status",
+          "fulfillmentType",
+          "endAt",
+          "accountEmail"
+        ]
+      },
+      "TicketDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "G00012"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketType"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketStatus"
+              }
+            ]
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "subscription": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketSubscriptionDto"
+              }
+            ]
+          },
+          "order": {
+            "nullable": true,
+            "description": "质保按这笔订单算",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "customerFault": {
+            "type": "string",
+            "enum": [
+              "VIOLATION",
+              "CHANGED_PASSWORD",
+              "BOUND_CARD",
+              "OTHER"
+            ],
+            "nullable": true
+          },
+          "customerFaultLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolution": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignee": {
+            "nullable": true,
+            "description": "售后处理人",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "owner": {
+            "description": "客户负责人",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "处理时限"
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "未解决且已过处理时限（等客户回复时不算）"
+          },
+          "escalatedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "超时升级的时间"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "closedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "status",
+          "customer",
+          "subscription",
+          "order",
+          "description",
+          "customerFault",
+          "customerFaultLabel",
+          "resolution",
+          "assignee",
+          "owner",
+          "createdBy",
+          "dueAt",
+          "overdue",
+          "escalatedAt",
+          "resolvedAt",
+          "closedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "TicketListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "TicketEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "example": "comment"
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          },
+          "user": {
+            "nullable": true,
+            "description": "为空 = 系统自动",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "content",
+          "user",
+          "createdAt"
+        ]
+      },
+      "RefundDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "K00003"
+          },
+          "order": {
+            "$ref": "#/components/schemas/RefDto"
+          },
+          "orderPaidCents": {
+            "type": "number",
+            "description": "订单已收（分）"
+          },
+          "orderRefundedCents": {
+            "type": "number",
+            "description": "订单已退（分）"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "subscription": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "ticket": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "terminate": {
+            "type": "boolean",
+            "description": "退款后终止服务"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefundStatus"
+              }
+            ]
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "approvedBy": {
+            "nullable": true,
+            "description": "审批人",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "rejectReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "order",
+          "orderPaidCents",
+          "orderRefundedCents",
+          "customer",
+          "subscription",
+          "ticket",
+          "amountCents",
+          "reason",
+          "terminate",
+          "status",
+          "requestedBy",
+          "approvedBy",
+          "method",
+          "reference",
+          "paidAt",
+          "rejectReason",
+          "createdAt"
+        ]
+      },
+      "TicketDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "G00012"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketType"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketStatus"
+              }
+            ]
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "subscription": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketSubscriptionDto"
+              }
+            ]
+          },
+          "order": {
+            "nullable": true,
+            "description": "质保按这笔订单算",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "customerFault": {
+            "type": "string",
+            "enum": [
+              "VIOLATION",
+              "CHANGED_PASSWORD",
+              "BOUND_CARD",
+              "OTHER"
+            ],
+            "nullable": true
+          },
+          "customerFaultLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolution": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignee": {
+            "nullable": true,
+            "description": "售后处理人",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "owner": {
+            "description": "客户负责人",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "处理时限"
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "未解决且已过处理时限（等客户回复时不算）"
+          },
+          "escalatedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "超时升级的时间"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "closedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "warranty": {
+            "description": "按问题登记时间判断的质保情况",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WarrantyDto"
+              }
+            ]
+          },
+          "refundableCents": {
+            "type": "number",
+            "description": "对应订单还能申请退款的金额（分）"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketEventDto"
+            }
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundDto"
+            }
+          },
+          "tasks": {
+            "description": "换号任务",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskBriefDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "status",
+          "customer",
+          "subscription",
+          "order",
+          "description",
+          "customerFault",
+          "customerFaultLabel",
+          "resolution",
+          "assignee",
+          "owner",
+          "createdBy",
+          "dueAt",
+          "overdue",
+          "escalatedAt",
+          "resolvedAt",
+          "closedAt",
+          "createdAt",
+          "updatedAt",
+          "warranty",
+          "refundableCents",
+          "events",
+          "refunds",
+          "tasks"
+        ]
+      },
+      "CreateTicketDto": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string"
+          },
+          "subscriptionId": {
+            "type": "string",
+            "description": "出问题的订阅（换号、补偿、按质保退款都要选）"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketType"
+              }
+            ]
+          },
+          "description": {
+            "type": "string",
+            "example": "客户反馈登录提示账号被停用"
+          }
+        },
+        "required": [
+          "customerId",
+          "type",
+          "description"
+        ]
+      },
+      "UpdateTicketDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "IN_PROGRESS",
+              "WAITING_CUSTOMER"
+            ],
+            "description": "解决、关闭、重新打开用单独的接口"
+          },
+          "assigneeId": {
+            "type": "string",
+            "nullable": true,
+            "description": "null = 放回待领取"
+          },
+          "customerFault": {
+            "type": "string",
+            "enum": [
+              "VIOLATION",
+              "CHANGED_PASSWORD",
+              "BOUND_CARD",
+              "OTHER"
+            ],
+            "nullable": true,
+            "description": "客户自身原因（设置后不在质保内）；null = 取消"
+          }
+        }
+      },
+      "TicketCommentDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "ResolveTicketDto": {
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "type": "string",
+            "example": "客户重新登录后恢复正常"
+          }
+        },
+        "required": [
+          "resolution"
+        ]
+      },
+      "TicketReasonDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "ReopenTicketDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "CompensateDto": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "number",
+            "description": "补偿天数（服务期往后延）",
+            "example": 3
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "days"
+        ]
+      },
+      "RefundListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "CreateRefundDto": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "ticketId": {
+            "type": "string",
+            "description": "来自哪个售后工单"
+          },
+          "amountCents": {
+            "type": "number",
+            "description": "退款金额（分）"
+          },
+          "reason": {
+            "type": "string",
+            "example": "封号，按质保剩余天数退款"
+          },
+          "terminate": {
+            "type": "boolean",
+            "description": "退款后终止服务：已开通的取消自动续订 / 回收成品号；还没开通的取消开通"
+          }
+        },
+        "required": [
+          "orderId",
+          "amountCents",
+          "reason"
+        ]
+      },
+      "ApproveRefundDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "wechat",
+              "alipay",
+              "usdt",
+              "bank",
+              "other"
+            ],
+            "description": "退款方式"
+          },
+          "reference": {
+            "type": "string",
+            "description": "退款单号或备注"
+          },
+          "paidAt": {
+            "type": "string",
+            "description": "退款时间，不填为现在"
+          }
+        },
+        "required": [
+          "method"
+        ]
+      },
+      "RejectRefundDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "OrderStatsDto": {
@@ -6056,6 +7939,38 @@
           "inStock"
         ]
       },
+      "AftersalesStatsDto": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "number",
+            "description": "未解决的工单（数据范围内）"
+          },
+          "mine": {
+            "type": "number",
+            "description": "我处理的未解决工单"
+          },
+          "unassigned": {
+            "type": "number",
+            "description": "没人处理的"
+          },
+          "overdue": {
+            "type": "number",
+            "description": "已超时（含已升级）"
+          },
+          "pendingRefunds": {
+            "type": "number",
+            "description": "待审批的退款（有审批权限时才统计，否则为 0）"
+          }
+        },
+        "required": [
+          "open",
+          "mine",
+          "unassigned",
+          "overdue",
+          "pendingRefunds"
+        ]
+      },
       "DashboardDto": {
         "type": "object",
         "properties": {
@@ -6106,6 +8021,16 @@
                 "$ref": "#/components/schemas/InventoryAlertDto"
               }
             ]
+          },
+          "aftersales": {
+            "nullable": true,
+            "description": "有售后或退款审批权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AftersalesStatsDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6113,7 +8038,8 @@
           "tasks",
           "subscriptions",
           "customers",
-          "inventory"
+          "inventory",
+          "aftersales"
         ]
       },
       "StockPoolDto": {

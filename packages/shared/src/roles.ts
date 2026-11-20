@@ -53,6 +53,7 @@ export const BUILT_IN_ROLES: BuiltInRole[] = [
       'order:read',
       'order:write',
       'payment:confirm',
+      'ticket:create',
     ],
     dataScope: 'SELF',
   },

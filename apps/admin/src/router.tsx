@@ -20,6 +20,9 @@ import { SubscriptionsPage } from './pages/subscriptions/SubscriptionsPage';
 import { SubscriptionDetailPage } from './pages/subscriptions/SubscriptionDetailPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
+import { TicketsPage } from './pages/aftersales/TicketsPage';
+import { TicketDetailPage } from './pages/aftersales/TicketDetailPage';
+import { RefundsPage } from './pages/aftersales/RefundsPage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -101,6 +104,30 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission anyOf={['customer:read', 'subscription:read']}>
             <SubscriptionDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'tickets',
+        element: (
+          <RequirePermission anyOf={['ticket:create', 'ticket:handle']}>
+            <TicketsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'tickets/:id',
+        element: (
+          <RequirePermission anyOf={['ticket:create', 'ticket:handle']}>
+            <TicketDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'refunds',
+        element: (
+          <RequirePermission anyOf={['refund:approve', 'ticket:handle', 'finance:read']}>
+            <RefundsPage />
           </RequirePermission>
         ),
       },

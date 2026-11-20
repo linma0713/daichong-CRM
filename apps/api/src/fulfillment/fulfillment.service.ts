@@ -67,6 +67,7 @@ export class FulfillmentService {
       dueAt: Date;
       orderId?: string;
       subscriptionId?: string;
+      ticketId?: string;
       dedupeKey?: string;
       note?: string;
     },

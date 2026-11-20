@@ -16,6 +16,7 @@ import {
   Spin,
   Switch,
   Table,
+  Tag,
   Typography,
 } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -38,8 +39,12 @@ import {
   SubscriptionStatusTag,
   TaskStatusTag,
   TaskTypeTag,
+  TicketStatusTag,
+  TicketTypeTag,
+  WarrantyAlert,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
+import { NewTicketModal } from '../aftersales/modals';
 import { ReminderModal } from './SubscriptionsPage';
 
 type Detail = Schemas['SubscriptionDetailDto'];
@@ -51,6 +56,7 @@ export function SubscriptionDetailPage() {
   const [reminding, setReminding] = useState(false);
   const [correcting, setCorrecting] = useState(false);
   const [editingAccount, setEditingAccount] = useState(false);
+  const [ticketing, setTicketing] = useState(false);
   const sub = useQuery({
     queryKey: ['subscription', id],
     queryFn: () => unwrap(api.GET('/api/subscriptions/{id}', { params: { path: { id } } })),
@@ -86,6 +92,9 @@ export function SubscriptionDetailPage() {
             )}
             {can('customer:write') && s.status !== 'CANCELLED' && (
               <Button onClick={() => setReminding(true)}>记录提醒</Button>
+            )}
+            {(can('ticket:create') || can('ticket:handle')) && (
+              <Button onClick={() => setTicketing(true)}>登记售后</Button>
             )}
             {can('fulfillment:handle') && (
               <Button onClick={() => setCorrecting(true)}>手动校正</Button>
@@ -150,7 +159,52 @@ export function SubscriptionDetailPage() {
           </Descriptions.Item>
           <Descriptions.Item label="上次提醒">{formatTime(s.lastRemindedAt)}</Descriptions.Item>
         </Descriptions>
+        {s.status === 'ACTIVE' && (
+          <div style={{ marginTop: 16 }}>
+            <WarrantyAlert warranty={s.warranty} title="质保（按现在）" />
+          </div>
+        )}
       </Card>
+
+      {s.tickets.length > 0 && (
+        <Card title="售后工单" size="small">
+          <Table<Schemas['SubscriptionTicketDto']>
+            rowKey="id"
+            size="small"
+            pagination={false}
+            dataSource={s.tickets}
+            scroll={{ x: 560 }}
+            columns={[
+              {
+                title: '工单',
+                key: 'code',
+                render: (_, t) =>
+                  can('ticket:create') || can('ticket:handle') ? (
+                    <Link to={`/tickets/${t.id}`}>{t.code}</Link>
+                  ) : (
+                    t.code
+                  ),
+              },
+              { title: '类型', key: 'type', render: (_, t) => <TicketTypeTag type={t.type} /> },
+              {
+                title: '状态',
+                key: 'status',
+                render: (_, t) => <TicketStatusTag status={t.status} />,
+              },
+              {
+                title: '问题',
+                key: 'description',
+                render: (_, t) => (
+                  <Typography.Text ellipsis style={{ maxWidth: 320 }}>
+                    {t.description}
+                  </Typography.Text>
+                ),
+              },
+              { title: '登记', key: 'createdAt', render: (_, t) => formatTime(t.createdAt) },
+            ]}
+          />
+        </Card>
+      )}
 
       <Card title="订单" size="small">
         <Table<Schemas['SubscriptionOrderDto']>
@@ -176,7 +230,16 @@ export function SubscriptionDetailPage() {
                 </Space>
               ),
             },
-            { title: '金额', key: 'amount', render: (_, o) => <Money cents={o.amountCents} /> },
+            {
+              title: '金额',
+              key: 'amount',
+              render: (_, o) => (
+                <Space size={4}>
+                  <Money cents={o.amountCents} />
+                  {o.withWarranty && <Tag color="green">含质保</Tag>}
+                </Space>
+              ),
+            },
             {
               title: '状态',
               key: 'status',
@@ -232,6 +295,14 @@ export function SubscriptionDetailPage() {
       {reminding && <ReminderModal subscription={s} onClose={() => setReminding(false)} />}
       {correcting && <CorrectModal sub={s} onClose={() => setCorrecting(false)} />}
       {editingAccount && <AccountModal sub={s} onClose={() => setEditingAccount(false)} />}
+      {ticketing && (
+        <NewTicketModal
+          customer={{ id: s.customer.id, label: `${s.customer.name}（${s.customer.code}）` }}
+          subscriptionId={s.id}
+          onClose={() => setTicketing(false)}
+          onCreated={(ticketId) => void navigate(`/tickets/${ticketId}`)}
+        />
+      )}
     </Space>
   );
 }
