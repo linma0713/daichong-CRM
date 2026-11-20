@@ -93,6 +93,17 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [{ code: 'finance:read', name: '查看成本、毛利与财务报表' }],
   },
   {
+    key: 'report',
+    name: '数据看板',
+    available: true,
+    permissions: [
+      {
+        code: 'report:read',
+        name: '查看经营数据看板（趋势、续费率、开通时效、售后率、员工业绩、客户价值）',
+      },
+    ],
+  },
+  {
     key: 'agent',
     name: '代理与佣金',
     available: false,

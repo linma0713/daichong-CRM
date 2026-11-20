@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import {
+  AccountBookOutlined,
   ApartmentOutlined,
   AuditOutlined,
+  BarChartOutlined,
   CalendarOutlined,
   ControlOutlined,
   CustomerServiceOutlined,
@@ -44,6 +46,8 @@ export const MENU: MenuNode[] = [
   },
   { key: 'catalog', label: '商品与套餐', path: '/catalog' },
   { key: 'inventory', label: '库存与成本', path: '/inventory', permission: 'inventory:read' },
+  { key: 'finance', label: '财务对账', path: '/finance', permission: 'finance:read' },
+  { key: 'analytics', label: '数据看板', path: '/analytics', permission: 'report:read' },
   {
     key: 'system',
     label: '系统管理',
@@ -72,6 +76,8 @@ export const MENU_ICONS: Record<string, ReactNode> = {
   refunds: <RollbackOutlined />,
   catalog: <ShoppingOutlined />,
   inventory: <DatabaseOutlined />,
+  finance: <AccountBookOutlined />,
+  analytics: <BarChartOutlined />,
   settings: <ControlOutlined />,
   system: <SettingOutlined />,
   users: <TeamOutlined />,

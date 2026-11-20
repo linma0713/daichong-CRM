@@ -3707,6 +3707,145 @@
           "库存与成本"
         ]
       }
+    },
+    "/api/finance/report": {
+      "get": {
+        "operationId": "Finance_report",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "开始日期（北京时间，含当天）",
+            "schema": {
+              "example": "2026-11-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "结束日期（北京时间，含当天）",
+            "schema": {
+              "example": "2026-11-30",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceReportDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "财务对账：现金口径汇总、每日对账、按收款方式、按商品 / 客服 / 来源",
+        "tags": [
+          "财务"
+        ]
+      }
+    },
+    "/api/finance/journal": {
+      "get": {
+        "operationId": "Finance_journal",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "开始日期（北京时间，含当天）",
+            "schema": {
+              "example": "2026-11-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "结束日期（北京时间，含当天）",
+            "schema": {
+              "example": "2026-11-30",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "收支明细（收款、退款出账、成本），用于导出对账",
+        "tags": [
+          "财务"
+        ]
+      }
+    },
+    "/api/analytics": {
+      "get": {
+        "operationId": "Analytics_overview",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "description": "统计最近多少天（含今天）",
+            "schema": {
+              "default": 30,
+              "type": "number",
+              "enum": [
+                7,
+                30,
+                90
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "经营数据：趋势、续费率、开通时效、售后率、员工业绩、客户价值",
+        "tags": [
+          "数据看板"
+        ]
+      }
     }
   },
   "info": {
@@ -8686,6 +8825,865 @@
         },
         "required": [
           "resourceId"
+        ]
+      },
+      "FinanceTotalsDto": {
+        "type": "object",
+        "properties": {
+          "receivedCents": {
+            "type": "number",
+            "description": "收款（分）"
+          },
+          "paymentCount": {
+            "type": "number",
+            "description": "收款笔数"
+          },
+          "feeCents": {
+            "type": "number",
+            "description": "收款手续费（分）"
+          },
+          "refundedCents": {
+            "type": "number",
+            "description": "退款出账（分）"
+          },
+          "refundCount": {
+            "type": "number",
+            "description": "退款笔数"
+          },
+          "netCents": {
+            "type": "number",
+            "description": "净收入 = 收款 − 退款 − 手续费"
+          },
+          "costCents": {
+            "type": "number",
+            "description": "当期发生的成本（上游扣费、成品号等）"
+          },
+          "profitCents": {
+            "type": "number",
+            "description": "毛利 = 净收入 − 成本"
+          },
+          "resourceSpendCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "付款资源入库支出（买卡、充值的实际花费）。只对能看全部数据的人返回"
+          }
+        },
+        "required": [
+          "receivedCents",
+          "paymentCount",
+          "feeCents",
+          "refundedCents",
+          "refundCount",
+          "netCents",
+          "costCents",
+          "profitCents",
+          "resourceSpendCents"
+        ]
+      },
+      "FinanceDayDto": {
+        "type": "object",
+        "properties": {
+          "receivedCents": {
+            "type": "number",
+            "description": "收款（分）"
+          },
+          "paymentCount": {
+            "type": "number",
+            "description": "收款笔数"
+          },
+          "feeCents": {
+            "type": "number",
+            "description": "收款手续费（分）"
+          },
+          "refundedCents": {
+            "type": "number",
+            "description": "退款出账（分）"
+          },
+          "refundCount": {
+            "type": "number",
+            "description": "退款笔数"
+          },
+          "netCents": {
+            "type": "number",
+            "description": "净收入 = 收款 − 退款 − 手续费"
+          },
+          "costCents": {
+            "type": "number",
+            "description": "当期发生的成本（上游扣费、成品号等）"
+          },
+          "profitCents": {
+            "type": "number",
+            "description": "毛利 = 净收入 − 成本"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-11-20"
+          }
+        },
+        "required": [
+          "receivedCents",
+          "paymentCount",
+          "feeCents",
+          "refundedCents",
+          "refundCount",
+          "netCents",
+          "costCents",
+          "profitCents",
+          "date"
+        ]
+      },
+      "FinanceMethodDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "example": "wechat"
+          },
+          "label": {
+            "type": "string",
+            "example": "微信"
+          },
+          "receivedCents": {
+            "type": "number"
+          },
+          "paymentCount": {
+            "type": "number"
+          },
+          "feeCents": {
+            "type": "number"
+          },
+          "refundedCents": {
+            "type": "number"
+          },
+          "refundCount": {
+            "type": "number"
+          },
+          "netCents": {
+            "type": "number",
+            "description": "到账净额 = 收款 − 手续费 − 退款"
+          }
+        },
+        "required": [
+          "method",
+          "label",
+          "receivedCents",
+          "paymentCount",
+          "feeCents",
+          "refundedCents",
+          "refundCount",
+          "netCents"
+        ]
+      },
+      "FinanceGroupDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "orderCount": {
+            "type": "number"
+          },
+          "paidCents": {
+            "type": "number"
+          },
+          "refundedCents": {
+            "type": "number"
+          },
+          "feeCents": {
+            "type": "number"
+          },
+          "costCents": {
+            "type": "number"
+          },
+          "marginCents": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "orderCount",
+          "paidCents",
+          "refundedCents",
+          "feeCents",
+          "costCents",
+          "marginCents"
+        ]
+      },
+      "FinanceReportDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/FinanceTotalsDto"
+          },
+          "days": {
+            "description": "每日对账",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceDayDto"
+            }
+          },
+          "methods": {
+            "description": "按收款方式",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceMethodDto"
+            }
+          },
+          "byProduct": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceGroupDto"
+            }
+          },
+          "byStaff": {
+            "description": "按负责客服",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceGroupDto"
+            }
+          },
+          "bySource": {
+            "description": "按客户来源",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceGroupDto"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "totals",
+          "days",
+          "methods",
+          "byProduct",
+          "byStaff",
+          "bySource"
+        ]
+      },
+      "JournalEntryDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "payment",
+              "refund",
+              "cost"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "D00012"
+          },
+          "customer": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerBriefDto"
+              }
+            ]
+          },
+          "category": {
+            "type": "string",
+            "description": "收款 / 退款方式，或成本类型"
+          },
+          "amountCents": {
+            "type": "number",
+            "description": "金额（分），收款为正、退款和成本为负"
+          },
+          "feeCents": {
+            "type": "number",
+            "description": "手续费（分），仅收款"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true,
+            "description": "单号 / 退款编号 / 说明"
+          },
+          "userName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "at",
+          "orderId",
+          "orderCode",
+          "customer",
+          "category",
+          "amountCents",
+          "feeCents",
+          "reference",
+          "userName"
+        ]
+      },
+      "JournalDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JournalEntryDto"
+            }
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "超过 5000 条时只返回最早的部分"
+          }
+        },
+        "required": [
+          "items",
+          "truncated"
+        ]
+      },
+      "TrendDayDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-20"
+          },
+          "receivedCents": {
+            "type": "number",
+            "description": "收款（分）"
+          },
+          "refundedCents": {
+            "type": "number",
+            "description": "退款出账（分）"
+          },
+          "paidOrders": {
+            "type": "number",
+            "description": "收齐款的订单数"
+          },
+          "renewalOrders": {
+            "type": "number",
+            "description": "其中续费订单数"
+          },
+          "newCustomers": {
+            "type": "number",
+            "description": "新客户数"
+          },
+          "activations": {
+            "type": "number",
+            "description": "完成开通数"
+          },
+          "tickets": {
+            "type": "number",
+            "description": "新售后工单数"
+          }
+        },
+        "required": [
+          "date",
+          "receivedCents",
+          "refundedCents",
+          "paidOrders",
+          "renewalOrders",
+          "newCustomers",
+          "activations",
+          "tickets"
+        ]
+      },
+      "RenewalGroupDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "due": {
+            "type": "number",
+            "description": "服务期在统计区间内结束的订单数"
+          },
+          "renewed": {
+            "type": "number",
+            "description": "其中已续费的"
+          },
+          "rate": {
+            "type": "number",
+            "nullable": true,
+            "description": "续费率（0–1）"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "due",
+          "renewed",
+          "rate"
+        ]
+      },
+      "RenewalStatsDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "due": {
+            "type": "number",
+            "description": "服务期在统计区间内结束的订单数"
+          },
+          "renewed": {
+            "type": "number",
+            "description": "其中已续费的"
+          },
+          "rate": {
+            "type": "number",
+            "nullable": true,
+            "description": "续费率（0–1）"
+          },
+          "byPlan": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RenewalGroupDto"
+            }
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "due",
+          "renewed",
+          "rate",
+          "byPlan"
+        ]
+      },
+      "ActivationStatsDto": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "number",
+            "description": "区间内完成的开通任务数"
+          },
+          "onTime": {
+            "type": "number",
+            "description": "在时限内完成的"
+          },
+          "onTimeRate": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "收齐款到开通完成的平均分钟数"
+          },
+          "medianMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "中位数（分钟）"
+          }
+        },
+        "required": [
+          "done",
+          "onTime",
+          "onTimeRate",
+          "avgMinutes",
+          "medianMinutes"
+        ]
+      },
+      "TicketTypeCountDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "type",
+          "count"
+        ]
+      },
+      "AftersalesRateDto": {
+        "type": "object",
+        "properties": {
+          "tickets": {
+            "type": "number",
+            "description": "新工单数"
+          },
+          "subscriptionsWithTickets": {
+            "type": "number",
+            "description": "出过工单的订阅数"
+          },
+          "activeSubscriptions": {
+            "type": "number",
+            "description": "区间内在服务的订阅数"
+          },
+          "ticketRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "售后率 = 出过工单的订阅 ÷ 在服务订阅"
+          },
+          "refundedCents": {
+            "type": "number",
+            "description": "退款出账（分）"
+          },
+          "receivedCents": {
+            "type": "number",
+            "description": "收款（分）"
+          },
+          "refundRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "退款率 = 退款 ÷ 收款"
+          },
+          "resolved": {
+            "type": "number",
+            "description": "区间内解决的工单数"
+          },
+          "avgResolveHours": {
+            "type": "number",
+            "nullable": true,
+            "description": "平均解决用时（小时）"
+          },
+          "onTimeRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "按时解决率（没有被升级）"
+          },
+          "byType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketTypeCountDto"
+            }
+          }
+        },
+        "required": [
+          "tickets",
+          "subscriptionsWithTickets",
+          "activeSubscriptions",
+          "ticketRate",
+          "refundedCents",
+          "receivedCents",
+          "refundRate",
+          "resolved",
+          "avgResolveHours",
+          "onTimeRate",
+          "byType"
+        ]
+      },
+      "SalesPerfDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "paidOrders": {
+            "type": "number",
+            "description": "收齐款的订单数"
+          },
+          "renewalOrders": {
+            "type": "number",
+            "description": "其中续费订单"
+          },
+          "paidCents": {
+            "type": "number",
+            "description": "订单实收（分）"
+          },
+          "marginCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "毛利（分），没有财务权限时为空"
+          },
+          "newCustomers": {
+            "type": "number",
+            "description": "新客户数"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "paidOrders",
+          "renewalOrders",
+          "paidCents",
+          "marginCents",
+          "newCustomers"
+        ]
+      },
+      "FulfillmentPerfDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "done": {
+            "type": "number",
+            "description": "完成的任务数（所有类型）"
+          },
+          "onTimeRate": {
+            "type": "number",
+            "nullable": true
+          },
+          "activations": {
+            "type": "number",
+            "description": "其中开通任务数"
+          },
+          "avgActivationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "开通平均用时（分钟）"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "done",
+          "onTimeRate",
+          "activations",
+          "avgActivationMinutes"
+        ]
+      },
+      "AftersalesPerfDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "number",
+            "description": "解决的工单数"
+          },
+          "avgHours": {
+            "type": "number",
+            "nullable": true,
+            "description": "平均解决用时（小时）"
+          },
+          "escalated": {
+            "type": "number",
+            "description": "被升级过的工单数"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "resolved",
+          "avgHours",
+          "escalated"
+        ]
+      },
+      "StaffPerfDto": {
+        "type": "object",
+        "properties": {
+          "sales": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesPerfDto"
+            }
+          },
+          "fulfillment": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FulfillmentPerfDto"
+            }
+          },
+          "aftersales": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AftersalesPerfDto"
+            }
+          }
+        },
+        "required": [
+          "sales",
+          "fulfillment",
+          "aftersales"
+        ]
+      },
+      "LtvSourceDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "customers": {
+            "type": "number"
+          },
+          "avgNetCents": {
+            "type": "number",
+            "description": "平均净收入（分）"
+          }
+        },
+        "required": [
+          "source",
+          "label",
+          "customers",
+          "avgNetCents"
+        ]
+      },
+      "LtvCustomerDto": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "orders": {
+            "type": "number"
+          },
+          "netCents": {
+            "type": "number",
+            "description": "累计净收入 = 实收 − 退款（分）"
+          },
+          "marginCents": {
+            "type": "number",
+            "nullable": true
+          },
+          "firstPaidAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastPaidAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer",
+          "orders",
+          "netCents",
+          "marginCents",
+          "firstPaidAt",
+          "lastPaidAt"
+        ]
+      },
+      "LtvStatsDto": {
+        "type": "object",
+        "properties": {
+          "payingCustomers": {
+            "type": "number",
+            "description": "付过款的客户数"
+          },
+          "repeatCustomers": {
+            "type": "number",
+            "description": "复购客户数（收齐款的订单 ≥ 2）"
+          },
+          "avgNetCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "平均客户净收入（分）"
+          },
+          "avgMarginCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "平均客户毛利（分）"
+          },
+          "avgOrders": {
+            "type": "number",
+            "nullable": true,
+            "description": "平均订单数"
+          },
+          "bySource": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LtvSourceDto"
+            }
+          },
+          "top": {
+            "description": "净收入最高的 10 个客户",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LtvCustomerDto"
+            }
+          }
+        },
+        "required": [
+          "payingCustomers",
+          "repeatCustomers",
+          "avgNetCents",
+          "avgMarginCents",
+          "avgOrders",
+          "bySource",
+          "top"
+        ]
+      },
+      "AnalyticsDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "days": {
+            "type": "number"
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendDayDto"
+            }
+          },
+          "renewal": {
+            "$ref": "#/components/schemas/RenewalStatsDto"
+          },
+          "activation": {
+            "$ref": "#/components/schemas/ActivationStatsDto"
+          },
+          "aftersales": {
+            "$ref": "#/components/schemas/AftersalesRateDto"
+          },
+          "staff": {
+            "$ref": "#/components/schemas/StaffPerfDto"
+          },
+          "ltv": {
+            "$ref": "#/components/schemas/LtvStatsDto"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "days",
+          "trend",
+          "renewal",
+          "activation",
+          "aftersales",
+          "staff",
+          "ltv"
         ]
       }
     }

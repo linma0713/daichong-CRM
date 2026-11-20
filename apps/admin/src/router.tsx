@@ -20,6 +20,8 @@ import { SubscriptionsPage } from './pages/subscriptions/SubscriptionsPage';
 import { SubscriptionDetailPage } from './pages/subscriptions/SubscriptionDetailPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
+import { FinancePage } from './pages/finance/FinancePage';
+import { AnalyticsPage } from './pages/analytics/AnalyticsPage';
 import { TicketsPage } from './pages/aftersales/TicketsPage';
 import { TicketDetailPage } from './pages/aftersales/TicketDetailPage';
 import { RefundsPage } from './pages/aftersales/RefundsPage';
@@ -137,6 +139,22 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission permission="inventory:read">
             <InventoryPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'finance',
+        element: (
+          <RequirePermission permission="finance:read">
+            <FinancePage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'analytics',
+        element: (
+          <RequirePermission permission="report:read">
+            <AnalyticsPage />
           </RequirePermission>
         ),
       },
