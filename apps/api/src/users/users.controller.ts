@@ -40,8 +40,8 @@ export class UsersController {
   @Audit('user.create', '新增员工')
   @ApiOperation({ summary: '新增员工' })
   @ApiOkResponse({ type: UserDto })
-  create(@Body() dto: CreateUserDto): Promise<UserDto> {
-    return this.users.create(dto);
+  create(@Body() dto: CreateUserDto, @CurrentUser() actor: AuthUser): Promise<UserDto> {
+    return this.users.create(dto, actor);
   }
 
   @Patch(':id')
@@ -63,8 +63,12 @@ export class UsersController {
   @Audit('user.reset_password', '重置员工密码')
   @ApiOperation({ summary: '重置员工密码（员工下次登录需修改）' })
   @ApiOkResponse({ type: OkDto })
-  async resetPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto): Promise<OkDto> {
-    await this.users.resetPassword(id, dto.password);
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() dto: ResetPasswordDto,
+    @CurrentUser() actor: AuthUser,
+  ): Promise<OkDto> {
+    await this.users.resetPassword(id, dto.password, actor);
     return { ok: true };
   }
 

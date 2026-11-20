@@ -223,6 +223,82 @@ describe('M0 底座接口', () => {
     await http().get('/api/roles').auth(staffToken, auth).expect(403);
   });
 
+  it('有员工管理权限的非管理员不能动管理员账号，也不能授予管理员角色', async () => {
+    const auth = { type: 'bearer' } as const;
+    const roles = await http().get('/api/roles').auth(adminToken, auth).expect(200);
+    const adminRoleId = roles.body.find((r: { code: string }) => r.code === 'admin').id;
+    const managerRole = await http()
+      .post('/api/roles')
+      .auth(adminToken, auth)
+      .send({
+        code: 'hr',
+        name: '人事',
+        permissions: ['system:user:read', 'system:user:write', 'system:role:read'],
+        dataScope: 'ALL',
+      })
+      .expect(201);
+    const hr = await http()
+      .post('/api/users')
+      .auth(adminToken, auth)
+      .send({
+        username: 'hr01',
+        displayName: '人事小李',
+        password: 'Hr2026init',
+        roleIds: [managerRole.body.id],
+      })
+      .expect(201);
+    const login = await http()
+      .post('/api/auth/login')
+      .send({ username: 'hr01', password: 'Hr2026init' })
+      .expect(200);
+    const hrToken = login.body.accessToken;
+    await http()
+      .post('/api/auth/change-password')
+      .auth(hrToken, auth)
+      .send({ oldPassword: 'Hr2026init', newPassword: 'Hr2026mine' })
+      .expect(200);
+
+    // 不能重置、修改、删除管理员
+    await http()
+      .post(`/api/users/${adminId}/reset-password`)
+      .auth(hrToken, auth)
+      .send({ password: 'Hijack2026' })
+      .expect(403);
+    await http()
+      .patch(`/api/users/${adminId}`)
+      .auth(hrToken, auth)
+      .send({ displayName: '改名' })
+      .expect(403);
+    await http().delete(`/api/users/${adminId}`).auth(hrToken, auth).expect(403);
+    // 不能给自己或新员工加管理员角色
+    await http()
+      .patch(`/api/users/${hr.body.id}`)
+      .auth(hrToken, auth)
+      .send({ roleIds: [managerRole.body.id, adminRoleId] })
+      .expect(403);
+    await http()
+      .post('/api/users')
+      .auth(hrToken, auth)
+      .send({
+        username: 'boss2',
+        displayName: '假老板',
+        password: 'Boss2026x',
+        roleIds: [adminRoleId],
+      })
+      .expect(403);
+    // 普通员工照常可以管理
+    await http()
+      .post('/api/users')
+      .auth(hrToken, auth)
+      .send({
+        username: 'kefu02',
+        displayName: '客服小张',
+        password: 'Kefu2026x',
+        roleIds: [salesRoleId],
+      })
+      .expect(201);
+  });
+
   it('不能停用、删除自己，也不能把最后一个管理员降权', async () => {
     const auth = { type: 'bearer' } as const;
     await http()
@@ -260,10 +336,9 @@ describe('M0 底座接口', () => {
       .query({ action: 'user.create', pageSize: 10 })
       .auth(adminToken, { type: 'bearer' })
       .expect(200);
-    expect(res.body.total).toBe(1);
-    const log = res.body.items[0];
+    expect(res.body.total).toBe(3);
+    const log = res.body.items.find((l: { resourceId: string }) => l.resourceId === staffId);
     expect(log.user.username).toBe('admin');
-    expect(log.resourceId).toBe(staffId);
     expect(log.detail.username).toBe('kefu01');
     expect(log.detail.password).toBe('***');
 

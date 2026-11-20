@@ -17,7 +17,7 @@ import {
 } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PASSWORD_RULE } from '@crm/shared';
+import { ALL_PERMISSIONS, PASSWORD_RULE } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { queryKeys, useRoles, useTeams } from '../../api/queries';
 import { useAuth } from '../../auth/AuthProvider';
@@ -144,6 +144,10 @@ export function UsersPage() {
       fixed: 'right',
       render: (_, u) => {
         const isSelf = u.id === profile?.id;
+        // 管理员账号只能由管理员处理（后端同样会拦）
+        if (u.roles.some((r) => r.code === 'admin') && !can(ALL_PERMISSIONS)) {
+          return <Typography.Text type="secondary">仅管理员可操作</Typography.Text>;
+        }
         return (
           <Space size={0} wrap>
             <Button type="link" size="small" onClick={() => setEditing(u)}>

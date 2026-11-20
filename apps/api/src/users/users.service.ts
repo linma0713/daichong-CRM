@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-import { ALL_PERMISSIONS } from '@crm/shared';
+import { ALL_PERMISSIONS, ErrorCode } from '@crm/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from '../common/auth-user';
 import { badRequest } from '../common/errors';
@@ -27,6 +27,16 @@ function toDto(u: UserWithRelations): UserDto {
     lastLoginAt: u.lastLoginAt,
     createdAt: u.createdAt,
   };
+}
+
+/**
+ * 管理员账号只能由管理员处理：否则有「新增 / 编辑员工」权限的人
+ * 可以重置管理员密码或给自己加管理员角色，从而拿到全部权限。
+ */
+function assertActorIsAdmin(actor: AuthUser, what: string): void {
+  if (!actor.permissions.includes(ALL_PERMISSIONS)) {
+    throw new ForbiddenException({ code: ErrorCode.FORBIDDEN, message: `只有管理员可以${what}` });
+  }
 }
 
 @Injectable()
@@ -62,10 +72,11 @@ export class UsersService {
     return toDto(await this.findOrThrow(id));
   }
 
-  async create(dto: CreateUserDto): Promise<UserDto> {
+  async create(dto: CreateUserDto, actor: AuthUser): Promise<UserDto> {
     const exists = await this.prisma.user.findUnique({ where: { username: dto.username } });
     if (exists) throw badRequest('这个用户名已经被使用', 'USERNAME_TAKEN');
     await this.assertRolesExist(dto.roleIds);
+    if (await this.rolesGrantAll(dto.roleIds)) assertActorIsAdmin(actor, '授予管理员角色');
     await this.assertTeamExists(dto.teamId);
     const user = await this.prisma.user.create({
       data: {
@@ -84,7 +95,11 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto, actor: AuthUser): Promise<UserDto> {
     await this.findOrThrow(id);
     if (dto.status === 'DISABLED' && id === actor.id) throw badRequest('不能停用自己的账号');
-    if (dto.roleIds) await this.assertRolesExist(dto.roleIds);
+    if (await this.isAdmin(id)) assertActorIsAdmin(actor, '修改管理员账号');
+    if (dto.roleIds) {
+      await this.assertRolesExist(dto.roleIds);
+      if (await this.rolesGrantAll(dto.roleIds)) assertActorIsAdmin(actor, '授予管理员角色');
+    }
     if (dto.teamId !== undefined) await this.assertTeamExists(dto.teamId);
 
     const losesAdmin =
@@ -112,8 +127,9 @@ export class UsersService {
     return this.get(id);
   }
 
-  async resetPassword(id: string, password: string): Promise<void> {
+  async resetPassword(id: string, password: string, actor: AuthUser): Promise<void> {
     await this.findOrThrow(id);
+    if (await this.isAdmin(id)) assertActorIsAdmin(actor, '重置管理员的密码');
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id },
@@ -127,7 +143,10 @@ export class UsersService {
   async remove(id: string, actor: AuthUser): Promise<void> {
     await this.findOrThrow(id);
     if (id === actor.id) throw badRequest('不能删除自己的账号');
-    if (await this.isAdmin(id)) await this.assertAnotherAdminRemains(id);
+    if (await this.isAdmin(id)) {
+      assertActorIsAdmin(actor, '删除管理员账号');
+      await this.assertAnotherAdminRemains(id);
+    }
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id },
