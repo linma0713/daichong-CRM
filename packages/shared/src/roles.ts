@@ -34,7 +34,11 @@ export interface BuiltInRole {
   dataScope: DataScope;
 }
 
-/** 系统内置角色，初始化数据库时创建；权限可以在后台再调整 */
+/**
+ * 系统内置角色，初始化数据库时创建；权限可以在后台再调整。
+ * 注意：seed 不会更新已经存在的角色。上线后再给内置角色加默认权限，要同时写一个数据迁移
+ * 给老库补上（参考 prisma/migrations/20261120210000_m2_sales_ticket_permission）。
+ */
 export const BUILT_IN_ROLES: BuiltInRole[] = [
   {
     code: 'admin',
