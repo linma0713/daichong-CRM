@@ -233,10 +233,7 @@ export function visibleCustomers(user: AuthUser): Prisma.CustomerWhereInput {
 }
 
 /** 能否把客户交给 targetOwner 负责：全部范围可以给任何人，小组范围只能给同组同事 */
-function assertCanAssign(
-  user: AuthUser,
-  target: { id: string; teamId: string | null },
-): void {
+function assertCanAssign(user: AuthUser, target: { id: string; teamId: string | null }): void {
   if (target.id === user.id || user.dataScope === 'ALL') return;
   if (user.dataScope === 'TEAM' && user.teamId && target.teamId === user.teamId) return;
   throw new ForbiddenException({
@@ -254,8 +251,9 @@ export class CustomersService {
   async list(q: CustomerQueryDto, user: AuthUser): Promise<CustomerListDto> {
     const no = parseNo(q.keyword, 'C');
     const kw = q.keyword?.trim();
+    // 数据范围单独放进 AND，避免筛选条件（例如 ownerId）把范围覆盖掉
     const where: Prisma.CustomerWhereInput = {
-      ...visibleCustomers(user),
+      AND: [visibleCustomers(user)],
       source: q.source,
       ownerId: q.ownerId,
       tags: q.tag ? { has: q.tag } : undefined,
@@ -337,7 +335,7 @@ export class CustomersService {
   }
 
   /** 换负责人：客户名下的订阅一起转（续费提醒跟着走），历史订单保持原负责人 */
-  async transfer(id: string, ownerId: string, user: AuthUser): Promise<CustomerDto> {
+  async transfer(id: string, ownerId: string, user: AuthUser): Promise<CustomerDetailDto> {
     await this.findVisible(id, user);
     const owner = await this.findActiveUser(ownerId);
     assertCanAssign(user, owner);

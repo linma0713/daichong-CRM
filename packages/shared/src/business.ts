@@ -54,11 +54,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 export type TaskType =
-  | 'ACTIVATE'
-  | 'RENEW'
-  | 'INTERNAL_RENEW'
-  | 'CANCEL_AUTO_RENEW'
-  | 'RECLAIM_ACCOUNT';
+  'ACTIVATE' | 'RENEW' | 'INTERNAL_RENEW' | 'CANCEL_AUTO_RENEW' | 'RECLAIM_ACCOUNT';
 export const TASK_TYPES: TaskType[] = [
   'ACTIVATE',
   'RENEW',
@@ -75,7 +71,13 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
 };
 
 export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'FAILED' | 'CANCELLED';
-export const TASK_STATUSES: TaskStatus[] = ['PENDING', 'IN_PROGRESS', 'DONE', 'FAILED', 'CANCELLED'];
+export const TASK_STATUSES: TaskStatus[] = [
+  'PENDING',
+  'IN_PROGRESS',
+  'DONE',
+  'FAILED',
+  'CANCELLED',
+];
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   PENDING: '待处理',
   IN_PROGRESS: '处理中',

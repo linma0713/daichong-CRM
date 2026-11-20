@@ -209,11 +209,7 @@ export class CatalogService {
     const products = await this.prisma.product.findMany({
       where: q.activeOnly ? { active: true, plan: { active: true } } : {},
       include: productInclude,
-      orderBy: [
-        { plan: { sort: 'asc' } },
-        { fulfillmentType: 'asc' },
-        { termMonths: 'asc' },
-      ],
+      orderBy: [{ plan: { sort: 'asc' } }, { fulfillmentType: 'asc' }, { termMonths: 'asc' }],
     });
     return products.map((p) => this.toProductDto(p, exchangeRate));
   }

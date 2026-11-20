@@ -1,5 +1,5 @@
 /**
- * 初始化数据：内置角色 + 首个管理员。可以重复执行，不会覆盖已有数据。
+ * 初始化数据：内置角色 + 默认套餐 + 首个管理员。可以重复执行，不会覆盖已有数据。
  * 用法：pnpm db:seed（docker compose 启动时会自动执行）
  */
 import { PrismaClient } from '@prisma/client';
@@ -36,6 +36,18 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions): Promise<
         data: { permissions: [ALL_PERMISSIONS], dataScope: 'ALL', builtIn: true },
       });
     }
+  }
+
+  // 默认套餐：官方月费只是初始值，请在「商品与套餐」里按官方实际价格修改；售价不预设
+  if ((await prisma.plan.count()) === 0) {
+    await prisma.plan.createMany({
+      data: [
+        { code: 'PRO', name: 'Pro', upstreamMonthlyUsdCents: 2000, sort: 10 },
+        { code: 'MAX', name: 'Max', upstreamMonthlyUsdCents: 10000, sort: 20 },
+        { code: 'ULTRA', name: 'Ultra', upstreamMonthlyUsdCents: 20000, sort: 30 },
+      ],
+    });
+    log('已创建默认套餐：Pro / Max / Ultra（官方月费请按实际价格修改）');
   }
 
   const userCount = await prisma.user.count();

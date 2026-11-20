@@ -142,7 +142,10 @@ export class SettingsController {
   @Audit('settings.update', '修改业务设置')
   @ApiOperation({ summary: '修改业务设置' })
   @ApiOkResponse({ type: BusinessSettingsDto })
-  update(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AuthUser): Promise<BusinessSettingsDto> {
+  update(
+    @Body() dto: UpdateSettingsDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<BusinessSettingsDto> {
     return this.settings.update(dto, user.id);
   }
 }

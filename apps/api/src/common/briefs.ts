@@ -23,3 +23,39 @@ export const customerBriefSelect = {
 } as const;
 
 export const userBriefSelect = { id: true, displayName: true } as const;
+
+export class AccountBriefDto {
+  @ApiProperty() id: string;
+  @ApiProperty() email: string;
+  @ApiProperty({
+    enum: ['CUSTOMER', 'COMPANY'],
+    description: 'CUSTOMER 客户自己的号 / COMPANY 成品号',
+  })
+  ownership: string;
+  @ApiProperty({ description: '是否录入了密码（明文要单独查看）' }) hasPassword: boolean;
+  @ApiProperty({ description: '是否录入了其他敏感信息' }) hasSecretNote: boolean;
+}
+
+export const accountBriefSelect = {
+  id: true,
+  email: true,
+  ownership: true,
+  passwordEnc: true,
+  secretNoteEnc: true,
+} as const;
+
+export function toAccountBrief(a: {
+  id: string;
+  email: string;
+  ownership: string;
+  passwordEnc: string | null;
+  secretNoteEnc: string | null;
+}): AccountBriefDto {
+  return {
+    id: a.id,
+    email: a.email,
+    ownership: a.ownership,
+    hasPassword: !!a.passwordEnc,
+    hasSecretNote: !!a.secretNoteEnc,
+  };
+}

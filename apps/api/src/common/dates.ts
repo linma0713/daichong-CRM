@@ -40,3 +40,17 @@ export function localDateKey(date: Date): string {
 export function maxDate(a: Date, b: Date): Date {
   return a.getTime() >= b.getTime() ? a : b;
 }
+
+/** 北京时间当天 0 点 */
+export function startOfLocalDay(date: Date): Date {
+  const local = new Date(date.getTime() + TZ_OFFSET_MS);
+  return new Date(
+    Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - TZ_OFFSET_MS,
+  );
+}
+
+/** 北京时间当月 1 日 0 点 */
+export function startOfLocalMonth(date: Date): Date {
+  const local = new Date(date.getTime() + TZ_OFFSET_MS);
+  return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) - TZ_OFFSET_MS);
+}
