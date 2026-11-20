@@ -1,0 +1,28 @@
+{
+  "name": "@crm/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "前后端共用的权限码、角色、枚举",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && node scripts/mark.mjs",
+    "typecheck": "tsc -p tsconfig.esm.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
