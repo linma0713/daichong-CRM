@@ -1,0 +1,26 @@
+{
+  "name": "daichong-crm",
+  "private": true,
+  "description": "代充业务内部管理后台（CRM）",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.mjs",
+    "dev": "pnpm --filter @crm/shared build && pnpm --parallel --filter @crm/api --filter @crm/admin dev",
+    "build": "pnpm --filter @crm/shared build && pnpm --filter @crm/api build && pnpm --filter @crm/admin build",
+    "typecheck": "pnpm --filter @crm/shared build && pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @crm/api test:e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "pnpm --filter @crm/api prisma:migrate",
+    "db:deploy": "pnpm --filter @crm/api prisma:deploy",
+    "db:seed": "pnpm --filter @crm/api prisma:seed",
+    "api:gen": "pnpm --filter @crm/api openapi:export && pnpm --filter @crm/admin api:gen"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}
