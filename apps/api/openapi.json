@@ -2460,6 +2460,538 @@
           "首页"
         ]
       }
+    },
+    "/api/inventory/summary": {
+      "get": {
+        "operationId": "Inventory_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventorySummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "库存汇总与预警（成品号按套餐分池、付款资源余额）",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
+    "/api/resources": {
+      "get": {
+        "operationId": "Inventory_listResources",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResourceDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "付款资源列表（充值员完成任务时选择）",
+        "tags": [
+          "库存与成本"
+        ]
+      },
+      "post": {
+        "operationId": "Inventory_createResource",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResourceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "新增付款资源（可同时首次入库）",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
+    "/api/resources/{id}": {
+      "patch": {
+        "operationId": "Inventory_updateResource",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateResourceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改付款资源（名称、手续费、预警线、停用）",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
+    "/api/resources/{id}/top-up": {
+      "post": {
+        "operationId": "Inventory_topUp",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopUpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "入库 / 充值：记录美元金额和实际花的人民币",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
+    "/api/resources/{id}/adjust": {
+      "post": {
+        "operationId": "Inventory_adjust",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "盘点：把账面余额改成实际余额",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
+    "/api/resources/{id}/transactions": {
+      "get": {
+        "operationId": "Inventory_transactions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ResourceTxType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceTxListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "付款资源的库存流水",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
+    "/api/resources/{id}/secret": {
+      "get": {
+        "operationId": "Inventory_revealResource",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceSecretDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "查看付款资源的卡号等敏感信息（每次查看都记录操作日志）",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
+    "/api/stock-accounts": {
+      "get": {
+        "operationId": "Inventory_listStock",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "planId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AccountStockStatus"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "账号邮箱",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockAccountListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "成品号库存（在库的按入库时间先进先出）",
+        "tags": [
+          "库存与成本"
+        ]
+      },
+      "post": {
+        "operationId": "Inventory_createStock",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStockAccountsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateStockAccountsResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "成品号批量入库（已存在的邮箱自动跳过）",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
+    "/api/stock-accounts/{id}": {
+      "patch": {
+        "operationId": "Inventory_updateStock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStockAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockAccountDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改成品号的套餐、库存状态（在库 / 作废）、上游付费日",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
+    "/api/stock-accounts/{id}/charge": {
+      "post": {
+        "operationId": "Inventory_chargeStock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChargeStockAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockAccountDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "在库成品号到了上游扣费日：登记扣费，成本累计到这个号上",
+        "tags": [
+          "库存与成本"
+        ]
+      }
     }
   },
   "info": {
@@ -3182,6 +3714,38 @@
           "database"
         ]
       },
+      "PaymentFeeRatesDto": {
+        "type": "object",
+        "properties": {
+          "wechat": {
+            "type": "number",
+            "example": 0
+          },
+          "alipay": {
+            "type": "number",
+            "example": 0
+          },
+          "usdt": {
+            "type": "number",
+            "example": 0
+          },
+          "bank": {
+            "type": "number",
+            "example": 0
+          },
+          "other": {
+            "type": "number",
+            "example": 0
+          }
+        },
+        "required": [
+          "wechat",
+          "alipay",
+          "usdt",
+          "bank",
+          "other"
+        ]
+      },
       "BusinessSettingsDto": {
         "type": "object",
         "properties": {
@@ -3211,13 +3775,28 @@
             "type": "number",
             "description": "上游扣费前几天生成内部续费或取消自动续订任务",
             "example": 2
+          },
+          "paymentFeeBp": {
+            "description": "收款手续费率（万分比），确认收款时按收款方式计算手续费，计入每单成本",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentFeeRatesDto"
+              }
+            ]
+          },
+          "accountStockLow": {
+            "type": "number",
+            "description": "每个套餐的成品号在库数量低于这个值时预警",
+            "example": 2
           }
         },
         "required": [
           "exchangeRate",
           "reminderDays",
           "activateSlaHours",
-          "upstreamLeadDays"
+          "upstreamLeadDays",
+          "paymentFeeBp",
+          "accountStockLow"
         ]
       },
       "UpdateSettingsDto": {
@@ -3236,6 +3815,12 @@
             "type": "number"
           },
           "upstreamLeadDays": {
+            "type": "number"
+          },
+          "paymentFeeBp": {
+            "$ref": "#/components/schemas/PaymentFeeRatesDto"
+          },
+          "accountStockLow": {
             "type": "number"
           }
         }
@@ -4022,6 +4607,11 @@
             "type": "string",
             "nullable": true
           },
+          "marginCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -4052,6 +4642,7 @@
           "completedAt",
           "cancelledAt",
           "cancelReason",
+          "marginCents",
           "createdAt"
         ]
       },
@@ -4082,6 +4673,10 @@
           "amountCents": {
             "type": "number"
           },
+          "feeCents": {
+            "type": "number",
+            "description": "收款手续费（分）"
+          },
           "method": {
             "type": "string",
             "enum": [
@@ -4111,6 +4706,7 @@
         "required": [
           "id",
           "amountCents",
+          "feeCents",
           "method",
           "reference",
           "receivedAt",
@@ -4192,6 +4788,124 @@
           "dueAt",
           "finishedAt",
           "note"
+        ]
+      },
+      "CostKind": {
+        "type": "string",
+        "enum": [
+          "UPSTREAM_CHARGE",
+          "ACCOUNT_STOCK",
+          "OTHER"
+        ]
+      },
+      "CostEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CostKind"
+              }
+            ]
+          },
+          "amountCents": {
+            "type": "number",
+            "description": "人民币成本（分）"
+          },
+          "usdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "上游扣费美元（美分，含手续费）"
+          },
+          "resourceName": {
+            "type": "string",
+            "nullable": true,
+            "description": "用的付款资源"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amountCents",
+          "usdCents",
+          "resourceName",
+          "note",
+          "user",
+          "createdAt"
+        ]
+      },
+      "OrderProfitDto": {
+        "type": "object",
+        "properties": {
+          "revenueCents": {
+            "type": "number",
+            "description": "已收（分）"
+          },
+          "feeCents": {
+            "type": "number",
+            "description": "收款手续费（分）"
+          },
+          "costCents": {
+            "type": "number",
+            "description": "已发生成本（分）"
+          },
+          "marginCents": {
+            "type": "number",
+            "description": "毛利（分）= 已收 − 手续费 − 已发生成本"
+          },
+          "marginRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "毛利率（0–1）"
+          },
+          "chargesDone": {
+            "type": "number",
+            "description": "已登记的上游扣费次数（含成品号成本）"
+          },
+          "chargesExpected": {
+            "type": "number",
+            "description": "服务期内应有的上游扣费次数（= 服务月数）"
+          },
+          "estRemainingCostCents": {
+            "type": "number",
+            "description": "还没发生的上游扣费，按当前汇率和官方月费估算（分）"
+          },
+          "estMarginCents": {
+            "type": "number",
+            "description": "预计毛利（分）= 毛利 − 预计还要发生的成本"
+          },
+          "costs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CostEntryDto"
+            }
+          }
+        },
+        "required": [
+          "revenueCents",
+          "feeCents",
+          "costCents",
+          "marginCents",
+          "marginRate",
+          "chargesDone",
+          "chargesExpected",
+          "estRemainingCostCents",
+          "estMarginCents",
+          "costs"
         ]
       },
       "OrderDetailDto": {
@@ -4303,6 +5017,11 @@
             "type": "string",
             "nullable": true
           },
+          "marginCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -4318,6 +5037,16 @@
             "items": {
               "$ref": "#/components/schemas/TaskBriefDto"
             }
+          },
+          "profit": {
+            "nullable": true,
+            "description": "有「查看成本」权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderProfitDto"
+              }
+            ]
           }
         },
         "required": [
@@ -4345,9 +5074,11 @@
           "completedAt",
           "cancelledAt",
           "cancelReason",
+          "marginCents",
           "createdAt",
           "payments",
-          "tasks"
+          "tasks",
+          "profit"
         ]
       },
       "CreateOrderDto": {
@@ -4634,6 +5365,25 @@
               }
             ]
           },
+          "planId": {
+            "type": "string",
+            "nullable": true,
+            "description": "涉及的套餐（成品号开通按它选库存）"
+          },
+          "upstreamMonthlyUsdCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "套餐官方月费（美分），扣费金额的默认值"
+          },
+          "chargeMode": {
+            "type": "string",
+            "enum": [
+              "required",
+              "optional",
+              "none"
+            ],
+            "description": "完成时是否要登记上游扣费"
+          },
           "dueAt": {
             "format": "date-time",
             "type": "string"
@@ -4673,6 +5423,9 @@
           "subscription",
           "account",
           "assignee",
+          "planId",
+          "upstreamMonthlyUsdCents",
+          "chargeMode",
           "dueAt",
           "overdue",
           "attempts",
@@ -4736,6 +5489,30 @@
           "accountSecretNote": {
             "type": "string",
             "description": "成品号：恢复邮箱、备用码等其他敏感信息（加密保存）"
+          },
+          "stockAccountId": {
+            "type": "string",
+            "description": "成品号开通：从库存里选的成品号 ID（和 accountEmail 二选一）"
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "这次上游扣费用的付款资源"
+          },
+          "chargeUsdCents": {
+            "type": "number",
+            "description": "上游扣费金额（美分，不含手续费），默认是套餐官方月费"
+          },
+          "noCharge": {
+            "type": "boolean",
+            "description": "这次没有产生上游扣费（例如账号本来就在付费期内）"
+          },
+          "reclaimTo": {
+            "type": "string",
+            "enum": [
+              "STOCK",
+              "VOID"
+            ],
+            "description": "回收成品号：STOCK 回库继续卖（默认）；VOID 作废"
           }
         }
       },
@@ -5254,6 +6031,31 @@
           "newThisMonth"
         ]
       },
+      "InventoryAlertDto": {
+        "type": "object",
+        "properties": {
+          "lowResources": {
+            "type": "number",
+            "description": "余额低于预警线的付款资源数"
+          },
+          "lowPools": {
+            "description": "在库成品号不足的套餐",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "inStock": {
+            "type": "number",
+            "description": "在库成品号总数"
+          }
+        },
+        "required": [
+          "lowResources",
+          "lowPools",
+          "inStock"
+        ]
+      },
       "DashboardDto": {
         "type": "object",
         "properties": {
@@ -5294,13 +6096,670 @@
                 "$ref": "#/components/schemas/CustomerStatsDto"
               }
             ]
+          },
+          "inventory": {
+            "nullable": true,
+            "description": "有「查看库存」权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InventoryAlertDto"
+              }
+            ]
           }
         },
         "required": [
           "orders",
           "tasks",
           "subscriptions",
-          "customers"
+          "customers",
+          "inventory"
+        ]
+      },
+      "StockPoolDto": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "inStock": {
+            "type": "number",
+            "description": "在库数量"
+          },
+          "inUse": {
+            "type": "number",
+            "description": "使用中数量"
+          },
+          "low": {
+            "type": "boolean",
+            "description": "在库数量低于预警线"
+          }
+        },
+        "required": [
+          "planId",
+          "planName",
+          "inStock",
+          "inUse",
+          "low"
+        ]
+      },
+      "ResourceType": {
+        "type": "string",
+        "enum": [
+          "VIRTUAL_CARD",
+          "GIFT_CARD",
+          "BALANCE"
+        ]
+      },
+      "ResourceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "R00003"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceType"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "last4": {
+            "type": "string",
+            "nullable": true
+          },
+          "balanceUsdCents": {
+            "type": "number",
+            "description": "账面余额（美分）"
+          },
+          "costPoolCents": {
+            "type": "number",
+            "description": "余额对应的人民币成本（分）"
+          },
+          "avgRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "平均成本：每 1 美元合多少元人民币（余额为 0 时为空）"
+          },
+          "feeBp": {
+            "type": "number",
+            "description": "每笔扣费手续费比例（万分比）"
+          },
+          "feeFixedUsdCents": {
+            "type": "number",
+            "description": "每笔扣费固定手续费（美分）"
+          },
+          "lowBalanceUsdCents": {
+            "type": "number",
+            "description": "低于这个余额预警（美分）"
+          },
+          "low": {
+            "type": "boolean",
+            "description": "余额低于预警线"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "hasSecretNote": {
+            "type": "boolean"
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "name",
+          "last4",
+          "balanceUsdCents",
+          "costPoolCents",
+          "avgRate",
+          "feeBp",
+          "feeFixedUsdCents",
+          "lowBalanceUsdCents",
+          "low",
+          "active",
+          "hasSecretNote",
+          "remark",
+          "createdAt"
+        ]
+      },
+      "InventorySummaryDto": {
+        "type": "object",
+        "properties": {
+          "pools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StockPoolDto"
+            }
+          },
+          "accountStockLow": {
+            "type": "number",
+            "description": "成品号预警线（每个套餐）"
+          },
+          "lowResources": {
+            "description": "余额低于预警线的付款资源",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceDto"
+            }
+          },
+          "totalBalanceUsdCents": {
+            "type": "number",
+            "description": "可用付款资源的美元余额合计（美分）"
+          },
+          "totalCostPoolCents": {
+            "type": "number",
+            "description": "可用付款资源的人民币成本合计（分）"
+          }
+        },
+        "required": [
+          "pools",
+          "accountStockLow",
+          "lowResources",
+          "totalBalanceUsdCents",
+          "totalCostPoolCents"
+        ]
+      },
+      "CreateResourceDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceType"
+              }
+            ]
+          },
+          "name": {
+            "type": "string",
+            "example": "Visa 虚拟卡 A"
+          },
+          "last4": {
+            "type": "string",
+            "example": "1234"
+          },
+          "feeBp": {
+            "type": "number",
+            "description": "每笔扣费手续费比例（万分比，150 = 1.5%）"
+          },
+          "feeFixedUsdCents": {
+            "type": "number",
+            "description": "每笔扣费固定手续费（美分）"
+          },
+          "lowBalanceUsdCents": {
+            "type": "number",
+            "description": "余额低于这个值预警（美分）"
+          },
+          "secretNote": {
+            "type": "string",
+            "description": "卡号、CVV、登录信息等（加密保存，查看会记录日志）"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "initialUsdCents": {
+            "type": "number",
+            "description": "首次入库的美元金额（美分）"
+          },
+          "initialCnyCents": {
+            "type": "number",
+            "description": "首次入库实际花的人民币（分）"
+          }
+        },
+        "required": [
+          "type",
+          "name"
+        ]
+      },
+      "UpdateResourceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "last4": {
+            "type": "string",
+            "nullable": true
+          },
+          "feeBp": {
+            "type": "number"
+          },
+          "feeFixedUsdCents": {
+            "type": "number"
+          },
+          "lowBalanceUsdCents": {
+            "type": "number"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "secretNote": {
+            "type": "string",
+            "description": "新的敏感信息；传空字符串表示清除"
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "TopUpDto": {
+        "type": "object",
+        "properties": {
+          "usdCents": {
+            "type": "number",
+            "description": "入库美元（美分）"
+          },
+          "cnyCents": {
+            "type": "number",
+            "description": "实际花的人民币（分），含买卡折扣、充值手续费"
+          },
+          "note": {
+            "type": "string",
+            "example": "闲鱼买 $100 礼品卡"
+          }
+        },
+        "required": [
+          "usdCents",
+          "cnyCents"
+        ]
+      },
+      "AdjustDto": {
+        "type": "object",
+        "properties": {
+          "actualUsdCents": {
+            "type": "number",
+            "description": "实际余额（美分）"
+          },
+          "note": {
+            "type": "string",
+            "example": "月底对账，实际余额以卡商后台为准"
+          }
+        },
+        "required": [
+          "actualUsdCents",
+          "note"
+        ]
+      },
+      "ResourceTxType": {
+        "type": "string",
+        "enum": [
+          "TOP_UP",
+          "CONSUME",
+          "ADJUST"
+        ]
+      },
+      "ResourceTxDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceTxType"
+              }
+            ]
+          },
+          "usdCents": {
+            "type": "number",
+            "description": "美元变动（美分），入正出负"
+          },
+          "cnyCents": {
+            "type": "number",
+            "description": "人民币变动（分）"
+          },
+          "balanceAfterUsdCents": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "order": {
+            "nullable": true,
+            "description": "成本归属的订单",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "usdCents",
+          "cnyCents",
+          "balanceAfterUsdCents",
+          "note",
+          "order",
+          "user",
+          "createdAt"
+        ]
+      },
+      "ResourceTxListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceTxDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "ResourceSecretDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "secretNote": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "name",
+          "secretNote"
+        ]
+      },
+      "AccountStockStatus": {
+        "type": "string",
+        "enum": [
+          "IN_STOCK",
+          "IN_USE",
+          "VOID"
+        ]
+      },
+      "PlanRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "StockAccountDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "plan": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlanRefDto"
+              }
+            ]
+          },
+          "stockStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountStockStatus"
+              }
+            ]
+          },
+          "stockCostCents": {
+            "type": "number",
+            "description": "还没结转的备号成本（分）"
+          },
+          "upstreamRenewAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "上游已付费到这一天"
+          },
+          "stockedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "customer": {
+            "nullable": true,
+            "description": "使用中的客户",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerBriefDto"
+              }
+            ]
+          },
+          "subscription": {
+            "nullable": true,
+            "description": "服务中的订阅",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "hasSecretNote": {
+            "type": "boolean"
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "plan",
+          "stockStatus",
+          "stockCostCents",
+          "upstreamRenewAt",
+          "stockedAt",
+          "customer",
+          "subscription",
+          "hasPassword",
+          "hasSecretNote",
+          "remark",
+          "createdAt"
+        ]
+      },
+      "StockAccountListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StockAccountDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "NewStockAccountDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "secretNote": {
+            "type": "string",
+            "description": "恢复邮箱、备用码等"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "CreateStockAccountsDto": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string",
+            "description": "入哪个套餐的库存"
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewStockAccountDto"
+            }
+          },
+          "costCnyCents": {
+            "type": "number",
+            "description": "每个号的其他成本（分），例如买号、邮箱费用"
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "用哪个付款资源给每个号付第一个月"
+          },
+          "chargeUsdCents": {
+            "type": "number",
+            "description": "每个号的上游扣费（美分，不含手续费），默认套餐官方月费"
+          },
+          "upstreamRenewAt": {
+            "type": "string",
+            "description": "上游已付费到这一天；登记了付款时默认一个月后"
+          },
+          "remark": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "planId",
+          "accounts"
+        ]
+      },
+      "SkippedAccountDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "reason"
+        ]
+      },
+      "CreateStockAccountsResultDto": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkippedAccountDto"
+            }
+          }
+        },
+        "required": [
+          "created",
+          "skipped"
+        ]
+      },
+      "UpdateStockAccountDto": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string"
+          },
+          "stockStatus": {
+            "type": "string",
+            "enum": [
+              "IN_STOCK",
+              "VOID"
+            ],
+            "description": "在库 / 作废（使用中的号不能改）"
+          },
+          "upstreamRenewAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ChargeStockAccountDto": {
+        "type": "object",
+        "properties": {
+          "resourceId": {
+            "type": "string"
+          },
+          "usdCents": {
+            "type": "number",
+            "description": "上游扣费（美分，不含手续费），默认套餐官方月费"
+          },
+          "upstreamRenewAt": {
+            "type": "string",
+            "description": "付费后上游下次扣费时间，默认顺延一个月"
+          }
+        },
+        "required": [
+          "resourceId"
         ]
       }
     }

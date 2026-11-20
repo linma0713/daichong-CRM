@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayNo, formatCents, parseNo, termLabel } from './business';
+import { displayNo, feeOf, formatCents, parseNo, termLabel } from './business';
 
 describe('business helpers', () => {
   it('formatCents', () => {
@@ -21,5 +21,16 @@ describe('business helpers', () => {
     expect(termLabel(3)).toBe('季付');
     expect(termLabel(12)).toBe('年付');
     expect(termLabel(2)).toBe('2 个月');
+  });
+});
+
+describe('feeOf', () => {
+  it('按万分比四舍五入并加固定金额', () => {
+    expect(feeOf(10000, 150)).toBe(150);
+    expect(feeOf(2000, 150, 20)).toBe(50);
+    expect(feeOf(333, 60)).toBe(2);
+  });
+  it('金额为 0 或负数时没有手续费', () => {
+    expect(feeOf(0, 150, 20)).toBe(0);
   });
 });

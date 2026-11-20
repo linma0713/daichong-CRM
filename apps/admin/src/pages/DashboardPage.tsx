@@ -147,6 +147,34 @@ export function DashboardPage() {
         </Card>
       )}
 
+      {d?.inventory && (
+        <Card title="库存" size="small">
+          <Row gutter={[12, 12]}>
+            <Col {...colProps}>
+              <StatCard
+                title="在库成品号"
+                value={d.inventory.inStock}
+                to="/inventory?tab=stock"
+                danger={d.inventory.lowPools.length > 0}
+                hint={
+                  d.inventory.lowPools.length
+                    ? `${d.inventory.lowPools.join('、')} 库存不足`
+                    : undefined
+                }
+              />
+            </Col>
+            <Col {...colProps}>
+              <StatCard
+                title="付款资源余额不足"
+                value={d.inventory.lowResources}
+                to="/inventory"
+                danger={d.inventory.lowResources > 0}
+              />
+            </Col>
+          </Row>
+        </Card>
+      )}
+
       {(d?.orders || d?.customers) && (
         <Card title="订单与客户" size="small">
           <Row gutter={[12, 12]}>
@@ -184,7 +212,7 @@ export function DashboardPage() {
       )}
 
       <Card title="开发进度" size="small">
-        <Steps direction="vertical" size="small" current={1} items={ROADMAP} />
+        <Steps direction="vertical" size="small" current={2} items={ROADMAP} />
       </Card>
     </Space>
   );

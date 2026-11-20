@@ -5,6 +5,7 @@ import {
   App,
   Button,
   Card,
+  Col,
   DatePicker,
   Descriptions,
   Form,
@@ -12,15 +13,24 @@ import {
   InputNumber,
   Modal,
   Result,
+  Row,
   Select,
   Space,
   Spin,
+  Statistic,
   Table,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs, { type Dayjs } from 'dayjs';
-import { PAYMENT_METHODS, formatCents, termLabel, type PaymentMethod } from '@crm/shared';
+import {
+  COST_KIND_LABELS,
+  PAYMENT_METHODS,
+  formatCents,
+  termLabel,
+  type PaymentMethod,
+} from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
 import {
@@ -189,6 +199,16 @@ export function OrderDetailPage() {
               render: (_, p) => <Money cents={p.amountCents} strong />,
             },
             { title: '方式', key: 'method', render: (_, p) => METHOD_LABELS[p.method] ?? p.method },
+            ...(o.profit
+              ? [
+                  {
+                    title: '手续费',
+                    key: 'fee',
+                    render: (_: unknown, p: Schemas['PaymentDto']) =>
+                      p.feeCents ? formatCents(p.feeCents) : '—',
+                  },
+                ]
+              : []),
             { title: '单号 / 备注', key: 'ref', render: (_, p) => p.reference ?? '—' },
             { title: '到账时间', key: 'receivedAt', render: (_, p) => formatTime(p.receivedAt) },
             { title: '确认人', key: 'by', render: (_, p) => p.confirmedBy.displayName },
@@ -223,6 +243,8 @@ export function OrderDetailPage() {
           ]}
         />
       </Card>
+
+      {o.profit && <ProfitCard profit={o.profit} status={o.status} />}
 
       {paying && (
         <PaymentModal
@@ -315,5 +337,94 @@ function PaymentModal({
         </Form.Item>
       </Form>
     </Modal>
+  );
+}
+
+/** 成本与毛利：只有有「查看成本」权限的人能看到 */
+function ProfitCard({
+  profit: p,
+  status,
+}: {
+  profit: Schemas['OrderProfitDto'];
+  status: Schemas['OrderDto']['status'];
+}) {
+  const pending = p.chargesExpected - p.chargesDone;
+  return (
+    <Card title="成本与毛利" size="small">
+      <Row gutter={[16, 16]}>
+        <Col xs={12} md={4}>
+          <Statistic title="已收" value={formatCents(p.revenueCents)} />
+        </Col>
+        <Col xs={12} md={4}>
+          <Statistic title="收款手续费" value={formatCents(p.feeCents)} />
+        </Col>
+        <Col xs={12} md={4}>
+          <Statistic title="已发生成本" value={formatCents(p.costCents)} />
+        </Col>
+        <Col xs={12} md={4}>
+          <Statistic
+            title="毛利"
+            value={formatCents(p.marginCents)}
+            valueStyle={p.marginCents < 0 ? { color: '#cf1322' } : { color: '#389e0d' }}
+          />
+        </Col>
+        <Col xs={12} md={4}>
+          <Statistic
+            title="毛利率"
+            value={p.marginRate === null ? '—' : `${(p.marginRate * 100).toFixed(1)}%`}
+          />
+        </Col>
+        {pending > 0 && status !== 'CANCELLED' && (
+          <Col xs={12} md={4}>
+            <Statistic
+              title={
+                <Tooltip
+                  title={`服务期 ${p.chargesExpected} 个月，上游按月扣费，还有 ${pending} 次没发生；按官方月费和当前汇率估算`}
+                >
+                  预计毛利（还要扣 {pending} 次）
+                </Tooltip>
+              }
+              value={formatCents(p.estMarginCents)}
+              valueStyle={p.estMarginCents < 0 ? { color: '#cf1322' } : undefined}
+            />
+          </Col>
+        )}
+      </Row>
+      <Table<Schemas['CostEntryDto']>
+        rowKey="id"
+        size="small"
+        style={{ marginTop: 16 }}
+        pagination={false}
+        dataSource={p.costs}
+        locale={{ emptyText: '还没有成本记录（开通 / 续费时充值员登记上游扣费后出现）' }}
+        scroll={{ x: 600 }}
+        columns={[
+          {
+            title: '时间',
+            key: 'createdAt',
+            width: 150,
+            render: (_, c) => formatTime(c.createdAt),
+          },
+          { title: '类型', key: 'kind', width: 100, render: (_, c) => COST_KIND_LABELS[c.kind] },
+          {
+            title: '成本',
+            key: 'amount',
+            render: (_, c) => (
+              <Space size={4}>
+                <Money cents={c.amountCents} />
+                {c.usdCents !== null && (
+                  <Typography.Text type="secondary">
+                    （{formatCents(c.usdCents, '$')}）
+                  </Typography.Text>
+                )}
+              </Space>
+            ),
+          },
+          { title: '付款资源', key: 'resource', render: (_, c) => c.resourceName ?? '—' },
+          { title: '说明', key: 'note', render: (_, c) => c.note ?? '—' },
+          { title: '登记人', key: 'user', width: 90, render: (_, c) => c.user.displayName },
+        ]}
+      />
+    </Card>
   );
 }

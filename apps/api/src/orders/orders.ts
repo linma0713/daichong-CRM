@@ -31,13 +31,17 @@ import {
 } from 'class-validator';
 import { Prisma } from '@prisma/client';
 import {
+  COST_KINDS,
   FULFILLMENT_TYPES,
   ORDER_STATUSES,
   PAYMENT_METHOD_VALUES,
   TASK_STATUSES,
   TASK_TYPES,
   displayNo,
+  feeOf,
+  hasPermission,
   parseNo,
+  type CostKind,
   type FulfillmentType,
   type OrderKind,
   type OrderStatus,
@@ -62,6 +66,7 @@ import { productName } from '../catalog/catalog';
 import { visibleCustomers } from '../customers/customers';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service';
+import { SettingsModule, SettingsService } from '../settings/settings';
 
 const ORDER_KINDS: OrderKind[] = ['NEW', 'RENEWAL'];
 
@@ -198,6 +203,12 @@ export class OrderDto {
   @ApiProperty({ type: String, nullable: true }) completedAt: Date | null;
   @ApiProperty({ type: String, nullable: true }) cancelledAt: Date | null;
   @ApiProperty({ type: String, nullable: true }) cancelReason: string | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空',
+  })
+  marginCents: number | null;
   @ApiProperty() createdAt: Date;
 }
 
@@ -209,6 +220,7 @@ export class OrderListDto {
 export class PaymentDto {
   @ApiProperty() id: string;
   @ApiProperty() amountCents: number;
+  @ApiProperty({ description: '收款手续费（分）' }) feeCents: number;
   @ApiProperty({ enum: PAYMENT_METHOD_VALUES }) method: string;
   @ApiProperty({ type: String, nullable: true }) reference: string | null;
   @ApiProperty() receivedAt: Date;
@@ -227,9 +239,39 @@ export class TaskBriefDto {
   @ApiProperty({ type: String, nullable: true }) note: string | null;
 }
 
+export class CostEntryDto {
+  @ApiProperty() id: string;
+  @ApiProperty({ enum: COST_KINDS, enumName: 'CostKind' }) kind: CostKind;
+  @ApiProperty({ description: '人民币成本（分）' }) amountCents: number;
+  @ApiProperty({ type: Number, nullable: true, description: '上游扣费美元（美分，含手续费）' })
+  usdCents: number | null;
+  @ApiProperty({ type: String, nullable: true, description: '用的付款资源' }) resourceName:
+    string | null;
+  @ApiProperty({ type: String, nullable: true }) note: string | null;
+  @ApiProperty({ type: UserBriefDto }) user: UserBriefDto;
+  @ApiProperty() createdAt: Date;
+}
+
+export class OrderProfitDto {
+  @ApiProperty({ description: '已收（分）' }) revenueCents: number;
+  @ApiProperty({ description: '收款手续费（分）' }) feeCents: number;
+  @ApiProperty({ description: '已发生成本（分）' }) costCents: number;
+  @ApiProperty({ description: '毛利（分）= 已收 − 手续费 − 已发生成本' }) marginCents: number;
+  @ApiProperty({ type: Number, nullable: true, description: '毛利率（0–1）' }) marginRate:
+    number | null;
+  @ApiProperty({ description: '已登记的上游扣费次数（含成品号成本）' }) chargesDone: number;
+  @ApiProperty({ description: '服务期内应有的上游扣费次数（= 服务月数）' }) chargesExpected: number;
+  @ApiProperty({ description: '还没发生的上游扣费，按当前汇率和官方月费估算（分）' })
+  estRemainingCostCents: number;
+  @ApiProperty({ description: '预计毛利（分）= 毛利 − 预计还要发生的成本' }) estMarginCents: number;
+  @ApiProperty({ type: [CostEntryDto] }) costs: CostEntryDto[];
+}
+
 export class OrderDetailDto extends OrderDto {
   @ApiProperty({ type: [PaymentDto] }) payments: PaymentDto[];
   @ApiProperty({ type: [TaskBriefDto] }) tasks: TaskBriefDto[];
+  @ApiProperty({ type: OrderProfitDto, nullable: true, description: '有「查看成本」权限时返回' })
+  profit: OrderProfitDto | null;
 }
 
 // ─────────────── Service ───────────────
@@ -258,7 +300,14 @@ export function toCustomerBrief(c: {
   };
 }
 
-function toOrderDto(o: OrderRow): OrderDto {
+/** 毛利 = 已收 − 手续费 − 已发生成本 */
+export function orderMargin(o: { paidCents: number; feeCents: number; costCents: number }): number {
+  return o.paidCents - o.feeCents - o.costCents;
+}
+
+export const canSeeCost = (user: AuthUser) => hasPermission(user.permissions, 'finance:read');
+
+function toOrderDto(o: OrderRow, user: AuthUser): OrderDto {
   return {
     id: o.id,
     code: displayNo('D', o.no),
@@ -286,6 +335,7 @@ function toOrderDto(o: OrderRow): OrderDto {
     completedAt: o.completedAt,
     cancelledAt: o.cancelledAt,
     cancelReason: o.cancelReason,
+    marginCents: canSeeCost(user) ? orderMargin(o) : null,
     createdAt: o.createdAt,
   };
 }
@@ -300,6 +350,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly fulfillment: FulfillmentService,
     private readonly secrets: SecretBox,
+    private readonly settings: SettingsService,
   ) {}
 
   async list(q: OrderQueryDto, user: AuthUser): Promise<OrderListDto> {
@@ -328,7 +379,7 @@ export class OrdersService {
       }),
       this.prisma.order.count({ where }),
     ]);
-    return { items: rows.map(toOrderDto), total };
+    return { items: rows.map((o) => toOrderDto(o, user)), total };
   }
 
   async get(id: string, user: AuthUser): Promise<OrderDetailDto> {
@@ -348,10 +399,12 @@ export class OrdersService {
     });
     if (!o) throw notFound('订单');
     return {
-      ...toOrderDto(o),
+      ...toOrderDto(o, user),
+      profit: canSeeCost(user) ? await this.profit(o) : null,
       payments: o.payments.map((p) => ({
         id: p.id,
         amountCents: p.amountCents,
+        feeCents: p.feeCents,
         method: p.method,
         reference: p.reference,
         receivedAt: p.receivedAt,
@@ -367,6 +420,58 @@ export class OrdersService {
         dueAt: t.dueAt,
         finishedAt: t.finishedAt,
         note: t.note,
+      })),
+    };
+  }
+
+  /** 每单毛利：已发生的成本 + 按服务月数估算还要发生的上游扣费 */
+  private async profit(o: {
+    id: string;
+    status: OrderStatus;
+    productId: string;
+    termMonths: number;
+    paidCents: number;
+    feeCents: number;
+    costCents: number;
+  }): Promise<OrderProfitDto> {
+    const [entries, product, { exchangeRate }] = await Promise.all([
+      this.prisma.costEntry.findMany({
+        where: { orderId: o.id },
+        include: {
+          user: { select: userBriefSelect },
+          resourceTx: { select: { resource: { select: { name: true } } } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.product.findUnique({ where: { id: o.productId }, include: { plan: true } }),
+      this.settings.getAll(),
+    ]);
+    const marginCents = orderMargin(o);
+    const chargesDone = entries.filter((e) => e.kind !== 'OTHER').length;
+    const chargesExpected = o.status === 'CANCELLED' ? chargesDone : o.termMonths;
+    const monthly = product?.plan.upstreamMonthlyUsdCents ?? 0;
+    const estRemainingCostCents = Math.round(
+      Math.max(0, chargesExpected - chargesDone) * monthly * exchangeRate,
+    );
+    return {
+      revenueCents: o.paidCents,
+      feeCents: o.feeCents,
+      costCents: o.costCents,
+      marginCents,
+      marginRate: o.paidCents > 0 ? Math.round((marginCents / o.paidCents) * 1000) / 1000 : null,
+      chargesDone,
+      chargesExpected,
+      estRemainingCostCents,
+      estMarginCents: marginCents - estRemainingCostCents,
+      costs: entries.map((e) => ({
+        id: e.id,
+        kind: e.kind,
+        amountCents: e.amountCents,
+        usdCents: e.usdCents,
+        resourceName: e.resourceTx?.resource.name ?? null,
+        note: e.note,
+        user: e.user,
+        createdAt: e.createdAt,
       })),
     };
   }
@@ -451,6 +556,8 @@ export class OrdersService {
 
   /** 确认收款；收齐后自动建开通 / 续费任务 */
   async addPayment(id: string, dto: AddPaymentDto, user: AuthUser): Promise<OrderDetailDto> {
+    const { paymentFeeBp } = await this.settings.getAll();
+    const feeCents = feeOf(dto.amountCents, paymentFeeBp[dto.method] ?? 0);
     await this.prisma.$transaction(async (tx) => {
       // 锁住订单行，避免两个人同时确认收款
       await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${id} FOR UPDATE`;
@@ -465,13 +572,17 @@ export class OrdersService {
         data: {
           orderId: id,
           amountCents: dto.amountCents,
+          feeCents,
           method: dto.method,
           reference: dto.reference?.trim() || null,
           receivedAt: dto.receivedAt ? new Date(dto.receivedAt) : new Date(),
           confirmedById: user.id,
         },
       });
-      await tx.order.update({ where: { id }, data: { paidCents: paid } });
+      await tx.order.update({
+        where: { id },
+        data: { paidCents: paid, feeCents: { increment: feeCents } },
+      });
       if (paid === order.amountCents) await this.markPaid(tx, id);
     });
     return this.get(id, user);
@@ -608,7 +719,7 @@ export class OrdersController {
 }
 
 @Module({
-  imports: [FulfillmentModule],
+  imports: [FulfillmentModule, SettingsModule],
   providers: [OrdersService],
   controllers: [OrdersController],
 })

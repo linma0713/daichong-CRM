@@ -94,6 +94,46 @@ export const SUBSCRIPTION_STATUS_LABELS: Record<SubscriptionStatus, string> = {
   CANCELLED: '已终止',
 };
 
+// ─── M2 库存与成本 ───
+
+export type ResourceType = 'VIRTUAL_CARD' | 'GIFT_CARD' | 'BALANCE';
+export const RESOURCE_TYPES: ResourceType[] = ['VIRTUAL_CARD', 'GIFT_CARD', 'BALANCE'];
+export const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
+  VIRTUAL_CARD: '虚拟卡',
+  GIFT_CARD: '礼品卡',
+  BALANCE: '账户余额',
+};
+
+export type ResourceTxType = 'TOP_UP' | 'CONSUME' | 'ADJUST';
+export const RESOURCE_TX_TYPES: ResourceTxType[] = ['TOP_UP', 'CONSUME', 'ADJUST'];
+export const RESOURCE_TX_TYPE_LABELS: Record<ResourceTxType, string> = {
+  TOP_UP: '入库',
+  CONSUME: '扣费',
+  ADJUST: '盘点调整',
+};
+
+export type AccountStockStatus = 'IN_STOCK' | 'IN_USE' | 'VOID';
+export const ACCOUNT_STOCK_STATUSES: AccountStockStatus[] = ['IN_STOCK', 'IN_USE', 'VOID'];
+export const ACCOUNT_STOCK_STATUS_LABELS: Record<AccountStockStatus, string> = {
+  IN_STOCK: '在库',
+  IN_USE: '使用中',
+  VOID: '已作废',
+};
+
+export type CostKind = 'UPSTREAM_CHARGE' | 'ACCOUNT_STOCK' | 'OTHER';
+export const COST_KINDS: CostKind[] = ['UPSTREAM_CHARGE', 'ACCOUNT_STOCK', 'OTHER'];
+export const COST_KIND_LABELS: Record<CostKind, string> = {
+  UPSTREAM_CHARGE: '上游扣费',
+  ACCOUNT_STOCK: '成品号成本',
+  OTHER: '其他成本',
+};
+
+/** 按比例 + 固定金额计算手续费；比例用万分比（150 = 1.5%） */
+export function feeOf(amount: number, bp: number, fixed = 0): number {
+  if (amount <= 0) return 0;
+  return Math.round((amount * bp) / 10000) + fixed;
+}
+
 /** 金额（分）显示为 ¥1,234.50 */
 export function formatCents(cents: number, currency: '¥' | '$' = '¥'): string {
   const sign = cents < 0 ? '-' : '';
@@ -102,8 +142,8 @@ export function formatCents(cents: number, currency: '¥' | '$' = '¥'): string 
   return `${sign}${currency}${yuan}.${String(abs % 100).padStart(2, '0')}`;
 }
 
-/** 编号显示：C00012（客户）、D00012（订单）、S00012（订阅）、T00012（任务） */
-export function displayNo(prefix: 'C' | 'D' | 'S' | 'T', no: number): string {
+/** 编号显示：C00012（客户）、D00012（订单）、S00012（订阅）、T00012（任务）、R00012（付款资源） */
+export function displayNo(prefix: 'C' | 'D' | 'S' | 'T' | 'R' | 'G' | 'K', no: number): string {
   return `${prefix}${String(no).padStart(5, '0')}`;
 }
 

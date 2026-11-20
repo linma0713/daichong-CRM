@@ -70,7 +70,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     key: 'inventory',
     name: '库存与成本',
-    available: false,
+    available: true,
     permissions: [
       { code: 'inventory:read', name: '查看付款资源与成品号库存' },
       { code: 'inventory:write', name: '入库 / 调整库存' },
@@ -87,10 +87,15 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   },
   {
     key: 'finance',
-    name: '财务与代理佣金',
+    name: '财务',
+    available: true,
+    permissions: [{ code: 'finance:read', name: '查看成本、毛利与财务报表' }],
+  },
+  {
+    key: 'agent',
+    name: '代理与佣金',
     available: false,
     permissions: [
-      { code: 'finance:read', name: '查看财务报表' },
       { code: 'agent:write', name: '管理代理' },
       { code: 'commission:settle', name: '佣金对账与打款' },
     ],

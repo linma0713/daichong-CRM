@@ -24,18 +24,22 @@ import {
   IsDateString,
   IsEmail,
   IsIn,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
-import { Prisma } from '@prisma/client';
+import { Prisma, type FulfillmentTask, type Order } from '@prisma/client';
 import {
   ALL_PERMISSIONS,
   FULFILLMENT_TYPES,
   SUBSCRIPTION_STATUSES,
   TASK_STATUSES,
   TASK_TYPES,
+  TASK_TYPE_LABELS,
   displayNo,
   parseNo,
   type FulfillmentType,
@@ -65,6 +69,7 @@ import { productName } from '../catalog/catalog';
 import { toCustomerBrief } from '../orders/orders';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service';
+import { LedgerModule, LedgerService } from '../inventory/ledger';
 
 const OPEN: TaskStatus[] = ['PENDING', 'IN_PROGRESS', 'FAILED'];
 /**
@@ -72,6 +77,19 @@ const OPEN: TaskStatus[] = ['PENDING', 'IN_PROGRESS', 'FAILED'];
  * 开通 / 续费跟着订单走；内部续费关系到上游扣费，都不能作废，处理不了就标记失败。
  */
 const CANCELLABLE: TaskType[] = ['CANCEL_AUTO_RENEW', 'RECLAIM_ACCOUNT'];
+
+/**
+ * 完成任务时要不要登记上游扣费：
+ * required 必须登记（代充开通、客户续费、内部续费都会花钱）；
+ * optional 可选（成品号开通一般用库存里已付费的号，号过期了才要重新付）；
+ * none 不涉及扣费。
+ */
+export type ChargeMode = 'required' | 'optional' | 'none';
+export function chargeModeOf(type: TaskType, fulfillmentType: FulfillmentType): ChargeMode {
+  if (type === 'ACTIVATE') return fulfillmentType === 'ACCOUNT' ? 'optional' : 'required';
+  if (type === 'RENEW' || type === 'INTERNAL_RENEW') return 'required';
+  return 'none';
+}
 
 // ─────────────── DTO ───────────────
 
@@ -155,6 +173,38 @@ export class CompleteTaskDto {
   @IsString()
   @MaxLength(1000)
   accountSecretNote?: string;
+
+  @ApiPropertyOptional({
+    description: '成品号开通：从库存里选的成品号 ID（和 accountEmail 二选一）',
+  })
+  @IsOptional()
+  @IsString()
+  stockAccountId?: string;
+
+  @ApiPropertyOptional({ description: '这次上游扣费用的付款资源' })
+  @IsOptional()
+  @IsString()
+  resourceId?: string;
+
+  @ApiPropertyOptional({ description: '上游扣费金额（美分，不含手续费），默认是套餐官方月费' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10_000_00)
+  chargeUsdCents?: number;
+
+  @ApiPropertyOptional({ description: '这次没有产生上游扣费（例如账号本来就在付费期内）' })
+  @IsOptional()
+  @IsBoolean()
+  noCharge?: boolean;
+
+  @ApiPropertyOptional({
+    enum: ['STOCK', 'VOID'],
+    description: '回收成品号：STOCK 回库继续卖（默认）；VOID 作废',
+  })
+  @IsOptional()
+  @IsIn(['STOCK', 'VOID'])
+  reclaimTo?: 'STOCK' | 'VOID';
 }
 
 export class TaskNoteDto {
@@ -211,6 +261,19 @@ export class TaskDto {
   @ApiProperty({ type: AccountBriefDto, nullable: true, description: '要操作的 Claude 账号' })
   account: AccountBriefDto | null;
   @ApiProperty({ type: UserBriefDto, nullable: true }) assignee: UserBriefDto | null;
+  @ApiProperty({ type: String, nullable: true, description: '涉及的套餐（成品号开通按它选库存）' })
+  planId: string | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '套餐官方月费（美分），扣费金额的默认值',
+  })
+  upstreamMonthlyUsdCents: number | null;
+  @ApiProperty({
+    enum: ['required', 'optional', 'none'],
+    description: '完成时是否要登记上游扣费',
+  })
+  chargeMode: ChargeMode;
   @ApiProperty() dueAt: Date;
   @ApiProperty({ description: '未完成且已过最晚完成时间' }) overdue: boolean;
   @ApiProperty() attempts: number;
@@ -236,7 +299,7 @@ const subscriptionSelect = {
   endAt: true,
   upstreamRenewAt: true,
   autoRenewOn: true,
-  plan: { select: { name: true } },
+  plan: { select: { id: true, name: true, upstreamMonthlyUsdCents: true } },
   account: { select: accountBriefSelect },
 } satisfies Prisma.SubscriptionSelect;
 
@@ -253,6 +316,7 @@ const taskInclude = {
       termMonths: true,
       fulfillmentType: true,
       account: { select: accountBriefSelect },
+      product: { select: { plan: { select: { id: true, upstreamMonthlyUsdCents: true } } } },
     },
   },
   subscription: { select: subscriptionSelect },
@@ -262,14 +326,17 @@ type TaskRow = Prisma.FulfillmentTaskGetPayload<{ include: typeof taskInclude }>
 function toTaskDto(t: TaskRow, now = new Date()): TaskDto {
   const sub = t.subscription;
   const account = sub?.account ?? t.order?.account ?? null;
+  const fulfillmentType = (sub?.fulfillmentType ??
+    t.order?.fulfillmentType ??
+    'RECHARGE') as FulfillmentType;
+  // 新开通 / 续费按订单买的套餐（续费可能换套餐），其他任务按订阅当前套餐
+  const plan = t.order?.product.plan ?? sub?.plan ?? null;
   return {
     id: t.id,
     code: displayNo('T', t.no),
     type: t.type,
     status: t.status,
-    fulfillmentType: (sub?.fulfillmentType ??
-      t.order?.fulfillmentType ??
-      'RECHARGE') as FulfillmentType,
+    fulfillmentType,
     customer: toCustomerBrief(t.customer),
     order: t.order
       ? {
@@ -295,6 +362,9 @@ function toTaskDto(t: TaskRow, now = new Date()): TaskDto {
       : null,
     account: account ? toAccountBrief(account) : null,
     assignee: t.assignee,
+    planId: plan?.id ?? null,
+    upstreamMonthlyUsdCents: plan?.upstreamMonthlyUsdCents ?? null,
+    chargeMode: chargeModeOf(t.type, fulfillmentType),
     dueAt: t.dueAt,
     overdue: OPEN.includes(t.status) && t.dueAt.getTime() < now.getTime(),
     attempts: t.attempts,
@@ -307,12 +377,22 @@ function toTaskDto(t: TaskRow, now = new Date()): TaskDto {
 
 const optionalDate = (v?: string) => (v ? new Date(v) : undefined);
 
+/** 完成任务时这次上游扣费要归到哪 */
+interface ChargeTarget {
+  mode: ChargeMode;
+  orderId: string | null;
+  subscriptionId: string;
+  accountId: string;
+  planId: string;
+}
+
 @Injectable()
 export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fulfillment: FulfillmentService,
     private readonly secrets: SecretBox,
+    private readonly ledger: LedgerService,
   ) {}
 
   async list(q: TaskQueryDto, user: AuthUser): Promise<TaskListDto> {
@@ -444,28 +524,40 @@ export class TasksService {
     return this.get(id);
   }
 
-  /** 完成任务，并按任务类型更新订阅、账号和订单 */
+  /** 完成任务，并按任务类型更新订阅、账号和订单；花了钱的任务同时登记上游扣费和成本 */
   async complete(id: string, dto: CompleteTaskDto, user: AuthUser): Promise<TaskDto> {
     const now = new Date();
     await this.prisma.$transaction(async (tx) => {
       const task = await this.lockOpenTask(tx, id, user);
       let subscriptionId = task.subscriptionId;
+      let charge: ChargeTarget | null = null;
       switch (task.type) {
-        case 'ACTIVATE':
-          subscriptionId = await this.completeActivate(tx, task.orderId, dto, now);
+        case 'ACTIVATE': {
+          const r = await this.completeActivate(tx, task.orderId, dto, now, user.id);
+          subscriptionId = r.subscriptionId;
+          charge = r.charge;
           break;
+        }
         case 'RENEW':
-          await this.completeRenew(tx, task.orderId, task.subscriptionId, dto, now);
+          charge = await this.completeRenew(tx, task.orderId, task.subscriptionId, dto, now);
           break;
         case 'INTERNAL_RENEW': {
           const sub = await this.requireSubscription(tx, task.subscriptionId);
+          const chargeAt = sub.upstreamRenewAt ?? now;
           await tx.subscription.update({
             where: { id: sub.id },
             data: {
-              upstreamRenewAt:
-                optionalDate(dto.upstreamRenewAt) ?? addMonths(sub.upstreamRenewAt ?? now, 1),
+              upstreamRenewAt: optionalDate(dto.upstreamRenewAt) ?? addMonths(chargeAt, 1),
             },
           });
+          // 这次扣费的成本归到服务期覆盖扣费日的那笔订单
+          charge = {
+            mode: 'required',
+            orderId: await this.ledger.orderForPeriod(tx, sub.id, chargeAt),
+            subscriptionId: sub.id,
+            accountId: sub.accountId,
+            planId: sub.planId,
+          };
           break;
         }
         case 'CANCEL_AUTO_RENEW': {
@@ -479,10 +571,18 @@ export class TasksService {
           if (sub.status === 'ACTIVE') {
             throw badRequest('订阅还在服务中（客户可能已经续费），不能回收');
           }
+          const toStock = (dto.reclaimTo ?? 'STOCK') === 'STOCK';
           await tx.claudeAccount.update({
             where: { id: sub.accountId },
             data: {
               customerId: null,
+              stockStatus: toStock ? 'IN_STOCK' : 'VOID',
+              planId: sub.planId,
+              // 之前的成本都已经归到客户的订单上了，回库从 0 开始算
+              stockCostCents: 0,
+              // 上游已经付费到这一天；之后再发给别人时按它判断要不要重新付费
+              upstreamRenewAt: sub.upstreamRenewAt,
+              stockedAt: now,
               ...(dto.accountPassword
                 ? { passwordEnc: this.secrets.encrypt(dto.accountPassword) }
                 : {}),
@@ -493,6 +593,7 @@ export class TasksService {
           break;
         }
       }
+      if (charge) await this.recordCharge(tx, task, charge, dto, user.id);
       await tx.fulfillmentTask.update({
         where: { id },
         data: {
@@ -508,6 +609,37 @@ export class TasksService {
     return this.get(id);
   }
 
+  /** 登记这次任务的上游扣费：扣付款资源余额，按平均成本把人民币成本记到订单上 */
+  private async recordCharge(
+    tx: Tx,
+    task: FulfillmentTask,
+    target: ChargeTarget,
+    dto: CompleteTaskDto,
+    userId: string,
+  ): Promise<void> {
+    if (target.mode === 'none' || dto.noCharge) return;
+    if (!dto.resourceId) {
+      if (target.mode === 'required' && (await this.ledger.hasActiveResources(tx))) {
+        throw badRequest(
+          '请选择这次上游扣费用的付款资源；如果这次没有扣费，请勾选「本次未扣费」',
+          'CHARGE_REQUIRED',
+        );
+      }
+      return;
+    }
+    const plan = await tx.plan.findUniqueOrThrow({ where: { id: target.planId } });
+    await this.ledger.chargeUpstream(tx, {
+      resourceId: dto.resourceId,
+      usdCents: dto.chargeUsdCents ?? plan.upstreamMonthlyUsdCents,
+      orderId: target.orderId,
+      subscriptionId: target.subscriptionId,
+      taskId: task.id,
+      accountId: target.accountId,
+      note: `${TASK_TYPE_LABELS[task.type]} ${displayNo('T', task.no)}`,
+      userId,
+    });
+  }
+
   // ─── 各类任务的完成逻辑 ───
 
   private async completeActivate(
@@ -515,17 +647,21 @@ export class TasksService {
     orderId: string | null,
     dto: CompleteTaskDto,
     now: Date,
-  ): Promise<string> {
+    userId: string,
+  ): Promise<{ subscriptionId: string; charge: ChargeTarget }> {
     const order = await tx.order.findUnique({ where: { id: orderId ?? '' } });
     if (!order || order.status !== 'FULFILLING') throw badRequest('订单不在「开通中」状态');
     const [product, customer] = await Promise.all([
-      tx.product.findUniqueOrThrow({ where: { id: order.productId } }),
+      tx.product.findUniqueOrThrow({ where: { id: order.productId }, include: { plan: true } }),
       tx.customer.findUniqueOrThrow({ where: { id: order.customerId } }),
     ]);
 
     let accountId = order.accountId;
+    let stockRenewAt: Date | null = null;
     if (order.fulfillmentType === 'ACCOUNT') {
-      accountId = await this.deliverCompanyAccount(tx, order.customerId, dto);
+      const delivered = await this.deliverCompanyAccount(tx, order, product.plan, dto, now, userId);
+      accountId = delivered.accountId;
+      stockRenewAt = delivered.upstreamRenewAt;
     }
     if (!accountId) throw badRequest('订单没有登记 Claude 账号');
     const busy = await tx.subscription.findFirst({ where: { accountId, status: 'ACTIVE' } });
@@ -535,6 +671,7 @@ export class TasksService {
 
     const startAt = optionalDate(dto.activatedAt) ?? now;
     if (startAt.getTime() > now.getTime() + 60_000) throw badRequest('开通时间不能晚于现在');
+    const endAt = addMonths(startAt, order.termMonths);
     const sub = await tx.subscription.create({
       data: {
         customerId: order.customerId,
@@ -543,8 +680,12 @@ export class TasksService {
         fulfillmentType: order.fulfillmentType,
         status: 'ACTIVE',
         startAt,
-        endAt: addMonths(startAt, order.termMonths),
-        upstreamRenewAt: optionalDate(dto.upstreamRenewAt) ?? addMonths(startAt, 1),
+        endAt,
+        // 成品号在库时已经付费到某天的，接着按那天算；否则从开通起一个月后扣费
+        upstreamRenewAt:
+          optionalDate(dto.upstreamRenewAt) ??
+          (dto.resourceId ? null : stockRenewAt) ??
+          addMonths(startAt, 1),
         autoRenewOn: true,
         ownerId: customer.ownerId,
         teamId: customer.teamId,
@@ -559,9 +700,20 @@ export class TasksService {
         accountEmail: sub.account.email,
         status: 'COMPLETED',
         completedAt: now,
+        periodStartAt: startAt,
+        periodEndAt: endAt,
       },
     });
-    return sub.id;
+    return {
+      subscriptionId: sub.id,
+      charge: {
+        mode: chargeModeOf('ACTIVATE', order.fulfillmentType),
+        orderId: order.id,
+        subscriptionId: sub.id,
+        accountId,
+        planId: product.planId,
+      },
+    };
   }
 
   private async completeRenew(
@@ -570,7 +722,7 @@ export class TasksService {
     subscriptionId: string | null,
     dto: CompleteTaskDto,
     now: Date,
-  ): Promise<void> {
+  ): Promise<ChargeTarget> {
     const order = await tx.order.findUnique({ where: { id: orderId ?? '' } });
     if (!order || order.status !== 'FULFILLING') throw badRequest('订单不在「开通中」状态');
     const sub = await this.requireSubscription(tx, subscriptionId);
@@ -586,50 +738,101 @@ export class TasksService {
       { upstreamRenewAt: optionalDate(dto.upstreamRenewAt) },
       now,
     );
+    return {
+      mode: 'required',
+      orderId: order.id,
+      subscriptionId: sub.id,
+      accountId: sub.accountId,
+      planId: product.planId,
+    };
   }
 
-  /** 成品号开通：登记（或复用回收回来的）公司账号，并交付给客户 */
+  /**
+   * 成品号开通：从库存选号（或登记一个新号）交付给客户。
+   * 在库期间累计的备号成本在这里结转到订单。
+   */
   private async deliverCompanyAccount(
     tx: Tx,
-    customerId: string,
+    order: Order,
+    plan: { id: string; name: string },
     dto: CompleteTaskDto,
-  ): Promise<string> {
-    if (!dto.accountEmail) throw badRequest('成品号开通要填写交付的账号邮箱');
-    const email = dto.accountEmail.trim().toLowerCase();
-    const existing = await tx.claudeAccount.findUnique({
-      where: { email },
-      include: { customer: { select: { no: true } } },
-    });
+    now: Date,
+    userId: string,
+  ): Promise<{ accountId: string; upstreamRenewAt: Date | null }> {
     const secretNoteEnc = dto.accountSecretNote
       ? { secretNoteEnc: this.secrets.encrypt(dto.accountSecretNote) }
       : {};
-    if (!existing) {
-      if (!dto.accountPassword) throw badRequest('新的成品号要填写登录密码');
-      const created = await tx.claudeAccount.create({
-        data: {
-          email,
-          ownership: 'COMPANY',
-          customerId,
-          passwordEnc: this.secrets.encrypt(dto.accountPassword),
-          ...secretNoteEnc,
-        },
-      });
-      return created.id;
+    let existingId: string | null = null;
+    if (dto.stockAccountId) {
+      existingId = dto.stockAccountId;
+    } else {
+      if (!dto.accountEmail) throw badRequest('成品号开通要从库存选一个号，或填写交付的账号邮箱');
+      const email = dto.accountEmail.trim().toLowerCase();
+      const found = await tx.claudeAccount.findUnique({ where: { email }, select: { id: true } });
+      if (!found) {
+        if (!dto.accountPassword) throw badRequest('新的成品号要填写登录密码');
+        const created = await tx.claudeAccount.create({
+          data: {
+            email,
+            ownership: 'COMPANY',
+            customerId: order.customerId,
+            stockStatus: 'IN_USE',
+            planId: plan.id,
+            passwordEnc: this.secrets.encrypt(dto.accountPassword),
+            ...secretNoteEnc,
+          },
+        });
+        return { accountId: created.id, upstreamRenewAt: null };
+      }
+      existingId = found.id;
     }
-    if (existing.ownership !== 'COMPANY')
+
+    // 锁住账号行，避免两个人同时把同一个库存号发出去
+    await tx.$queryRaw`SELECT id FROM "ClaudeAccount" WHERE id = ${existingId} FOR UPDATE`;
+    const existing = await tx.claudeAccount.findUnique({
+      where: { id: existingId },
+      include: { customer: { select: { no: true } }, plan: { select: { name: true } } },
+    });
+    if (!existing) throw badRequest('库存里没有这个成品号');
+    if (existing.ownership !== 'COMPANY') {
       throw badRequest('这个邮箱是客户自己的账号，不能当成品号交付');
-    if (existing.customerId && existing.customerId !== customerId) {
+    }
+    if (existing.stockStatus === 'VOID') throw badRequest('这个成品号已作废，不能再发');
+    if (existing.customerId && existing.customerId !== order.customerId) {
       throw badRequest(`这个成品号正在给客户 ${displayNo('C', existing.customer!.no)} 使用`);
+    }
+    if (existing.planId && existing.planId !== plan.id) {
+      throw badRequest(
+        `这个成品号是 ${existing.plan?.name ?? '其他'} 套餐的库存，订单买的是 ${plan.name}`,
+      );
     }
     await tx.claudeAccount.update({
       where: { id: existing.id },
       data: {
-        customerId,
+        customerId: order.customerId,
+        stockStatus: 'IN_USE',
+        planId: plan.id,
+        stockCostCents: 0,
+        upstreamRenewAt: null,
         ...(dto.accountPassword ? { passwordEnc: this.secrets.encrypt(dto.accountPassword) } : {}),
         ...secretNoteEnc,
       },
     });
-    return existing.id;
+    if (existing.stockCostCents !== 0) {
+      await this.ledger.recordCost(tx, {
+        kind: 'ACCOUNT_STOCK',
+        amountCents: existing.stockCostCents,
+        orderId: order.id,
+        accountId: existing.id,
+        note: `成品号 ${existing.email} 的备号成本`,
+        userId,
+      });
+    }
+    const paidThrough = existing.upstreamRenewAt;
+    return {
+      accountId: existing.id,
+      upstreamRenewAt: paidThrough && paidThrough.getTime() > now.getTime() ? paidThrough : null,
+    };
   }
 
   private async requireSubscription(tx: Tx, id: string | null) {
@@ -756,7 +959,7 @@ export class TasksController {
 }
 
 @Module({
-  imports: [FulfillmentModule],
+  imports: [FulfillmentModule, LedgerModule],
   providers: [TasksService],
   controllers: [TasksController],
 })

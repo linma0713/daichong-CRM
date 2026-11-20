@@ -61,3 +61,12 @@ export function useProducts(activeOnly = false) {
     queryFn: () => unwrap(api.GET('/api/products', { params: { query: { activeOnly } } })),
   });
 }
+
+/** 付款资源（充值员完成任务时选择） */
+export function useResources(enabled = true) {
+  return useQuery({
+    queryKey: ['resources'],
+    queryFn: () => unwrap(api.GET('/api/resources')),
+    enabled,
+  });
+}

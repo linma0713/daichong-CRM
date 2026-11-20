@@ -10,11 +10,21 @@ import {
   IsOptional,
   Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Audit, CurrentUser, RequirePermissions } from '../auth/decorators';
 import type { AuthUser } from '../common/auth-user';
+
+/** 各收款方式的手续费率（万分比，60 = 0.6%） */
+export class PaymentFeeRatesDto {
+  @ApiProperty({ example: 0 }) @IsInt() @Min(0) @Max(2000) wechat: number = 0;
+  @ApiProperty({ example: 0 }) @IsInt() @Min(0) @Max(2000) alipay: number = 0;
+  @ApiProperty({ example: 0 }) @IsInt() @Min(0) @Max(2000) usdt: number = 0;
+  @ApiProperty({ example: 0 }) @IsInt() @Min(0) @Max(2000) bank: number = 0;
+  @ApiProperty({ example: 0 }) @IsInt() @Min(0) @Max(2000) other: number = 0;
+}
 
 /** 业务设置及默认值。新增设置项时在这里加一项即可 */
 export class BusinessSettingsDto {
@@ -51,6 +61,20 @@ export class BusinessSettingsDto {
   @Min(1)
   @Max(10)
   upstreamLeadDays: number = 2;
+
+  @ApiProperty({
+    type: PaymentFeeRatesDto,
+    description: '收款手续费率（万分比），确认收款时按收款方式计算手续费，计入每单成本',
+  })
+  @ValidateNested()
+  @Type(() => PaymentFeeRatesDto)
+  paymentFeeBp: PaymentFeeRatesDto = new PaymentFeeRatesDto();
+
+  @ApiProperty({ description: '每个套餐的成品号在库数量低于这个值时预警', example: 2 })
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  accountStockLow: number = 2;
 }
 
 export class UpdateSettingsDto {
@@ -85,10 +109,30 @@ export class UpdateSettingsDto {
   @Min(1)
   @Max(10)
   upstreamLeadDays?: number;
+
+  @ApiProperty({ required: false, type: PaymentFeeRatesDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PaymentFeeRatesDto)
+  paymentFeeBp?: PaymentFeeRatesDto;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  accountStockLow?: number;
 }
 
 type SettingKey = keyof BusinessSettingsDto;
-const KEYS: SettingKey[] = ['exchangeRate', 'reminderDays', 'activateSlaHours', 'upstreamLeadDays'];
+const KEYS: SettingKey[] = [
+  'exchangeRate',
+  'reminderDays',
+  'activateSlaHours',
+  'upstreamLeadDays',
+  'paymentFeeBp',
+  'accountStockLow',
+];
 
 @Injectable()
 export class SettingsService {
@@ -98,9 +142,13 @@ export class SettingsService {
     const rows = await this.prisma.setting.findMany({ where: { key: { in: KEYS } } });
     const result = new BusinessSettingsDto();
     for (const row of rows) {
-      (result as unknown as Record<string, unknown>)[row.key] = row.value;
+      const value =
+        row.key === 'paymentFeeBp'
+          ? { ...new PaymentFeeRatesDto(), ...(row.value as object) }
+          : row.value;
+      (result as unknown as Record<string, unknown>)[row.key] = value;
     }
-    return { ...result };
+    return { ...result, paymentFeeBp: { ...result.paymentFeeBp } };
   }
 
   async update(dto: UpdateSettingsDto, userId: string): Promise<BusinessSettingsDto> {
@@ -109,7 +157,11 @@ export class SettingsService {
       const value = dto[key];
       if (value === undefined) continue;
       const json = (
-        key === 'reminderDays' ? [...new Set(value as number[])].sort((a, b) => b - a) : value
+        key === 'reminderDays'
+          ? [...new Set(value as number[])].sort((a, b) => b - a)
+          : key === 'paymentFeeBp'
+            ? { ...(value as PaymentFeeRatesDto) }
+            : value
       ) as Prisma.InputJsonValue;
       ops.push(
         this.prisma.setting.upsert({

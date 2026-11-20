@@ -22,7 +22,13 @@ import {
 } from '@crm/shared';
 import { api, unwrap, type QueryOf, type Schemas } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
-import { CustomerLink, Money, OrderKindTag, OrderStatusTag } from '../../components/business';
+import {
+  CustomerLink,
+  Margin,
+  Money,
+  OrderKindTag,
+  OrderStatusTag,
+} from '../../components/business';
 import { formatTime } from '../../components/format';
 
 type Order = Schemas['OrderDto'];
@@ -169,6 +175,22 @@ export function OrderTable({
       ),
     },
     { title: '状态', key: 'status', render: (_, o) => <OrderStatusTag status={o.status} /> },
+    ...(data?.some((o) => o.marginCents !== null)
+      ? [
+          {
+            title: '毛利',
+            key: 'margin',
+            render: (_: unknown, o: Order) =>
+              o.marginCents === null ||
+              o.status === 'PENDING_PAYMENT' ||
+              o.status === 'CANCELLED' ? (
+                '—'
+              ) : (
+                <Margin cents={o.marginCents} />
+              ),
+          },
+        ]
+      : []),
     { title: '负责客服', key: 'owner', render: (_, o) => o.owner.displayName },
   ];
   return (
