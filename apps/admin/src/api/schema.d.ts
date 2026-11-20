@@ -160,6 +160,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 在职员工下拉选项 */
+        get: operations["Staff_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/permissions": {
         parameters: {
             query?: never;
@@ -258,6 +275,456 @@ export interface paths {
         };
         /** 健康检查（部署和监控用） */
         get: operations["Health_check"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 业务设置（所有员工可查看） */
+        get: operations["Settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 修改业务设置 */
+        patch: operations["Settings_update"];
+        trace?: never;
+    };
+    "/api/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 套餐列表（所有员工可查看） */
+        get: operations["Catalog_listPlans"];
+        put?: never;
+        /** 新增套餐 */
+        post: operations["Catalog_createPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 修改套餐（名称、官方月费、上下架） */
+        patch: operations["Catalog_updatePlan"];
+        trace?: never;
+    };
+    "/api/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 商品列表（所有员工可查看，下单时选择） */
+        get: operations["Catalog_listProducts"];
+        put?: never;
+        /** 新增商品（套餐 × 时长 × 履约方式） */
+        post: operations["Catalog_createProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 修改商品售价或上下架（只影响之后的订单） */
+        patch: operations["Catalog_updateProduct"];
+        trace?: never;
+    };
+    "/api/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 客户列表（按数据范围） */
+        get: operations["Customers_list"];
+        put?: never;
+        /** 新增客户 */
+        post: operations["Customers_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 客户详情（含跟进记录） */
+        get: operations["Customers_get"];
+        put?: never;
+        post?: never;
+        /** 删除客户（只能删没有订单的） */
+        delete: operations["Customers_remove"];
+        options?: never;
+        head?: never;
+        /** 修改客户资料 */
+        patch: operations["Customers_update"];
+        trace?: never;
+    };
+    "/api/customers/{id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 更换负责人（名下订阅一起转） */
+        post: operations["Customers_transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customers/{id}/follow-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 记录跟进 / 续费提醒 */
+        post: operations["Customers_addFollowUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 订单列表（按数据范围） */
+        get: operations["Orders_list"];
+        put?: never;
+        /** 录入订单（新购 / 续费） */
+        post: operations["Orders_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 订单详情（含收款记录和任务） */
+        get: operations["Orders_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 确认收款（收齐后自动派开通 / 续费任务） */
+        post: operations["Orders_addPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 取消订单（只能取消没收过款的） */
+        post: operations["Orders_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 任务列表（任务工作台） */
+        get: operations["Tasks_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 任务详情 */
+        get: operations["Tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 领取 / 开始处理 */
+        post: operations["Tasks_claim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 转交给其他充值员，或放回任务池 */
+        post: operations["Tasks_assign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 完成任务（自动更新订阅、账号和订单） */
+        post: operations["Tasks_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}/fail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 标记失败（之后可以重新处理） */
+        post: operations["Tasks_fail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 作废「取消自动续订 / 回收成品号」任务 */
+        post: operations["Tasks_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 订阅列表（到期提醒、即将到期） */
+        get: operations["Subscriptions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/subscriptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 订阅详情（订单、任务、提醒记录） */
+        get: operations["Subscriptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 手动校正订阅（到期时间、上游扣费时间、自动续订、状态） */
+        patch: operations["Subscriptions_update"];
+        trace?: never;
+    };
+    "/api/accounts/{id}/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查看账号密码等敏感信息（每次查看都记录操作日志） */
+        get: operations["Accounts_reveal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 修改账号密码、敏感信息或备注 */
+        patch: operations["Accounts_update"];
+        trace?: never;
+    };
+    "/api/jobs/sweep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 立即运行一次到期巡检（平时每小时自动运行） */
+        post: operations["Jobs_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 首页统计（按权限返回对应板块） */
+        get: operations["Dashboard_summary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -389,6 +856,13 @@ export interface components {
             /** @description 新的初始密码。密码至少 8 位，需同时包含字母和数字 */
             password: string;
         };
+        StaffOptionDto: {
+            id: string;
+            displayName: string;
+            teamId: string | null;
+            /** @description 能处理开通任务（有充值员权限） */
+            canFulfill: boolean;
+        };
         PermissionItemDto: {
             code: string;
             name: string;
@@ -452,6 +926,602 @@ export interface components {
             status: string;
             /** @example up */
             database: string;
+        };
+        BusinessSettingsDto: {
+            /**
+             * @description 美元兑人民币汇率，用于估算成本和毛利
+             * @example 7.2
+             */
+            exchangeRate: number;
+            /**
+             * @description 到期前几天提醒客服跟进续费
+             * @example [
+             *       7,
+             *       3,
+             *       1
+             *     ]
+             */
+            reminderDays: number[];
+            /**
+             * @description 开通 / 续费任务要在收款后几小时内完成
+             * @example 2
+             */
+            activateSlaHours: number;
+            /**
+             * @description 上游扣费前几天生成内部续费或取消自动续订任务
+             * @example 2
+             */
+            upstreamLeadDays: number;
+        };
+        UpdateSettingsDto: {
+            exchangeRate?: number;
+            reminderDays?: number[];
+            activateSlaHours?: number;
+            upstreamLeadDays?: number;
+        };
+        PlanDto: {
+            id: string;
+            /** @example MAX */
+            code: string;
+            /** @example Max */
+            name: string;
+            /** @description 官方月费（美分），例如 10000 = $100 */
+            upstreamMonthlyUsdCents: number;
+            sort: number;
+            active: boolean;
+        };
+        SavePlanDto: {
+            /**
+             * @description 套餐编码，大写字母、数字或下划线
+             * @example MAX
+             */
+            code: string;
+            /** @example Max */
+            name: string;
+            /** @description 官方月费（美分） */
+            upstreamMonthlyUsdCents: number;
+            sort?: number;
+            active?: boolean;
+        };
+        UpdatePlanDto: {
+            name?: string;
+            upstreamMonthlyUsdCents?: number;
+            sort?: number;
+            active?: boolean;
+        };
+        /** @enum {string} */
+        FulfillmentType: "RECHARGE" | "ACCOUNT";
+        ProductDto: {
+            id: string;
+            /** @example Max 季付（代充） */
+            name: string;
+            planId: string;
+            planName: string;
+            /** @description 服务时长（月） */
+            termMonths: number;
+            fulfillmentType: components["schemas"]["FulfillmentType"];
+            /** @description 售价（分） */
+            priceCents: number;
+            /** @description 按当前汇率估算的上游成本（分），不含付款手续费 */
+            estCostCents: number;
+            /** @description 估算毛利（分）= 售价 − 估算成本 */
+            estMarginCents: number;
+            active: boolean;
+        };
+        CreateProductDto: {
+            planId: string;
+            /**
+             * @description 服务时长（月）
+             * @example 3
+             */
+            termMonths: number;
+            fulfillmentType: components["schemas"]["FulfillmentType"];
+            /** @description 售价（分） */
+            priceCents: number;
+            active?: boolean;
+        };
+        UpdateProductDto: {
+            /** @description 售价（分）。只影响之后的订单 */
+            priceCents?: number;
+            active?: boolean;
+        };
+        UserBriefDto: {
+            id: string;
+            displayName: string;
+        };
+        CustomerRefDto: {
+            id: string;
+            code: string;
+            name: string;
+        };
+        CustomerDto: {
+            id: string;
+            /** @example C00012 */
+            code: string;
+            name: string;
+            wechat: string | null;
+            telegram: string | null;
+            email: string | null;
+            phone: string | null;
+            /** @enum {string} */
+            source: "organic" | "referral" | "agent" | "ads" | "other";
+            tags: string[];
+            remark: string | null;
+            owner: components["schemas"]["UserBriefDto"];
+            referrer: components["schemas"]["CustomerRefDto"] | null;
+            /** @description 服务中的订阅数 */
+            activeSubscriptionCount: number;
+            /** @description 最近一个到期时间 */
+            nextExpiryAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CustomerListDto: {
+            items: components["schemas"]["CustomerDto"][];
+            total: number;
+        };
+        FollowUpDto: {
+            id: string;
+            /** @enum {string} */
+            kind: "note" | "renewal_reminder";
+            content: string;
+            user: components["schemas"]["UserBriefDto"];
+            subscriptionId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CustomerDetailDto: {
+            id: string;
+            /** @example C00012 */
+            code: string;
+            name: string;
+            wechat: string | null;
+            telegram: string | null;
+            email: string | null;
+            phone: string | null;
+            /** @enum {string} */
+            source: "organic" | "referral" | "agent" | "ads" | "other";
+            tags: string[];
+            remark: string | null;
+            owner: components["schemas"]["UserBriefDto"];
+            referrer: components["schemas"]["CustomerRefDto"] | null;
+            /** @description 服务中的订阅数 */
+            activeSubscriptionCount: number;
+            /** @description 最近一个到期时间 */
+            nextExpiryAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description 最近 50 条跟进记录 */
+            followUps: components["schemas"]["FollowUpDto"][];
+        };
+        CreateCustomerDto: {
+            wechat?: string | null;
+            telegram?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            /** @enum {string} */
+            source?: "organic" | "referral" | "agent" | "ads" | "other";
+            /** @description 推荐人（老客户 ID） */
+            referrerId?: string | null;
+            tags?: string[];
+            remark?: string | null;
+            /** @example 王先生 */
+            name: string;
+            /** @description 负责人，不填为自己；指定他人需要「全部数据」或同组范围 */
+            ownerId?: string;
+        };
+        UpdateCustomerDto: {
+            wechat?: string | null;
+            telegram?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            /** @enum {string} */
+            source?: "organic" | "referral" | "agent" | "ads" | "other";
+            /** @description 推荐人（老客户 ID） */
+            referrerId?: string | null;
+            tags?: string[];
+            remark?: string | null;
+            name?: string;
+        };
+        TransferCustomerDto: {
+            /** @description 新的负责人 */
+            ownerId: string;
+        };
+        CreateFollowUpDto: {
+            /** @example 已微信提醒续费，客户说周末付款 */
+            content: string;
+            /** @enum {string} */
+            kind?: "note" | "renewal_reminder";
+            /** @description 关联的订阅（续费提醒时填写） */
+            subscriptionId?: string;
+        };
+        /** @enum {string} */
+        OrderStatus: "PENDING_PAYMENT" | "FULFILLING" | "COMPLETED" | "CANCELLED";
+        /** @enum {string} */
+        OrderKind: "NEW" | "RENEWAL";
+        CustomerBriefDto: {
+            id: string;
+            /** @example C00012 */
+            code: string;
+            name: string;
+            wechat: string | null;
+            telegram: string | null;
+        };
+        RefDto: {
+            id: string;
+            code: string;
+        };
+        OrderDto: {
+            id: string;
+            /** @example D00012 */
+            code: string;
+            kind: components["schemas"]["OrderKind"];
+            status: components["schemas"]["OrderStatus"];
+            customer: components["schemas"]["CustomerBriefDto"];
+            productId: string;
+            /** @example Max 季付（代充） */
+            productName: string;
+            planName: string;
+            termMonths: number;
+            fulfillmentType: components["schemas"]["FulfillmentType"];
+            listPriceCents: number;
+            discountCents: number;
+            /** @description 应收（分） */
+            amountCents: number;
+            /** @description 已收（分） */
+            paidCents: number;
+            accountId: string | null;
+            accountEmail: string | null;
+            subscription: components["schemas"]["RefDto"] | null;
+            /** @description 负责客服 */
+            owner: components["schemas"]["UserBriefDto"];
+            createdBy: components["schemas"]["UserBriefDto"];
+            remark: string | null;
+            paidAt: string | null;
+            completedAt: string | null;
+            cancelledAt: string | null;
+            cancelReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OrderListDto: {
+            items: components["schemas"]["OrderDto"][];
+            total: number;
+        };
+        PaymentDto: {
+            id: string;
+            amountCents: number;
+            /** @enum {string} */
+            method: "wechat" | "alipay" | "usdt" | "bank" | "other";
+            reference: string | null;
+            /** Format: date-time */
+            receivedAt: string;
+            confirmedBy: components["schemas"]["UserBriefDto"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @enum {string} */
+        TaskType: "ACTIVATE" | "RENEW" | "INTERNAL_RENEW" | "CANCEL_AUTO_RENEW" | "RECLAIM_ACCOUNT";
+        /** @enum {string} */
+        TaskStatus: "PENDING" | "IN_PROGRESS" | "DONE" | "FAILED" | "CANCELLED";
+        TaskBriefDto: {
+            id: string;
+            code: string;
+            type: components["schemas"]["TaskType"];
+            status: components["schemas"]["TaskStatus"];
+            assignee: components["schemas"]["UserBriefDto"] | null;
+            /** Format: date-time */
+            dueAt: string;
+            finishedAt: string | null;
+            note: string | null;
+        };
+        OrderDetailDto: {
+            id: string;
+            /** @example D00012 */
+            code: string;
+            kind: components["schemas"]["OrderKind"];
+            status: components["schemas"]["OrderStatus"];
+            customer: components["schemas"]["CustomerBriefDto"];
+            productId: string;
+            /** @example Max 季付（代充） */
+            productName: string;
+            planName: string;
+            termMonths: number;
+            fulfillmentType: components["schemas"]["FulfillmentType"];
+            listPriceCents: number;
+            discountCents: number;
+            /** @description 应收（分） */
+            amountCents: number;
+            /** @description 已收（分） */
+            paidCents: number;
+            accountId: string | null;
+            accountEmail: string | null;
+            subscription: components["schemas"]["RefDto"] | null;
+            /** @description 负责客服 */
+            owner: components["schemas"]["UserBriefDto"];
+            createdBy: components["schemas"]["UserBriefDto"];
+            remark: string | null;
+            paidAt: string | null;
+            completedAt: string | null;
+            cancelledAt: string | null;
+            cancelReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            payments: components["schemas"]["PaymentDto"][];
+            tasks: components["schemas"]["TaskBriefDto"][];
+        };
+        CreateOrderDto: {
+            customerId: string;
+            kind: components["schemas"]["OrderKind"];
+            productId: string;
+            /** @description 续费订单：要续费的订阅 */
+            subscriptionId?: string;
+            /**
+             * @description 优惠（分）
+             * @default 0
+             */
+            discountCents: number;
+            /** @description 代充新购：客户的 Claude 账号邮箱 */
+            accountEmail?: string;
+            /** @description 代充新购：客户的 Claude 账号密码（加密保存） */
+            accountPassword?: string;
+            remark?: string;
+        };
+        AddPaymentDto: {
+            /** @description 收款金额（分） */
+            amountCents: number;
+            /** @enum {string} */
+            method: "wechat" | "alipay" | "usdt" | "bank" | "other";
+            /** @description 转账单号或备注 */
+            reference?: string;
+            /** @description 到账时间，不填为现在 */
+            receivedAt?: string;
+        };
+        CancelOrderDto: {
+            /** @example 客户不买了 */
+            reason: string;
+        };
+        TaskOrderDto: {
+            id: string;
+            code: string;
+            kind: components["schemas"]["OrderKind"];
+            status: components["schemas"]["OrderStatus"];
+            productName: string;
+            termMonths: number;
+        };
+        /** @enum {string} */
+        SubscriptionStatus: "ACTIVE" | "EXPIRED" | "CANCELLED";
+        TaskSubscriptionDto: {
+            id: string;
+            code: string;
+            planName: string;
+            status: components["schemas"]["SubscriptionStatus"];
+            /** Format: date-time */
+            startAt: string;
+            /** Format: date-time */
+            endAt: string;
+            upstreamRenewAt: string | null;
+            autoRenewOn: boolean;
+        };
+        AccountBriefDto: {
+            id: string;
+            email: string;
+            /**
+             * @description CUSTOMER 客户自己的号 / COMPANY 成品号
+             * @enum {string}
+             */
+            ownership: "CUSTOMER" | "COMPANY";
+            /** @description 是否录入了密码（明文要单独查看） */
+            hasPassword: boolean;
+            /** @description 是否录入了其他敏感信息 */
+            hasSecretNote: boolean;
+        };
+        TaskDto: {
+            id: string;
+            /** @example T00012 */
+            code: string;
+            type: components["schemas"]["TaskType"];
+            status: components["schemas"]["TaskStatus"];
+            fulfillmentType: components["schemas"]["FulfillmentType"];
+            customer: components["schemas"]["CustomerBriefDto"];
+            order: components["schemas"]["TaskOrderDto"] | null;
+            subscription: components["schemas"]["TaskSubscriptionDto"] | null;
+            /** @description 要操作的 Claude 账号 */
+            account: components["schemas"]["AccountBriefDto"] | null;
+            assignee: components["schemas"]["UserBriefDto"] | null;
+            /** Format: date-time */
+            dueAt: string;
+            /** @description 未完成且已过最晚完成时间 */
+            overdue: boolean;
+            attempts: number;
+            note: string | null;
+            startedAt: string | null;
+            finishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        TaskListDto: {
+            items: components["schemas"]["TaskDto"][];
+            total: number;
+        };
+        AssignTaskDto: {
+            /** @description 不填或 null = 放回任务池 */
+            assigneeId?: string | null;
+        };
+        CompleteTaskDto: {
+            /** @description 处理结果备注 */
+            note?: string;
+            /** @description 新开通：实际开通时间（服务期从这里开始算），默认现在 */
+            activatedAt?: string;
+            /** @description 上游（官方）下次扣费时间。不填时：开通 = 开通时间 + 1 个月；内部续费 = 原扣费时间 + 1 个月 */
+            upstreamRenewAt?: string;
+            /** @description 成品号开通：交付给客户的账号邮箱 */
+            accountEmail?: string;
+            /** @description 成品号开通 / 回收后改密：账号密码（加密保存） */
+            accountPassword?: string;
+            /** @description 成品号：恢复邮箱、备用码等其他敏感信息（加密保存） */
+            accountSecretNote?: string;
+        };
+        TaskNoteDto: {
+            /** @example 客户账号被风控，等客户换号 */
+            note: string;
+        };
+        SubscriptionDto: {
+            id: string;
+            /** @example S00012 */
+            code: string;
+            customer: components["schemas"]["CustomerBriefDto"];
+            account: components["schemas"]["AccountBriefDto"];
+            planId: string;
+            planName: string;
+            fulfillmentType: components["schemas"]["FulfillmentType"];
+            status: components["schemas"]["SubscriptionStatus"];
+            /** Format: date-time */
+            startAt: string;
+            /** Format: date-time */
+            endAt: string;
+            upstreamRenewAt: string | null;
+            autoRenewOn: boolean;
+            /** @description 负责续费提醒的客服 */
+            owner: components["schemas"]["UserBriefDto"];
+            /** @description 剩余天数；0 = 今天到期，负数 = 已到期天数 */
+            daysLeft: number;
+            /** @description 是否需要提醒客户续费 */
+            needsReminder: boolean;
+            lastRemindedAt: string | null;
+            /** @description 未完成的续费订单 */
+            openRenewalOrder: components["schemas"]["RefDto"] | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SubscriptionListDto: {
+            items: components["schemas"]["SubscriptionDto"][];
+            total: number;
+        };
+        SubscriptionOrderDto: {
+            id: string;
+            code: string;
+            kind: components["schemas"]["OrderKind"];
+            status: components["schemas"]["OrderStatus"];
+            productName: string;
+            amountCents: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SubscriptionDetailDto: {
+            id: string;
+            /** @example S00012 */
+            code: string;
+            customer: components["schemas"]["CustomerBriefDto"];
+            account: components["schemas"]["AccountBriefDto"];
+            planId: string;
+            planName: string;
+            fulfillmentType: components["schemas"]["FulfillmentType"];
+            status: components["schemas"]["SubscriptionStatus"];
+            /** Format: date-time */
+            startAt: string;
+            /** Format: date-time */
+            endAt: string;
+            upstreamRenewAt: string | null;
+            autoRenewOn: boolean;
+            /** @description 负责续费提醒的客服 */
+            owner: components["schemas"]["UserBriefDto"];
+            /** @description 剩余天数；0 = 今天到期，负数 = 已到期天数 */
+            daysLeft: number;
+            /** @description 是否需要提醒客户续费 */
+            needsReminder: boolean;
+            lastRemindedAt: string | null;
+            /** @description 未完成的续费订单 */
+            openRenewalOrder: components["schemas"]["RefDto"] | null;
+            /** Format: date-time */
+            createdAt: string;
+            orders: components["schemas"]["SubscriptionOrderDto"][];
+            tasks: components["schemas"]["TaskBriefDto"][];
+            /** @description 续费提醒记录 */
+            reminders: components["schemas"]["FollowUpDto"][];
+        };
+        UpdateSubscriptionDto: {
+            /** @description 服务到期时间 */
+            endAt?: string;
+            /** @description 上游下次扣费时间 */
+            upstreamRenewAt?: string | null;
+            /** @description 上游自动续订是否开着 */
+            autoRenewOn?: boolean;
+            status?: components["schemas"]["SubscriptionStatus"];
+            /**
+             * @description 修改原因（记入操作日志）
+             * @example 上游实际扣费日是 12 月 3 日
+             */
+            reason: string;
+        };
+        AccountSecretDto: {
+            email: string;
+            password: string | null;
+            secretNote: string | null;
+        };
+        UpdateAccountDto: {
+            /** @description 新密码（加密保存）；传空字符串表示清除 */
+            password?: string;
+            /** @description 其他敏感信息（加密保存）；传空字符串表示清除 */
+            secretNote?: string;
+            remark?: string | null;
+        };
+        SweepResultDto: {
+            /** @description 另一个巡检正在运行，这次跳过 */
+            skipped: boolean;
+            /** @description 标记为已到期的订阅数 */
+            expired: number;
+            /** @description 新建的「回收成品号」任务数 */
+            reclaimTasks: number;
+            /** @description 新建的「内部续费」任务数 */
+            internalRenewTasks: number;
+            /** @description 新建的「取消自动续订」任务数 */
+            cancelAutoRenewTasks: number;
+        };
+        OrderStatsDto: {
+            /** @description 待收款订单数 */
+            pendingPayment: number;
+            /** @description 已收款、开通中的订单数 */
+            fulfilling: number;
+            /** @description 今天新录入的订单数 */
+            todayOrders: number;
+            /** @description 今天确认的收款（分） */
+            todayReceivedCents: number;
+            /** @description 本月确认的收款（分） */
+            monthReceivedCents: number;
+        };
+        TaskStatsDto: {
+            /** @description 分给我的未完成任务 */
+            mine: number;
+            /** @description 任务池里没人领的 */
+            unassigned: number;
+            /** @description 已超时未完成 */
+            overdue: number;
+            /** @description 全部未完成 */
+            open: number;
+        };
+        SubscriptionStatsDto: {
+            /** @description 服务中 */
+            active: number;
+            /** @description 7 天内到期 */
+            expiringIn7Days: number;
+            /** @description 需要提醒续费（我负责的） */
+            needsReminder: number;
+            /** @description 需要提醒续费（数据范围内全部） */
+            needsReminderAll: number;
+        };
+        CustomerStatsDto: {
+            total: number;
+            /** @description 本月新增 */
+            newThisMonth: number;
+        };
+        DashboardDto: {
+            /** @description 有「查看订单」权限时返回 */
+            orders: components["schemas"]["OrderStatsDto"] | null;
+            /** @description 有「处理开通任务」权限时返回 */
+            tasks: components["schemas"]["TaskStatsDto"] | null;
+            subscriptions: components["schemas"]["SubscriptionStatsDto"] | null;
+            customers: components["schemas"]["CustomerStatsDto"] | null;
         };
     };
     responses: never;
@@ -741,6 +1811,25 @@ export interface operations {
             };
         };
     };
+    Staff_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffOptionDto"][];
+                };
+            };
+        };
+    };
     Roles_catalog: {
         parameters: {
             query?: never;
@@ -951,6 +2040,813 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthDto"];
+                };
+            };
+        };
+    };
+    Settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSettingsDto"];
+                };
+            };
+        };
+    };
+    Settings_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSettingsDto"];
+                };
+            };
+        };
+    };
+    Catalog_listPlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDto"][];
+                };
+            };
+        };
+    };
+    Catalog_createPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavePlanDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDto"];
+                };
+            };
+        };
+    };
+    Catalog_updatePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlanDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDto"];
+                };
+            };
+        };
+    };
+    Catalog_listProducts: {
+        parameters: {
+            query?: {
+                /** @description 只看在售商品 */
+                activeOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDto"][];
+                };
+            };
+        };
+    };
+    Catalog_createProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDto"];
+                };
+            };
+        };
+    };
+    Catalog_updateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProductDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDto"];
+                };
+            };
+        };
+    };
+    Customers_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description 编号、称呼、微信、Telegram、邮箱或手机号 */
+                keyword?: string;
+                source?: "organic" | "referral" | "agent" | "ads" | "other";
+                /** @description 负责人 */
+                ownerId?: string;
+                tag?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerListDto"];
+                };
+            };
+        };
+    };
+    Customers_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDto"];
+                };
+            };
+        };
+    };
+    Customers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailDto"];
+                };
+            };
+        };
+    };
+    Customers_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Customers_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDto"];
+                };
+            };
+        };
+    };
+    Customers_transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailDto"];
+                };
+            };
+        };
+    };
+    Customers_addFollowUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFollowUpDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowUpDto"];
+                };
+            };
+        };
+    };
+    Orders_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description 订单编号或客户称呼 */
+                keyword?: string;
+                status?: components["schemas"]["OrderStatus"];
+                kind?: components["schemas"]["OrderKind"];
+                customerId?: string;
+                subscriptionId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderListDto"];
+                };
+            };
+        };
+    };
+    Orders_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrderDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetailDto"];
+                };
+            };
+        };
+    };
+    Orders_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetailDto"];
+                };
+            };
+        };
+    };
+    Orders_addPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddPaymentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetailDto"];
+                };
+            };
+        };
+    };
+    Orders_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelOrderDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetailDto"];
+                };
+            };
+        };
+    };
+    Tasks_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description open 未完成（待处理 / 处理中 / 失败）；closed 已完成或已取消 */
+                view?: "open" | "closed" | "all";
+                status?: components["schemas"]["TaskStatus"];
+                type?: components["schemas"]["TaskType"];
+                /** @description me 我的；unassigned 任务池（未分配）；或员工 ID */
+                assignee?: string;
+                /** @description 只看已超时的 */
+                overdue?: boolean;
+                /** @description 任务编号、客户称呼或账号邮箱 */
+                keyword?: string;
+                subscriptionId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskListDto"];
+                };
+            };
+        };
+    };
+    Tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDto"];
+                };
+            };
+        };
+    };
+    Tasks_claim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDto"];
+                };
+            };
+        };
+    };
+    Tasks_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignTaskDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDto"];
+                };
+            };
+        };
+    };
+    Tasks_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteTaskDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDto"];
+                };
+            };
+        };
+    };
+    Tasks_fail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskNoteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDto"];
+                };
+            };
+        };
+    };
+    Tasks_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskNoteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDto"];
+                };
+            };
+        };
+    };
+    Subscriptions_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description 订阅编号、客户称呼或账号邮箱 */
+                keyword?: string;
+                status?: components["schemas"]["SubscriptionStatus"];
+                fulfillmentType?: components["schemas"]["FulfillmentType"];
+                customerId?: string;
+                /** @description 负责客服 */
+                ownerId?: string;
+                /** @description 只看 N 天内到期（服务中）的 */
+                expiringDays?: number;
+                /** @description 只看需要提醒续费的（按业务设置里的提醒节奏） */
+                needsReminder?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionListDto"];
+                };
+            };
+        };
+    };
+    Subscriptions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionDetailDto"];
+                };
+            };
+        };
+    };
+    Subscriptions_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSubscriptionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionDetailDto"];
+                };
+            };
+        };
+    };
+    Accounts_reveal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountSecretDto"];
+                };
+            };
+        };
+    };
+    Accounts_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountBriefDto"];
+                };
+            };
+        };
+    };
+    Jobs_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SweepResultDto"];
+                };
+            };
+        };
+    };
+    Dashboard_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardDto"];
                 };
             };
         };

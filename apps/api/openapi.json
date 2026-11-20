@@ -518,6 +518,36 @@
         ]
       }
     },
+    "/api/staff/options": {
+      "get": {
+        "operationId": "Staff_options",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffOptionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "在职员工下拉选项",
+        "tags": [
+          "员工"
+        ]
+      }
+    },
     "/api/permissions": {
       "get": {
         "operationId": "Roles_catalog",
@@ -854,6 +884,1580 @@
         "summary": "健康检查（部署和监控用）",
         "tags": [
           "系统"
+        ]
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "Settings_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "业务设置（所有员工可查看）",
+        "tags": [
+          "业务设置"
+        ]
+      },
+      "patch": {
+        "operationId": "Settings_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改业务设置",
+        "tags": [
+          "业务设置"
+        ]
+      }
+    },
+    "/api/plans": {
+      "get": {
+        "operationId": "Catalog_listPlans",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "套餐列表（所有员工可查看）",
+        "tags": [
+          "商品与套餐"
+        ]
+      },
+      "post": {
+        "operationId": "Catalog_createPlan",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavePlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "新增套餐",
+        "tags": [
+          "商品与套餐"
+        ]
+      }
+    },
+    "/api/plans/{id}": {
+      "patch": {
+        "operationId": "Catalog_updatePlan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改套餐（名称、官方月费、上下架）",
+        "tags": [
+          "商品与套餐"
+        ]
+      }
+    },
+    "/api/products": {
+      "get": {
+        "operationId": "Catalog_listProducts",
+        "parameters": [
+          {
+            "name": "activeOnly",
+            "required": false,
+            "in": "query",
+            "description": "只看在售商品",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "商品列表（所有员工可查看，下单时选择）",
+        "tags": [
+          "商品与套餐"
+        ]
+      },
+      "post": {
+        "operationId": "Catalog_createProduct",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "新增商品（套餐 × 时长 × 履约方式）",
+        "tags": [
+          "商品与套餐"
+        ]
+      }
+    },
+    "/api/products/{id}": {
+      "patch": {
+        "operationId": "Catalog_updateProduct",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改商品售价或上下架（只影响之后的订单）",
+        "tags": [
+          "商品与套餐"
+        ]
+      }
+    },
+    "/api/customers": {
+      "get": {
+        "operationId": "Customers_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "编号、称呼、微信、Telegram、邮箱或手机号",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "source",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "organic",
+                "referral",
+                "agent",
+                "ads",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "ownerId",
+            "required": false,
+            "in": "query",
+            "description": "负责人",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "客户列表（按数据范围）",
+        "tags": [
+          "客户"
+        ]
+      },
+      "post": {
+        "operationId": "Customers_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "新增客户",
+        "tags": [
+          "客户"
+        ]
+      }
+    },
+    "/api/customers/{id}": {
+      "get": {
+        "operationId": "Customers_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "客户详情（含跟进记录）",
+        "tags": [
+          "客户"
+        ]
+      },
+      "patch": {
+        "operationId": "Customers_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改客户资料",
+        "tags": [
+          "客户"
+        ]
+      },
+      "delete": {
+        "operationId": "Customers_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "删除客户（只能删没有订单的）",
+        "tags": [
+          "客户"
+        ]
+      }
+    },
+    "/api/customers/{id}/transfer": {
+      "post": {
+        "operationId": "Customers_transfer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferCustomerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "更换负责人（名下订阅一起转）",
+        "tags": [
+          "客户"
+        ]
+      }
+    },
+    "/api/customers/{id}/follow-ups": {
+      "post": {
+        "operationId": "Customers_addFollowUp",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFollowUpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "记录跟进 / 续费提醒",
+        "tags": [
+          "客户"
+        ]
+      }
+    },
+    "/api/orders": {
+      "get": {
+        "operationId": "Orders_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "订单编号或客户称呼",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrderStatus"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrderKind"
+            }
+          },
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subscriptionId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "订单列表（按数据范围）",
+        "tags": [
+          "订单与收款"
+        ]
+      },
+      "post": {
+        "operationId": "Orders_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "录入订单（新购 / 续费）",
+        "tags": [
+          "订单与收款"
+        ]
+      }
+    },
+    "/api/orders/{id}": {
+      "get": {
+        "operationId": "Orders_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "订单详情（含收款记录和任务）",
+        "tags": [
+          "订单与收款"
+        ]
+      }
+    },
+    "/api/orders/{id}/payments": {
+      "post": {
+        "operationId": "Orders_addPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "确认收款（收齐后自动派开通 / 续费任务）",
+        "tags": [
+          "订单与收款"
+        ]
+      }
+    },
+    "/api/orders/{id}/cancel": {
+      "post": {
+        "operationId": "Orders_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "取消订单（只能取消没收过款的）",
+        "tags": [
+          "订单与收款"
+        ]
+      }
+    },
+    "/api/tasks": {
+      "get": {
+        "operationId": "Tasks_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "view",
+            "required": false,
+            "in": "query",
+            "description": "open 未完成（待处理 / 处理中 / 失败）；closed 已完成或已取消",
+            "schema": {
+              "default": "open",
+              "type": "string",
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TaskStatus"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TaskType"
+            }
+          },
+          {
+            "name": "assignee",
+            "required": false,
+            "in": "query",
+            "description": "me 我的；unassigned 任务池（未分配）；或员工 ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "overdue",
+            "required": false,
+            "in": "query",
+            "description": "只看已超时的",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "任务编号、客户称呼或账号邮箱",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subscriptionId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "任务列表（任务工作台）",
+        "tags": [
+          "履约任务"
+        ]
+      }
+    },
+    "/api/tasks/{id}": {
+      "get": {
+        "operationId": "Tasks_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "任务详情",
+        "tags": [
+          "履约任务"
+        ]
+      }
+    },
+    "/api/tasks/{id}/claim": {
+      "post": {
+        "operationId": "Tasks_claim",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "领取 / 开始处理",
+        "tags": [
+          "履约任务"
+        ]
+      }
+    },
+    "/api/tasks/{id}/assign": {
+      "post": {
+        "operationId": "Tasks_assign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "转交给其他充值员，或放回任务池",
+        "tags": [
+          "履约任务"
+        ]
+      }
+    },
+    "/api/tasks/{id}/complete": {
+      "post": {
+        "operationId": "Tasks_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "完成任务（自动更新订阅、账号和订单）",
+        "tags": [
+          "履约任务"
+        ]
+      }
+    },
+    "/api/tasks/{id}/fail": {
+      "post": {
+        "operationId": "Tasks_fail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "标记失败（之后可以重新处理）",
+        "tags": [
+          "履约任务"
+        ]
+      }
+    },
+    "/api/tasks/{id}/cancel": {
+      "post": {
+        "operationId": "Tasks_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "作废「取消自动续订 / 回收成品号」任务",
+        "tags": [
+          "履约任务"
+        ]
+      }
+    },
+    "/api/subscriptions": {
+      "get": {
+        "operationId": "Subscriptions_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "订阅编号、客户称呼或账号邮箱",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SubscriptionStatus"
+            }
+          },
+          {
+            "name": "fulfillmentType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/FulfillmentType"
+            }
+          },
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerId",
+            "required": false,
+            "in": "query",
+            "description": "负责客服",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expiringDays",
+            "required": false,
+            "in": "query",
+            "description": "只看 N 天内到期（服务中）的",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "needsReminder",
+            "required": false,
+            "in": "query",
+            "description": "只看需要提醒续费的（按业务设置里的提醒节奏）",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "订阅列表（到期提醒、即将到期）",
+        "tags": [
+          "订阅与到期"
+        ]
+      }
+    },
+    "/api/subscriptions/{id}": {
+      "get": {
+        "operationId": "Subscriptions_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "订阅详情（订单、任务、提醒记录）",
+        "tags": [
+          "订阅与到期"
+        ]
+      },
+      "patch": {
+        "operationId": "Subscriptions_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSubscriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "手动校正订阅（到期时间、上游扣费时间、自动续订、状态）",
+        "tags": [
+          "订阅与到期"
+        ]
+      }
+    },
+    "/api/accounts/{id}/secret": {
+      "get": {
+        "operationId": "Accounts_reveal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountSecretDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "查看账号密码等敏感信息（每次查看都记录操作日志）",
+        "tags": [
+          "订阅与到期"
+        ]
+      }
+    },
+    "/api/accounts/{id}": {
+      "patch": {
+        "operationId": "Accounts_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountBriefDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改账号密码、敏感信息或备注",
+        "tags": [
+          "订阅与到期"
+        ]
+      }
+    },
+    "/api/jobs/sweep": {
+      "post": {
+        "operationId": "Jobs_run",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SweepResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "立即运行一次到期巡检（平时每小时自动运行）",
+        "tags": [
+          "业务设置"
+        ]
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "operationId": "Dashboard_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "首页统计（按权限返回对应板块）",
+        "tags": [
+          "首页"
         ]
       }
     }
@@ -1314,6 +2918,31 @@
           "password"
         ]
       },
+      "StaffOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string",
+            "nullable": true
+          },
+          "canFulfill": {
+            "type": "boolean",
+            "description": "能处理开通任务（有充值员权限）"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "teamId",
+          "canFulfill"
+        ]
+      },
       "PermissionItemDto": {
         "type": "object",
         "properties": {
@@ -1551,6 +3180,2127 @@
         "required": [
           "status",
           "database"
+        ]
+      },
+      "BusinessSettingsDto": {
+        "type": "object",
+        "properties": {
+          "exchangeRate": {
+            "type": "number",
+            "description": "美元兑人民币汇率，用于估算成本和毛利",
+            "example": 7.2
+          },
+          "reminderDays": {
+            "description": "到期前几天提醒客服跟进续费",
+            "example": [
+              7,
+              3,
+              1
+            ],
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "activateSlaHours": {
+            "type": "number",
+            "description": "开通 / 续费任务要在收款后几小时内完成",
+            "example": 2
+          },
+          "upstreamLeadDays": {
+            "type": "number",
+            "description": "上游扣费前几天生成内部续费或取消自动续订任务",
+            "example": 2
+          }
+        },
+        "required": [
+          "exchangeRate",
+          "reminderDays",
+          "activateSlaHours",
+          "upstreamLeadDays"
+        ]
+      },
+      "UpdateSettingsDto": {
+        "type": "object",
+        "properties": {
+          "exchangeRate": {
+            "type": "number"
+          },
+          "reminderDays": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "activateSlaHours": {
+            "type": "number"
+          },
+          "upstreamLeadDays": {
+            "type": "number"
+          }
+        }
+      },
+      "PlanDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "MAX"
+          },
+          "name": {
+            "type": "string",
+            "example": "Max"
+          },
+          "upstreamMonthlyUsdCents": {
+            "type": "number",
+            "description": "官方月费（美分），例如 10000 = $100"
+          },
+          "sort": {
+            "type": "number"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "upstreamMonthlyUsdCents",
+          "sort",
+          "active"
+        ]
+      },
+      "SavePlanDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "MAX",
+            "description": "套餐编码，大写字母、数字或下划线"
+          },
+          "name": {
+            "type": "string",
+            "example": "Max"
+          },
+          "upstreamMonthlyUsdCents": {
+            "type": "number",
+            "description": "官方月费（美分）"
+          },
+          "sort": {
+            "type": "number"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "upstreamMonthlyUsdCents"
+        ]
+      },
+      "UpdatePlanDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "upstreamMonthlyUsdCents": {
+            "type": "number"
+          },
+          "sort": {
+            "type": "number"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "FulfillmentType": {
+        "type": "string",
+        "enum": [
+          "RECHARGE",
+          "ACCOUNT"
+        ]
+      },
+      "ProductDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Max 季付（代充）"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "termMonths": {
+            "type": "number",
+            "description": "服务时长（月）"
+          },
+          "fulfillmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FulfillmentType"
+              }
+            ]
+          },
+          "priceCents": {
+            "type": "number",
+            "description": "售价（分）"
+          },
+          "estCostCents": {
+            "type": "number",
+            "description": "按当前汇率估算的上游成本（分），不含付款手续费"
+          },
+          "estMarginCents": {
+            "type": "number",
+            "description": "估算毛利（分）= 售价 − 估算成本"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "planId",
+          "planName",
+          "termMonths",
+          "fulfillmentType",
+          "priceCents",
+          "estCostCents",
+          "estMarginCents",
+          "active"
+        ]
+      },
+      "CreateProductDto": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string"
+          },
+          "termMonths": {
+            "type": "number",
+            "description": "服务时长（月）",
+            "example": 3
+          },
+          "fulfillmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FulfillmentType"
+              }
+            ]
+          },
+          "priceCents": {
+            "type": "number",
+            "description": "售价（分）"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "planId",
+          "termMonths",
+          "fulfillmentType",
+          "priceCents"
+        ]
+      },
+      "UpdateProductDto": {
+        "type": "object",
+        "properties": {
+          "priceCents": {
+            "type": "number",
+            "description": "售价（分）。只影响之后的订单"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UserBriefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
+        ]
+      },
+      "CustomerRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ]
+      },
+      "CustomerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "C00012"
+          },
+          "name": {
+            "type": "string"
+          },
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "telegram": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "organic",
+              "referral",
+              "agent",
+              "ads",
+              "other"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "referrer": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerRefDto"
+              }
+            ]
+          },
+          "activeSubscriptionCount": {
+            "type": "number",
+            "description": "服务中的订阅数"
+          },
+          "nextExpiryAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "最近一个到期时间"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "wechat",
+          "telegram",
+          "email",
+          "phone",
+          "source",
+          "tags",
+          "remark",
+          "owner",
+          "referrer",
+          "activeSubscriptionCount",
+          "nextExpiryAt",
+          "createdAt"
+        ]
+      },
+      "CustomerListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "FollowUpDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "note",
+              "renewal_reminder"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "subscriptionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "content",
+          "user",
+          "subscriptionId",
+          "createdAt"
+        ]
+      },
+      "CustomerDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "C00012"
+          },
+          "name": {
+            "type": "string"
+          },
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "telegram": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "organic",
+              "referral",
+              "agent",
+              "ads",
+              "other"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "referrer": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerRefDto"
+              }
+            ]
+          },
+          "activeSubscriptionCount": {
+            "type": "number",
+            "description": "服务中的订阅数"
+          },
+          "nextExpiryAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "最近一个到期时间"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "followUps": {
+            "description": "最近 50 条跟进记录",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FollowUpDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "wechat",
+          "telegram",
+          "email",
+          "phone",
+          "source",
+          "tags",
+          "remark",
+          "owner",
+          "referrer",
+          "activeSubscriptionCount",
+          "nextExpiryAt",
+          "createdAt",
+          "followUps"
+        ]
+      },
+      "CreateCustomerDto": {
+        "type": "object",
+        "properties": {
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "telegram": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "organic",
+              "referral",
+              "agent",
+              "ads",
+              "other"
+            ]
+          },
+          "referrerId": {
+            "type": "string",
+            "nullable": true,
+            "description": "推荐人（老客户 ID）"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "example": "王先生"
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "负责人，不填为自己；指定他人需要「全部数据」或同组范围"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateCustomerDto": {
+        "type": "object",
+        "properties": {
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "telegram": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "organic",
+              "referral",
+              "agent",
+              "ads",
+              "other"
+            ]
+          },
+          "referrerId": {
+            "type": "string",
+            "nullable": true,
+            "description": "推荐人（老客户 ID）"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "TransferCustomerDto": {
+        "type": "object",
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "description": "新的负责人"
+          }
+        },
+        "required": [
+          "ownerId"
+        ]
+      },
+      "CreateFollowUpDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "已微信提醒续费，客户说周末付款"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "note",
+              "renewal_reminder"
+            ]
+          },
+          "subscriptionId": {
+            "type": "string",
+            "description": "关联的订阅（续费提醒时填写）"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING_PAYMENT",
+          "FULFILLING",
+          "COMPLETED",
+          "CANCELLED"
+        ]
+      },
+      "OrderKind": {
+        "type": "string",
+        "enum": [
+          "NEW",
+          "RENEWAL"
+        ]
+      },
+      "CustomerBriefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "C00012"
+          },
+          "name": {
+            "type": "string"
+          },
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "telegram": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "wechat",
+          "telegram"
+        ]
+      },
+      "RefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code"
+        ]
+      },
+      "OrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "D00012"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderKind"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              }
+            ]
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string",
+            "example": "Max 季付（代充）"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "termMonths": {
+            "type": "number"
+          },
+          "fulfillmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FulfillmentType"
+              }
+            ]
+          },
+          "listPriceCents": {
+            "type": "number"
+          },
+          "discountCents": {
+            "type": "number"
+          },
+          "amountCents": {
+            "type": "number",
+            "description": "应收（分）"
+          },
+          "paidCents": {
+            "type": "number",
+            "description": "已收（分）"
+          },
+          "accountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "subscription": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "owner": {
+            "description": "负责客服",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancelReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "kind",
+          "status",
+          "customer",
+          "productId",
+          "productName",
+          "planName",
+          "termMonths",
+          "fulfillmentType",
+          "listPriceCents",
+          "discountCents",
+          "amountCents",
+          "paidCents",
+          "accountId",
+          "accountEmail",
+          "subscription",
+          "owner",
+          "createdBy",
+          "remark",
+          "paidAt",
+          "completedAt",
+          "cancelledAt",
+          "cancelReason",
+          "createdAt"
+        ]
+      },
+      "OrderListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "PaymentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "wechat",
+              "alipay",
+              "usdt",
+              "bank",
+              "other"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "confirmedBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amountCents",
+          "method",
+          "reference",
+          "receivedAt",
+          "confirmedBy",
+          "createdAt"
+        ]
+      },
+      "TaskType": {
+        "type": "string",
+        "enum": [
+          "ACTIVATE",
+          "RENEW",
+          "INTERNAL_RENEW",
+          "CANCEL_AUTO_RENEW",
+          "RECLAIM_ACCOUNT"
+        ]
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "IN_PROGRESS",
+          "DONE",
+          "FAILED",
+          "CANCELLED"
+        ]
+      },
+      "TaskBriefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskType"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskStatus"
+              }
+            ]
+          },
+          "assignee": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "status",
+          "assignee",
+          "dueAt",
+          "finishedAt",
+          "note"
+        ]
+      },
+      "OrderDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "D00012"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderKind"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              }
+            ]
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string",
+            "example": "Max 季付（代充）"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "termMonths": {
+            "type": "number"
+          },
+          "fulfillmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FulfillmentType"
+              }
+            ]
+          },
+          "listPriceCents": {
+            "type": "number"
+          },
+          "discountCents": {
+            "type": "number"
+          },
+          "amountCents": {
+            "type": "number",
+            "description": "应收（分）"
+          },
+          "paidCents": {
+            "type": "number",
+            "description": "已收（分）"
+          },
+          "accountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "subscription": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "owner": {
+            "description": "负责客服",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancelReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentDto"
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskBriefDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "kind",
+          "status",
+          "customer",
+          "productId",
+          "productName",
+          "planName",
+          "termMonths",
+          "fulfillmentType",
+          "listPriceCents",
+          "discountCents",
+          "amountCents",
+          "paidCents",
+          "accountId",
+          "accountEmail",
+          "subscription",
+          "owner",
+          "createdBy",
+          "remark",
+          "paidAt",
+          "completedAt",
+          "cancelledAt",
+          "cancelReason",
+          "createdAt",
+          "payments",
+          "tasks"
+        ]
+      },
+      "CreateOrderDto": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderKind"
+              }
+            ]
+          },
+          "productId": {
+            "type": "string"
+          },
+          "subscriptionId": {
+            "type": "string",
+            "description": "续费订单：要续费的订阅"
+          },
+          "discountCents": {
+            "type": "number",
+            "description": "优惠（分）",
+            "default": 0
+          },
+          "accountEmail": {
+            "type": "string",
+            "description": "代充新购：客户的 Claude 账号邮箱"
+          },
+          "accountPassword": {
+            "type": "string",
+            "description": "代充新购：客户的 Claude 账号密码（加密保存）"
+          },
+          "remark": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerId",
+          "kind",
+          "productId"
+        ]
+      },
+      "AddPaymentDto": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "number",
+            "description": "收款金额（分）"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "wechat",
+              "alipay",
+              "usdt",
+              "bank",
+              "other"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "description": "转账单号或备注"
+          },
+          "receivedAt": {
+            "type": "string",
+            "description": "到账时间，不填为现在"
+          }
+        },
+        "required": [
+          "amountCents",
+          "method"
+        ]
+      },
+      "CancelOrderDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "客户不买了"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "TaskOrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderKind"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              }
+            ]
+          },
+          "productName": {
+            "type": "string"
+          },
+          "termMonths": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "kind",
+          "status",
+          "productName",
+          "termMonths"
+        ]
+      },
+      "SubscriptionStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "EXPIRED",
+          "CANCELLED"
+        ]
+      },
+      "TaskSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionStatus"
+              }
+            ]
+          },
+          "startAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "upstreamRenewAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "autoRenewOn": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "planName",
+          "status",
+          "startAt",
+          "endAt",
+          "upstreamRenewAt",
+          "autoRenewOn"
+        ]
+      },
+      "AccountBriefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "ownership": {
+            "type": "string",
+            "enum": [
+              "CUSTOMER",
+              "COMPANY"
+            ],
+            "description": "CUSTOMER 客户自己的号 / COMPANY 成品号"
+          },
+          "hasPassword": {
+            "type": "boolean",
+            "description": "是否录入了密码（明文要单独查看）"
+          },
+          "hasSecretNote": {
+            "type": "boolean",
+            "description": "是否录入了其他敏感信息"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "ownership",
+          "hasPassword",
+          "hasSecretNote"
+        ]
+      },
+      "TaskDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "T00012"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskType"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskStatus"
+              }
+            ]
+          },
+          "fulfillmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FulfillmentType"
+              }
+            ]
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "order": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskOrderDto"
+              }
+            ]
+          },
+          "subscription": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskSubscriptionDto"
+              }
+            ]
+          },
+          "account": {
+            "nullable": true,
+            "description": "要操作的 Claude 账号",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountBriefDto"
+              }
+            ]
+          },
+          "assignee": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "未完成且已过最晚完成时间"
+          },
+          "attempts": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "status",
+          "fulfillmentType",
+          "customer",
+          "order",
+          "subscription",
+          "account",
+          "assignee",
+          "dueAt",
+          "overdue",
+          "attempts",
+          "note",
+          "startedAt",
+          "finishedAt",
+          "createdAt"
+        ]
+      },
+      "TaskListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "AssignTaskDto": {
+        "type": "object",
+        "properties": {
+          "assigneeId": {
+            "type": "string",
+            "nullable": true,
+            "description": "不填或 null = 放回任务池"
+          }
+        }
+      },
+      "CompleteTaskDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "处理结果备注"
+          },
+          "activatedAt": {
+            "type": "string",
+            "description": "新开通：实际开通时间（服务期从这里开始算），默认现在"
+          },
+          "upstreamRenewAt": {
+            "type": "string",
+            "description": "上游（官方）下次扣费时间。不填时：开通 = 开通时间 + 1 个月；内部续费 = 原扣费时间 + 1 个月"
+          },
+          "accountEmail": {
+            "type": "string",
+            "description": "成品号开通：交付给客户的账号邮箱"
+          },
+          "accountPassword": {
+            "type": "string",
+            "description": "成品号开通 / 回收后改密：账号密码（加密保存）"
+          },
+          "accountSecretNote": {
+            "type": "string",
+            "description": "成品号：恢复邮箱、备用码等其他敏感信息（加密保存）"
+          }
+        }
+      },
+      "TaskNoteDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "example": "客户账号被风控，等客户换号"
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
+      "SubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "S00012"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "account": {
+            "$ref": "#/components/schemas/AccountBriefDto"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "fulfillmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FulfillmentType"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionStatus"
+              }
+            ]
+          },
+          "startAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "upstreamRenewAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "autoRenewOn": {
+            "type": "boolean"
+          },
+          "owner": {
+            "description": "负责续费提醒的客服",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "daysLeft": {
+            "type": "number",
+            "description": "剩余天数；0 = 今天到期，负数 = 已到期天数"
+          },
+          "needsReminder": {
+            "type": "boolean",
+            "description": "是否需要提醒客户续费"
+          },
+          "lastRemindedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "openRenewalOrder": {
+            "nullable": true,
+            "description": "未完成的续费订单",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "customer",
+          "account",
+          "planId",
+          "planName",
+          "fulfillmentType",
+          "status",
+          "startAt",
+          "endAt",
+          "upstreamRenewAt",
+          "autoRenewOn",
+          "owner",
+          "daysLeft",
+          "needsReminder",
+          "lastRemindedAt",
+          "openRenewalOrder",
+          "createdAt"
+        ]
+      },
+      "SubscriptionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "SubscriptionOrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderKind"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              }
+            ]
+          },
+          "productName": {
+            "type": "string"
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "kind",
+          "status",
+          "productName",
+          "amountCents",
+          "createdAt"
+        ]
+      },
+      "SubscriptionDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "S00012"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "account": {
+            "$ref": "#/components/schemas/AccountBriefDto"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "fulfillmentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FulfillmentType"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionStatus"
+              }
+            ]
+          },
+          "startAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "upstreamRenewAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "autoRenewOn": {
+            "type": "boolean"
+          },
+          "owner": {
+            "description": "负责续费提醒的客服",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "daysLeft": {
+            "type": "number",
+            "description": "剩余天数；0 = 今天到期，负数 = 已到期天数"
+          },
+          "needsReminder": {
+            "type": "boolean",
+            "description": "是否需要提醒客户续费"
+          },
+          "lastRemindedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "openRenewalOrder": {
+            "nullable": true,
+            "description": "未完成的续费订单",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionOrderDto"
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskBriefDto"
+            }
+          },
+          "reminders": {
+            "description": "续费提醒记录",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FollowUpDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "customer",
+          "account",
+          "planId",
+          "planName",
+          "fulfillmentType",
+          "status",
+          "startAt",
+          "endAt",
+          "upstreamRenewAt",
+          "autoRenewOn",
+          "owner",
+          "daysLeft",
+          "needsReminder",
+          "lastRemindedAt",
+          "openRenewalOrder",
+          "createdAt",
+          "orders",
+          "tasks",
+          "reminders"
+        ]
+      },
+      "UpdateSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "endAt": {
+            "type": "string",
+            "description": "服务到期时间"
+          },
+          "upstreamRenewAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "上游下次扣费时间"
+          },
+          "autoRenewOn": {
+            "type": "boolean",
+            "description": "上游自动续订是否开着"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionStatus"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "修改原因（记入操作日志）",
+            "example": "上游实际扣费日是 12 月 3 日"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "AccountSecretDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          },
+          "secretNote": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "secretNote"
+        ]
+      },
+      "UpdateAccountDto": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "新密码（加密保存）；传空字符串表示清除"
+          },
+          "secretNote": {
+            "type": "string",
+            "description": "其他敏感信息（加密保存）；传空字符串表示清除"
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "SweepResultDto": {
+        "type": "object",
+        "properties": {
+          "skipped": {
+            "type": "boolean",
+            "description": "另一个巡检正在运行，这次跳过"
+          },
+          "expired": {
+            "type": "number",
+            "description": "标记为已到期的订阅数"
+          },
+          "reclaimTasks": {
+            "type": "number",
+            "description": "新建的「回收成品号」任务数"
+          },
+          "internalRenewTasks": {
+            "type": "number",
+            "description": "新建的「内部续费」任务数"
+          },
+          "cancelAutoRenewTasks": {
+            "type": "number",
+            "description": "新建的「取消自动续订」任务数"
+          }
+        },
+        "required": [
+          "skipped",
+          "expired",
+          "reclaimTasks",
+          "internalRenewTasks",
+          "cancelAutoRenewTasks"
+        ]
+      },
+      "OrderStatsDto": {
+        "type": "object",
+        "properties": {
+          "pendingPayment": {
+            "type": "number",
+            "description": "待收款订单数"
+          },
+          "fulfilling": {
+            "type": "number",
+            "description": "已收款、开通中的订单数"
+          },
+          "todayOrders": {
+            "type": "number",
+            "description": "今天新录入的订单数"
+          },
+          "todayReceivedCents": {
+            "type": "number",
+            "description": "今天确认的收款（分）"
+          },
+          "monthReceivedCents": {
+            "type": "number",
+            "description": "本月确认的收款（分）"
+          }
+        },
+        "required": [
+          "pendingPayment",
+          "fulfilling",
+          "todayOrders",
+          "todayReceivedCents",
+          "monthReceivedCents"
+        ]
+      },
+      "TaskStatsDto": {
+        "type": "object",
+        "properties": {
+          "mine": {
+            "type": "number",
+            "description": "分给我的未完成任务"
+          },
+          "unassigned": {
+            "type": "number",
+            "description": "任务池里没人领的"
+          },
+          "overdue": {
+            "type": "number",
+            "description": "已超时未完成"
+          },
+          "open": {
+            "type": "number",
+            "description": "全部未完成"
+          }
+        },
+        "required": [
+          "mine",
+          "unassigned",
+          "overdue",
+          "open"
+        ]
+      },
+      "SubscriptionStatsDto": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "number",
+            "description": "服务中"
+          },
+          "expiringIn7Days": {
+            "type": "number",
+            "description": "7 天内到期"
+          },
+          "needsReminder": {
+            "type": "number",
+            "description": "需要提醒续费（我负责的）"
+          },
+          "needsReminderAll": {
+            "type": "number",
+            "description": "需要提醒续费（数据范围内全部）"
+          }
+        },
+        "required": [
+          "active",
+          "expiringIn7Days",
+          "needsReminder",
+          "needsReminderAll"
+        ]
+      },
+      "CustomerStatsDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "newThisMonth": {
+            "type": "number",
+            "description": "本月新增"
+          }
+        },
+        "required": [
+          "total",
+          "newThisMonth"
+        ]
+      },
+      "DashboardDto": {
+        "type": "object",
+        "properties": {
+          "orders": {
+            "nullable": true,
+            "description": "有「查看订单」权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatsDto"
+              }
+            ]
+          },
+          "tasks": {
+            "nullable": true,
+            "description": "有「处理开通任务」权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskStatsDto"
+              }
+            ]
+          },
+          "subscriptions": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionStatsDto"
+              }
+            ]
+          },
+          "customers": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerStatsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "orders",
+          "tasks",
+          "subscriptions",
+          "customers"
         ]
       }
     }

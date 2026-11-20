@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/env';
 import { PrismaModule } from './prisma/prisma.module';
@@ -12,6 +13,15 @@ import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { TeamsModule } from './teams/teams';
 import { HealthModule } from './health/health';
+import { SecretBoxModule } from './common/secret-box';
+import { SettingsModule } from './settings/settings';
+import { CatalogModule } from './catalog/catalog';
+import { CustomersModule } from './customers/customers';
+import { OrdersModule } from './orders/orders';
+import { TasksModule } from './tasks/tasks';
+import { SubscriptionsModule } from './subscriptions/subscriptions';
+import { SchedulerModule } from './scheduler/sweep';
+import { DashboardModule } from './dashboard/dashboard';
 
 @Module({
   imports: [
@@ -22,13 +32,23 @@ import { HealthModule } from './health/health';
       validate: validateEnv,
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
+    ScheduleModule.forRoot(),
     PrismaModule,
+    SecretBoxModule,
     AuditModule,
     AuthModule,
     UsersModule,
     RolesModule,
     TeamsModule,
     HealthModule,
+    SettingsModule,
+    CatalogModule,
+    CustomersModule,
+    OrdersModule,
+    TasksModule,
+    SubscriptionsModule,
+    SchedulerModule,
+    DashboardModule,
   ],
   providers: [
     // 顺序就是执行顺序：限流 → 登录 → 权限

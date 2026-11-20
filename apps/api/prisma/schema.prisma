@@ -1,6 +1,8 @@
 // 代充 CRM 数据模型
-// M0 只包含员工、角色、小组、登录会话和操作日志；业务表从 M1 开始逐步加入。
-// 约定：主键用 cuid；金额一律存「分」（整数）；美元成本存原币金额 + 当时汇率。
+// M0：员工、角色、小组、登录会话、操作日志
+// M1：客户、套餐与商品、订单与收款、开通任务、Claude 账号、订阅、业务设置
+// 约定：主键用 cuid；金额一律存「分」（整数）；美元金额存「美分」，换算人民币用当时汇率。
+// 时间一律存 UTC，界面按北京时间显示。
 
 generator client {
   provider      = "prisma-client-js"
@@ -35,21 +37,28 @@ model Team {
 
 /// 员工账号（客户和代理不登录系统）
 model User {
-  id                 String     @id @default(cuid())
-  username           String     @unique
+  id                 String            @id @default(cuid())
+  username           String            @unique
   displayName        String
   passwordHash       String
-  status             UserStatus @default(ACTIVE)
+  status             UserStatus        @default(ACTIVE)
   /// 管理员创建或重置密码后，首次登录必须改密码
-  mustChangePassword Boolean    @default(true)
+  mustChangePassword Boolean           @default(true)
   teamId             String?
-  team               Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  team               Team?             @relation(fields: [teamId], references: [id], onDelete: SetNull)
   roles              UserRole[]
   sessions           Session[]
   auditLogs          AuditLog[]
+  ownedCustomers     Customer[]        @relation("CustomerOwner")
+  ownedOrders        Order[]           @relation("OrderOwner")
+  createdOrders      Order[]           @relation("OrderCreator")
+  confirmedPayments  Payment[]
+  assignedTasks      FulfillmentTask[] @relation("TaskAssignee")
+  ownedSubscriptions Subscription[]    @relation("SubscriptionOwner")
+  followUps          FollowUp[]
   lastLoginAt        DateTime?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
   /// 软删除：删除的员工保留历史记录
   deletedAt          DateTime?
 
@@ -117,4 +126,313 @@ model AuditLog {
   @@index([createdAt])
   @@index([userId])
   @@index([action])
+}
+
+// ───────────────────────────── M1 业务 ─────────────────────────────
+
+/// 客户：终端用户。由负责客服跟进，ownerId / teamId 决定谁能看到
+model Customer {
+  id            String            @id @default(cuid())
+  /// 客户编号，界面显示为 C00001
+  no            Int               @unique @default(autoincrement())
+  /// 称呼
+  name          String
+  wechat        String?
+  telegram      String?
+  email         String?
+  phone         String?
+  /// 来源：organic 自然流量 / referral 老客推荐 / agent 代理 / ads 投放 / other 其他
+  source        String            @default("organic")
+  /// 推荐人（老客户）
+  referrerId    String?
+  referrer      Customer?         @relation("CustomerReferral", fields: [referrerId], references: [id], onDelete: SetNull)
+  referrals     Customer[]        @relation("CustomerReferral")
+  /// M3 代理：客户首单绑定的代理（预留）
+  agentId       String?
+  tags          String[]
+  remark        String?
+  ownerId       String
+  owner         User              @relation("CustomerOwner", fields: [ownerId], references: [id])
+  /// 负责人所在小组，用于「本小组数据」范围；换负责人时同步
+  teamId        String?
+  orders        Order[]
+  subscriptions Subscription[]
+  accounts      ClaudeAccount[]
+  tasks         FulfillmentTask[]
+  followUps     FollowUp[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime?
+
+  @@index([ownerId])
+  @@index([teamId])
+  @@index([createdAt])
+}
+
+/// 客户跟进记录：沟通备注、续费提醒等，构成客户时间线
+model FollowUp {
+  id             String        @id @default(cuid())
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  /// note 普通跟进 / renewal_reminder 续费提醒
+  kind           String        @default("note")
+  content        String
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  createdAt      DateTime      @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([subscriptionId])
+}
+
+/// Claude 套餐（Pro / Max / Ultra），记录官方月费用于估算成本
+model Plan {
+  id                      String         @id @default(cuid())
+  code                    String         @unique
+  name                    String
+  /// 官方月费（美分），例如 2000 = $20
+  upstreamMonthlyUsdCents Int
+  sort                    Int            @default(0)
+  active                  Boolean        @default(true)
+  products                Product[]
+  subscriptions           Subscription[]
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+}
+
+/// 履约方式：代充 = 充到客户自己的账号；成品号 = 交付公司准备的账号
+enum FulfillmentType {
+  RECHARGE
+  ACCOUNT
+}
+
+/// 可售商品 = 套餐 × 服务时长 × 履约方式
+model Product {
+  id              String          @id @default(cuid())
+  planId          String
+  plan            Plan            @relation(fields: [planId], references: [id])
+  /// 服务时长（月）：1 月付 / 3 季付 / 12 年付
+  termMonths      Int
+  fulfillmentType FulfillmentType
+  /// 售价（分）
+  priceCents      Int
+  active          Boolean         @default(true)
+  orders          Order[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([planId, termMonths, fulfillmentType])
+}
+
+enum OrderKind {
+  /// 新购：开通新的订阅
+  NEW
+  /// 续费：延长已有订阅
+  RENEWAL
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  /// 已收款，开通 / 续费任务处理中
+  FULFILLING
+  COMPLETED
+  CANCELLED
+}
+
+/// 订单 = 一笔交易。下单时把商品信息和价格存成快照，之后改价不影响历史订单
+model Order {
+  id              String            @id @default(cuid())
+  /// 订单编号，界面显示为 D00001
+  no              Int               @unique @default(autoincrement())
+  kind            OrderKind
+  status          OrderStatus       @default(PENDING_PAYMENT)
+  customerId      String
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  productId       String
+  product         Product           @relation(fields: [productId], references: [id])
+  /// 续费订单：要延长的订阅；新购订单：开通后回填
+  subscriptionId  String?
+  subscription    Subscription?     @relation(fields: [subscriptionId], references: [id])
+  // ── 快照 ──
+  planName        String
+  termMonths      Int
+  fulfillmentType FulfillmentType
+  listPriceCents  Int
+  discountCents   Int               @default(0)
+  /// 应收金额（分）
+  amountCents     Int
+  paidCents       Int               @default(0)
+  /// 代充：客户的 Claude 账号（下单时录入）；续费：订阅对应的账号
+  accountId       String?
+  account         ClaudeAccount?    @relation(fields: [accountId], references: [id])
+  accountEmail    String?
+  remark          String?
+  ownerId         String
+  owner           User              @relation("OrderOwner", fields: [ownerId], references: [id])
+  teamId          String?
+  createdById     String
+  createdBy       User              @relation("OrderCreator", fields: [createdById], references: [id])
+  payments        Payment[]
+  tasks           FulfillmentTask[]
+  paidAt          DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([customerId])
+  @@index([ownerId])
+  @@index([teamId])
+  @@index([status, createdAt])
+}
+
+/// 收款记录。现在由员工手动确认；以后接入支付时，channel / externalId 记录支付平台流水
+model Payment {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amountCents   Int
+  /// wechat / alipay / usdt / bank / other
+  method        String
+  /// 付款备注或转账单号
+  reference     String?
+  /// 以后接入支付平台时使用
+  channel       String?
+  externalId    String?  @unique
+  receivedAt    DateTime
+  confirmedById String
+  confirmedBy   User     @relation(fields: [confirmedById], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@index([orderId])
+}
+
+/// Claude 账号。代充时是客户自己的号，成品号是公司准备的号；密码等敏感信息加密保存
+model ClaudeAccount {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  /// CUSTOMER 客户自己的号 / COMPANY 公司的成品号
+  ownership     String
+  customerId    String?
+  customer      Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  /// 加密后的登录密码（AES-256-GCM）
+  passwordEnc   String?
+  /// 加密后的其他敏感信息（恢复邮箱、备用码等）
+  secretNoteEnc String?
+  remark        String?
+  subscriptions Subscription[]
+  orders        Order[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([customerId])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+/// 订阅 = 客户某个账号的服务周期，续费提醒、到期风控、内部续费都从这里算
+model Subscription {
+  id              String             @id @default(cuid())
+  /// 订阅编号，界面显示为 S00001
+  no              Int                @unique @default(autoincrement())
+  customerId      String
+  customer        Customer           @relation(fields: [customerId], references: [id])
+  accountId       String
+  account         ClaudeAccount      @relation(fields: [accountId], references: [id])
+  planId          String
+  plan            Plan               @relation(fields: [planId], references: [id])
+  fulfillmentType FulfillmentType
+  status          SubscriptionStatus @default(ACTIVE)
+  /// 服务期：客户付费覆盖的时间段
+  startAt         DateTime
+  endAt           DateTime
+  /// 上游（官方）下次扣费时间。上游按月扣费，季付 / 年付期间每月生成内部续费任务
+  upstreamRenewAt DateTime?
+  /// 上游是否开着自动续订（我们的付款资源绑在账号上）
+  autoRenewOn     Boolean            @default(true)
+  /// 负责续费提醒的客服，跟随客户负责人
+  ownerId         String
+  owner           User               @relation("SubscriptionOwner", fields: [ownerId], references: [id])
+  teamId          String?
+  orders          Order[]
+  tasks           FulfillmentTask[]
+  followUps       FollowUp[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([customerId])
+  @@index([ownerId])
+  @@index([teamId])
+  @@index([status, endAt])
+  @@index([status, upstreamRenewAt])
+}
+
+enum TaskType {
+  /// 新购开通：代充到客户账号 / 交付成品号
+  ACTIVATE
+  /// 客户续费：延长服务期
+  RENEW
+  /// 内部续费：季付 / 年付期间，确保上游每月扣费成功
+  INTERNAL_RENEW
+  /// 到期未续费：在上游下次扣费前取消自动续订
+  CANCEL_AUTO_RENEW
+  /// 成品号到期未续费：回收账号
+  RECLAIM_ACCOUNT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  FAILED
+  CANCELLED
+}
+
+/// 履约任务：充值员的工作队列
+model FulfillmentTask {
+  id             String        @id @default(cuid())
+  /// 任务编号，界面显示为 T00001
+  no             Int           @unique @default(autoincrement())
+  type           TaskType
+  status         TaskStatus    @default(PENDING)
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  orderId        String?
+  order          Order?        @relation(fields: [orderId], references: [id])
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  assigneeId     String?
+  assignee       User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  /// 最晚完成时间
+  dueAt          DateTime
+  /// 失败次数（失败后可以重新处理）
+  attempts       Int           @default(0)
+  /// 处理结果或失败原因
+  note           String?
+  /// 系统自动生成的任务用它去重，例如 INTERNAL_RENEW:订阅ID:2026-12-01
+  dedupeKey      String?       @unique
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status, dueAt])
+  @@index([assigneeId, status])
+  @@index([subscriptionId])
+  @@index([orderId])
+}
+
+/// 业务设置（键值对）：汇率、提醒节奏、任务时限等
+model Setting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }

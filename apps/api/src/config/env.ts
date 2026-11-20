@@ -1,5 +1,14 @@
 import { plainToInstance, Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min, MinLength, validateSync } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  Min,
+  MinLength,
+  validateSync,
+} from 'class-validator';
 
 /** 启动时校验环境变量，配错了直接报中文错误，避免带病运行 */
 export class EnvVars {
@@ -13,6 +22,12 @@ export class EnvVars {
   @IsOptional()
   @IsString()
   JWT_ACCESS_TTL: string = '2h';
+
+  /** 加密 Claude 账号密码等敏感信息的密钥：64 位十六进制（openssl rand -hex 32） */
+  @Matches(/^[0-9a-fA-F]{64}$/, {
+    message: 'ACCOUNT_SECRET_KEY 必须是 64 位十六进制字符（可用 openssl rand -hex 32 生成）',
+  })
+  ACCOUNT_SECRET_KEY: string;
 
   @IsOptional()
   @Type(() => Number)

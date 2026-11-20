@@ -44,13 +44,17 @@ export function RequireAuth({
 /** 页面级权限：没有权限时显示 403，而不是空白页 */
 export function RequirePermission({
   permission,
+  anyOf,
   children,
 }: {
-  permission: string;
+  permission?: string;
+  /** 拥有其中任意一个权限即可 */
+  anyOf?: string[];
   children: ReactNode;
 }) {
   const { can } = useAuth();
-  if (!can(permission)) {
+  const allowed = (!permission || can(permission)) && (!anyOf || anyOf.some((p) => can(p)));
+  if (!allowed) {
     return (
       <Result status="403" title="没有权限" subTitle="你没有访问这个页面的权限，请联系管理员。" />
     );

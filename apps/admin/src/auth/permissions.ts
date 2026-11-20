@@ -6,6 +6,8 @@ export interface MenuNode {
   label: string;
   path?: string;
   permission?: string;
+  /** 拥有其中任意一个权限即可看到 */
+  anyPermission?: string[];
   children?: MenuNode[];
 }
 
@@ -19,6 +21,7 @@ export function filterMenu(nodes: readonly MenuNode[], granted: readonly string[
   const out: MenuNode[] = [];
   for (const node of nodes) {
     if (node.permission && !can(granted, node.permission)) continue;
+    if (node.anyPermission && !node.anyPermission.some((p) => can(granted, p))) continue;
     if (node.children) {
       const children = filterMenu(node.children, granted);
       if (children.length === 0) continue;

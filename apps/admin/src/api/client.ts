@@ -5,6 +5,13 @@ import { toApiError } from './errors';
 
 export type Schemas = components['schemas'];
 
+/** GET 接口的查询参数类型，例如 QueryOf<'/api/orders'> */
+export type QueryOf<P extends keyof paths> = paths[P] extends {
+  get: { parameters: { query?: infer Q } };
+}
+  ? NonNullable<Q>
+  : never;
+
 /** 登录状态失效时的回调，由 AuthProvider 注册（跳回登录页） */
 let onSessionExpired: (() => void) | null = null;
 export function setSessionExpiredHandler(fn: (() => void) | null): void {

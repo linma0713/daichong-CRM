@@ -33,3 +33,31 @@ export function usePermissionCatalog() {
     staleTime: Infinity,
   });
 }
+
+/** 在职员工下拉选项（选负责人、转交任务） */
+export function useStaffOptions() {
+  return useQuery({
+    queryKey: ['staff-options'],
+    queryFn: () => unwrap(api.GET('/api/staff/options')),
+    staleTime: 60_000,
+  });
+}
+
+export function useBusinessSettings() {
+  return useQuery({
+    queryKey: ['settings'],
+    queryFn: () => unwrap(api.GET('/api/settings')),
+    staleTime: 60_000,
+  });
+}
+
+export function usePlans() {
+  return useQuery({ queryKey: ['plans'], queryFn: () => unwrap(api.GET('/api/plans')) });
+}
+
+export function useProducts(activeOnly = false) {
+  return useQuery({
+    queryKey: ['products', { activeOnly }],
+    queryFn: () => unwrap(api.GET('/api/products', { params: { query: { activeOnly } } })),
+  });
+}
