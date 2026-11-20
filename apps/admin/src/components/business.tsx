@@ -4,6 +4,7 @@ import { App, Button, Descriptions, Select, Tag, Tooltip, Typography } from 'ant
 import { EyeOutlined } from '@ant-design/icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
+  ACCOUNT_STOCK_STATUS_LABELS,
   FULFILLMENT_TYPE_LABELS,
   ORDER_KIND_LABELS,
   ORDER_STATUS_LABELS,
@@ -11,6 +12,7 @@ import {
   TASK_STATUS_LABELS,
   TASK_TYPE_LABELS,
   formatCents,
+  type AccountStockStatus,
   type FulfillmentType,
   type OrderKind,
   type OrderStatus,
@@ -29,6 +31,45 @@ export function Money({ cents, strong }: { cents: number; strong?: boolean }) {
       {formatCents(cents)}
     </Typography.Text>
   );
+}
+
+/** 美元金额（美分），例如 $101.50 */
+export function Usd({
+  cents,
+  strong,
+  type,
+}: {
+  cents: number;
+  strong?: boolean;
+  type?: 'danger' | 'secondary';
+}) {
+  return (
+    <Typography.Text strong={strong} type={type} style={{ whiteSpace: 'nowrap' }}>
+      {formatCents(cents, '$')}
+    </Typography.Text>
+  );
+}
+
+/** 毛利：负数标红 */
+export function Margin({ cents, strong }: { cents: number; strong?: boolean }) {
+  return (
+    <Typography.Text
+      strong={strong}
+      type={cents < 0 ? 'danger' : undefined}
+      style={{ whiteSpace: 'nowrap' }}
+    >
+      {formatCents(cents)}
+    </Typography.Text>
+  );
+}
+
+const STOCK_STATUS_COLORS: Record<AccountStockStatus, string> = {
+  IN_STOCK: 'green',
+  IN_USE: 'blue',
+  VOID: 'default',
+};
+export function StockStatusTag({ status }: { status: AccountStockStatus }) {
+  return <Tag color={STOCK_STATUS_COLORS[status]}>{ACCOUNT_STOCK_STATUS_LABELS[status]}</Tag>;
 }
 
 const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {

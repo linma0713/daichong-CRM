@@ -7,6 +7,7 @@ import type { AuthUser } from '../common/auth-user';
 import { addDays, startOfLocalDay, startOfLocalMonth } from '../common/dates';
 import { visibleCustomers } from '../customers/customers';
 import { visibleOrders } from '../orders/orders';
+import { InventoryModule, InventoryService } from '../inventory/inventory';
 import {
   SubscriptionsModule,
   SubscriptionsService,
@@ -40,6 +41,12 @@ export class CustomerStatsDto {
   @ApiProperty({ description: '本月新增' }) newThisMonth: number;
 }
 
+export class InventoryAlertDto {
+  @ApiProperty({ description: '余额低于预警线的付款资源数' }) lowResources: number;
+  @ApiProperty({ type: [String], description: '在库成品号不足的套餐' }) lowPools: string[];
+  @ApiProperty({ description: '在库成品号总数' }) inStock: number;
+}
+
 export class DashboardDto {
   @ApiProperty({ type: OrderStatsDto, nullable: true, description: '有「查看订单」权限时返回' })
   orders: OrderStatsDto | null;
@@ -48,6 +55,8 @@ export class DashboardDto {
   @ApiProperty({ type: SubscriptionStatsDto, nullable: true })
   subscriptions: SubscriptionStatsDto | null;
   @ApiProperty({ type: CustomerStatsDto, nullable: true }) customers: CustomerStatsDto | null;
+  @ApiProperty({ type: InventoryAlertDto, nullable: true, description: '有「查看库存」权限时返回' })
+  inventory: InventoryAlertDto | null;
 }
 
 const OPEN = { in: ['PENDING' as const, 'IN_PROGRESS' as const, 'FAILED' as const] };
@@ -57,6 +66,7 @@ export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subs: SubscriptionsService,
+    private readonly inventorySvc: InventoryService,
   ) {}
 
   async summary(user: AuthUser): Promise<DashboardDto> {
@@ -130,8 +140,16 @@ export class DashboardService {
         })()
       : null;
 
-    const [o, t, s, c] = await Promise.all([orders, tasks, subscriptions, customers]);
-    return { orders: o, tasks: t, subscriptions: s, customers: c };
+    const inventory = can('inventory:read')
+      ? this.inventorySvc.summary().then((sum): InventoryAlertDto => ({
+          lowResources: sum.lowResources.length,
+          lowPools: sum.pools.filter((p) => p.low).map((p) => p.planName),
+          inStock: sum.pools.reduce((n, p) => n + p.inStock, 0),
+        }))
+      : null;
+
+    const [o, t, s, c, i] = await Promise.all([orders, tasks, subscriptions, customers, inventory]);
+    return { orders: o, tasks: t, subscriptions: s, customers: c, inventory: i };
   }
 }
 
@@ -150,7 +168,7 @@ export class DashboardController {
 }
 
 @Module({
-  imports: [SubscriptionsModule],
+  imports: [SubscriptionsModule, InventoryModule],
   providers: [DashboardService],
   controllers: [DashboardController],
 })

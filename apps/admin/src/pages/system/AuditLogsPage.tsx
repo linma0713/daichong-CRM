@@ -62,6 +62,14 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'task.cancel', label: '作废任务' },
   { value: 'subscription.update', label: '手动校正订阅' },
   { value: 'account.secret_view', label: '查看账号密码' },
+  { value: 'resource.create', label: '新增付款资源' },
+  { value: 'resource.update', label: '修改付款资源' },
+  { value: 'resource.top_up', label: '付款资源入库' },
+  { value: 'resource.adjust', label: '付款资源盘点' },
+  { value: 'resource.secret_view', label: '查看付款资源敏感信息' },
+  { value: 'stock.create', label: '成品号入库' },
+  { value: 'stock.update', label: '修改成品号库存' },
+  { value: 'stock.charge', label: '登记在库成品号扣费' },
   { value: 'account.update', label: '修改账号信息' },
   { value: 'settings.update', label: '修改业务设置' },
   { value: 'job.sweep', label: '手动运行到期巡检' },
@@ -75,6 +83,7 @@ const DANGER_ACTIONS = new Set([
   'customer.delete',
   'order.cancel',
   'account.secret_view',
+  'resource.secret_view',
   'subscription.update',
 ]);
 

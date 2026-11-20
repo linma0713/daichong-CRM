@@ -733,6 +733,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/inventory/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 库存汇总与预警（成品号按套餐分池、付款资源余额） */
+        get: operations["Inventory_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 付款资源列表（充值员完成任务时选择） */
+        get: operations["Inventory_listResources"];
+        put?: never;
+        /** 新增付款资源（可同时首次入库） */
+        post: operations["Inventory_createResource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 修改付款资源（名称、手续费、预警线、停用） */
+        patch: operations["Inventory_updateResource"];
+        trace?: never;
+    };
+    "/api/resources/{id}/top-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 入库 / 充值：记录美元金额和实际花的人民币 */
+        post: operations["Inventory_topUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/{id}/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 盘点：把账面余额改成实际余额 */
+        post: operations["Inventory_adjust"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/{id}/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 付款资源的库存流水 */
+        get: operations["Inventory_transactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/{id}/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查看付款资源的卡号等敏感信息（每次查看都记录操作日志） */
+        get: operations["Inventory_revealResource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stock-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 成品号库存（在库的按入库时间先进先出） */
+        get: operations["Inventory_listStock"];
+        put?: never;
+        /** 成品号批量入库（已存在的邮箱自动跳过） */
+        post: operations["Inventory_createStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stock-accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 修改成品号的套餐、库存状态（在库 / 作废）、上游付费日 */
+        patch: operations["Inventory_updateStock"];
+        trace?: never;
+    };
+    "/api/stock-accounts/{id}/charge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 在库成品号到了上游扣费日：登记扣费，成本累计到这个号上 */
+        post: operations["Inventory_chargeStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -927,6 +1099,18 @@ export interface components {
             /** @example up */
             database: string;
         };
+        PaymentFeeRatesDto: {
+            /** @example 0 */
+            wechat: number;
+            /** @example 0 */
+            alipay: number;
+            /** @example 0 */
+            usdt: number;
+            /** @example 0 */
+            bank: number;
+            /** @example 0 */
+            other: number;
+        };
         BusinessSettingsDto: {
             /**
              * @description 美元兑人民币汇率，用于估算成本和毛利
@@ -952,12 +1136,21 @@ export interface components {
              * @example 2
              */
             upstreamLeadDays: number;
+            /** @description 收款手续费率（万分比），确认收款时按收款方式计算手续费，计入每单成本 */
+            paymentFeeBp: components["schemas"]["PaymentFeeRatesDto"];
+            /**
+             * @description 每个套餐的成品号在库数量低于这个值时预警
+             * @example 2
+             */
+            accountStockLow: number;
         };
         UpdateSettingsDto: {
             exchangeRate?: number;
             reminderDays?: number[];
             activateSlaHours?: number;
             upstreamLeadDays?: number;
+            paymentFeeBp?: components["schemas"]["PaymentFeeRatesDto"];
+            accountStockLow?: number;
         };
         PlanDto: {
             id: string;
@@ -1181,6 +1374,8 @@ export interface components {
             completedAt: string | null;
             cancelledAt: string | null;
             cancelReason: string | null;
+            /** @description 毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
+            marginCents: number | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -1191,6 +1386,8 @@ export interface components {
         PaymentDto: {
             id: string;
             amountCents: number;
+            /** @description 收款手续费（分） */
+            feeCents: number;
             /** @enum {string} */
             method: "wechat" | "alipay" | "usdt" | "bank" | "other";
             reference: string | null;
@@ -1214,6 +1411,43 @@ export interface components {
             dueAt: string;
             finishedAt: string | null;
             note: string | null;
+        };
+        /** @enum {string} */
+        CostKind: "UPSTREAM_CHARGE" | "ACCOUNT_STOCK" | "OTHER";
+        CostEntryDto: {
+            id: string;
+            kind: components["schemas"]["CostKind"];
+            /** @description 人民币成本（分） */
+            amountCents: number;
+            /** @description 上游扣费美元（美分，含手续费） */
+            usdCents: number | null;
+            /** @description 用的付款资源 */
+            resourceName: string | null;
+            note: string | null;
+            user: components["schemas"]["UserBriefDto"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OrderProfitDto: {
+            /** @description 已收（分） */
+            revenueCents: number;
+            /** @description 收款手续费（分） */
+            feeCents: number;
+            /** @description 已发生成本（分） */
+            costCents: number;
+            /** @description 毛利（分）= 已收 − 手续费 − 已发生成本 */
+            marginCents: number;
+            /** @description 毛利率（0–1） */
+            marginRate: number | null;
+            /** @description 已登记的上游扣费次数（含成品号成本） */
+            chargesDone: number;
+            /** @description 服务期内应有的上游扣费次数（= 服务月数） */
+            chargesExpected: number;
+            /** @description 还没发生的上游扣费，按当前汇率和官方月费估算（分） */
+            estRemainingCostCents: number;
+            /** @description 预计毛利（分）= 毛利 − 预计还要发生的成本 */
+            estMarginCents: number;
+            costs: components["schemas"]["CostEntryDto"][];
         };
         OrderDetailDto: {
             id: string;
@@ -1245,10 +1479,14 @@ export interface components {
             completedAt: string | null;
             cancelledAt: string | null;
             cancelReason: string | null;
+            /** @description 毛利（分）= 已收 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
+            marginCents: number | null;
             /** Format: date-time */
             createdAt: string;
             payments: components["schemas"]["PaymentDto"][];
             tasks: components["schemas"]["TaskBriefDto"][];
+            /** @description 有「查看成本」权限时返回 */
+            profit: components["schemas"]["OrderProfitDto"] | null;
         };
         CreateOrderDto: {
             customerId: string;
@@ -1329,6 +1567,15 @@ export interface components {
             /** @description 要操作的 Claude 账号 */
             account: components["schemas"]["AccountBriefDto"] | null;
             assignee: components["schemas"]["UserBriefDto"] | null;
+            /** @description 涉及的套餐（成品号开通按它选库存） */
+            planId: string | null;
+            /** @description 套餐官方月费（美分），扣费金额的默认值 */
+            upstreamMonthlyUsdCents: number | null;
+            /**
+             * @description 完成时是否要登记上游扣费
+             * @enum {string}
+             */
+            chargeMode: "required" | "optional" | "none";
             /** Format: date-time */
             dueAt: string;
             /** @description 未完成且已过最晚完成时间 */
@@ -1361,6 +1608,19 @@ export interface components {
             accountPassword?: string;
             /** @description 成品号：恢复邮箱、备用码等其他敏感信息（加密保存） */
             accountSecretNote?: string;
+            /** @description 成品号开通：从库存里选的成品号 ID（和 accountEmail 二选一） */
+            stockAccountId?: string;
+            /** @description 这次上游扣费用的付款资源 */
+            resourceId?: string;
+            /** @description 上游扣费金额（美分，不含手续费），默认是套餐官方月费 */
+            chargeUsdCents?: number;
+            /** @description 这次没有产生上游扣费（例如账号本来就在付费期内） */
+            noCharge?: boolean;
+            /**
+             * @description 回收成品号：STOCK 回库继续卖（默认）；VOID 作废
+             * @enum {string}
+             */
+            reclaimTo?: "STOCK" | "VOID";
         };
         TaskNoteDto: {
             /** @example 客户账号被风控，等客户换号 */
@@ -1515,6 +1775,14 @@ export interface components {
             /** @description 本月新增 */
             newThisMonth: number;
         };
+        InventoryAlertDto: {
+            /** @description 余额低于预警线的付款资源数 */
+            lowResources: number;
+            /** @description 在库成品号不足的套餐 */
+            lowPools: string[];
+            /** @description 在库成品号总数 */
+            inStock: number;
+        };
         DashboardDto: {
             /** @description 有「查看订单」权限时返回 */
             orders: components["schemas"]["OrderStatsDto"] | null;
@@ -1522,6 +1790,203 @@ export interface components {
             tasks: components["schemas"]["TaskStatsDto"] | null;
             subscriptions: components["schemas"]["SubscriptionStatsDto"] | null;
             customers: components["schemas"]["CustomerStatsDto"] | null;
+            /** @description 有「查看库存」权限时返回 */
+            inventory: components["schemas"]["InventoryAlertDto"] | null;
+        };
+        StockPoolDto: {
+            planId: string;
+            planName: string;
+            /** @description 在库数量 */
+            inStock: number;
+            /** @description 使用中数量 */
+            inUse: number;
+            /** @description 在库数量低于预警线 */
+            low: boolean;
+        };
+        /** @enum {string} */
+        ResourceType: "VIRTUAL_CARD" | "GIFT_CARD" | "BALANCE";
+        ResourceDto: {
+            id: string;
+            /** @example R00003 */
+            code: string;
+            type: components["schemas"]["ResourceType"];
+            name: string;
+            last4: string | null;
+            /** @description 账面余额（美分） */
+            balanceUsdCents: number;
+            /** @description 余额对应的人民币成本（分） */
+            costPoolCents: number;
+            /** @description 平均成本：每 1 美元合多少元人民币（余额为 0 时为空） */
+            avgRate: number | null;
+            /** @description 每笔扣费手续费比例（万分比） */
+            feeBp: number;
+            /** @description 每笔扣费固定手续费（美分） */
+            feeFixedUsdCents: number;
+            /** @description 低于这个余额预警（美分） */
+            lowBalanceUsdCents: number;
+            /** @description 余额低于预警线 */
+            low: boolean;
+            active: boolean;
+            hasSecretNote: boolean;
+            remark: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        InventorySummaryDto: {
+            pools: components["schemas"]["StockPoolDto"][];
+            /** @description 成品号预警线（每个套餐） */
+            accountStockLow: number;
+            /** @description 余额低于预警线的付款资源 */
+            lowResources: components["schemas"]["ResourceDto"][];
+            /** @description 可用付款资源的美元余额合计（美分） */
+            totalBalanceUsdCents: number;
+            /** @description 可用付款资源的人民币成本合计（分） */
+            totalCostPoolCents: number;
+        };
+        CreateResourceDto: {
+            type: components["schemas"]["ResourceType"];
+            /** @example Visa 虚拟卡 A */
+            name: string;
+            /** @example 1234 */
+            last4?: string;
+            /** @description 每笔扣费手续费比例（万分比，150 = 1.5%） */
+            feeBp?: number;
+            /** @description 每笔扣费固定手续费（美分） */
+            feeFixedUsdCents?: number;
+            /** @description 余额低于这个值预警（美分） */
+            lowBalanceUsdCents?: number;
+            /** @description 卡号、CVV、登录信息等（加密保存，查看会记录日志） */
+            secretNote?: string;
+            remark?: string;
+            /** @description 首次入库的美元金额（美分） */
+            initialUsdCents?: number;
+            /** @description 首次入库实际花的人民币（分） */
+            initialCnyCents?: number;
+        };
+        UpdateResourceDto: {
+            name?: string;
+            last4?: string | null;
+            feeBp?: number;
+            feeFixedUsdCents?: number;
+            lowBalanceUsdCents?: number;
+            active?: boolean;
+            /** @description 新的敏感信息；传空字符串表示清除 */
+            secretNote?: string;
+            remark?: string | null;
+        };
+        TopUpDto: {
+            /** @description 入库美元（美分） */
+            usdCents: number;
+            /** @description 实际花的人民币（分），含买卡折扣、充值手续费 */
+            cnyCents: number;
+            /** @example 闲鱼买 $100 礼品卡 */
+            note?: string;
+        };
+        AdjustDto: {
+            /** @description 实际余额（美分） */
+            actualUsdCents: number;
+            /** @example 月底对账，实际余额以卡商后台为准 */
+            note: string;
+        };
+        /** @enum {string} */
+        ResourceTxType: "TOP_UP" | "CONSUME" | "ADJUST";
+        ResourceTxDto: {
+            id: string;
+            type: components["schemas"]["ResourceTxType"];
+            /** @description 美元变动（美分），入正出负 */
+            usdCents: number;
+            /** @description 人民币变动（分） */
+            cnyCents: number;
+            balanceAfterUsdCents: number;
+            note: string | null;
+            /** @description 成本归属的订单 */
+            order: components["schemas"]["RefDto"] | null;
+            user: components["schemas"]["UserBriefDto"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ResourceTxListDto: {
+            items: components["schemas"]["ResourceTxDto"][];
+            total: number;
+        };
+        ResourceSecretDto: {
+            name: string;
+            secretNote: string | null;
+        };
+        /** @enum {string} */
+        AccountStockStatus: "IN_STOCK" | "IN_USE" | "VOID";
+        PlanRefDto: {
+            id: string;
+            name: string;
+        };
+        StockAccountDto: {
+            id: string;
+            email: string;
+            plan: components["schemas"]["PlanRefDto"] | null;
+            stockStatus: components["schemas"]["AccountStockStatus"];
+            /** @description 还没结转的备号成本（分） */
+            stockCostCents: number;
+            /** @description 上游已付费到这一天 */
+            upstreamRenewAt: string | null;
+            stockedAt: string | null;
+            /** @description 使用中的客户 */
+            customer: components["schemas"]["CustomerBriefDto"] | null;
+            /** @description 服务中的订阅 */
+            subscription: components["schemas"]["RefDto"] | null;
+            hasPassword: boolean;
+            hasSecretNote: boolean;
+            remark: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        StockAccountListDto: {
+            items: components["schemas"]["StockAccountDto"][];
+            total: number;
+        };
+        NewStockAccountDto: {
+            email: string;
+            password: string;
+            /** @description 恢复邮箱、备用码等 */
+            secretNote?: string;
+        };
+        CreateStockAccountsDto: {
+            /** @description 入哪个套餐的库存 */
+            planId: string;
+            accounts: components["schemas"]["NewStockAccountDto"][];
+            /** @description 每个号的其他成本（分），例如买号、邮箱费用 */
+            costCnyCents?: number;
+            /** @description 用哪个付款资源给每个号付第一个月 */
+            resourceId?: string;
+            /** @description 每个号的上游扣费（美分，不含手续费），默认套餐官方月费 */
+            chargeUsdCents?: number;
+            /** @description 上游已付费到这一天；登记了付款时默认一个月后 */
+            upstreamRenewAt?: string;
+            remark?: string;
+        };
+        SkippedAccountDto: {
+            email: string;
+            reason: string;
+        };
+        CreateStockAccountsResultDto: {
+            created: number;
+            skipped: components["schemas"]["SkippedAccountDto"][];
+        };
+        UpdateStockAccountDto: {
+            planId?: string;
+            /**
+             * @description 在库 / 作废（使用中的号不能改）
+             * @enum {string}
+             */
+            stockStatus?: "IN_STOCK" | "VOID";
+            upstreamRenewAt?: string | null;
+            remark?: string | null;
+        };
+        ChargeStockAccountDto: {
+            resourceId: string;
+            /** @description 上游扣费（美分，不含手续费），默认套餐官方月费 */
+            usdCents?: number;
+            /** @description 付费后上游下次扣费时间，默认顺延一个月 */
+            upstreamRenewAt?: string;
         };
     };
     responses: never;
@@ -2847,6 +3312,287 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardDto"];
+                };
+            };
+        };
+    };
+    Inventory_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventorySummaryDto"];
+                };
+            };
+        };
+    };
+    Inventory_listResources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceDto"][];
+                };
+            };
+        };
+    };
+    Inventory_createResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateResourceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceDto"];
+                };
+            };
+        };
+    };
+    Inventory_updateResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateResourceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceDto"];
+                };
+            };
+        };
+    };
+    Inventory_topUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TopUpDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceDto"];
+                };
+            };
+        };
+    };
+    Inventory_adjust: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceDto"];
+                };
+            };
+        };
+    };
+    Inventory_transactions: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                type?: components["schemas"]["ResourceTxType"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceTxListDto"];
+                };
+            };
+        };
+    };
+    Inventory_revealResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceSecretDto"];
+                };
+            };
+        };
+    };
+    Inventory_listStock: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                planId?: string;
+                status?: components["schemas"]["AccountStockStatus"];
+                /** @description 账号邮箱 */
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockAccountListDto"];
+                };
+            };
+        };
+    };
+    Inventory_createStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateStockAccountsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateStockAccountsResultDto"];
+                };
+            };
+        };
+    };
+    Inventory_updateStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStockAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockAccountDto"];
+                };
+            };
+        };
+    };
+    Inventory_chargeStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChargeStockAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockAccountDto"];
                 };
             };
         };

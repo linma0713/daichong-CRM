@@ -11,12 +11,26 @@ import {
   Typography,
 } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { PAYMENT_METHODS, type PaymentMethod } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { useBusinessSettings } from '../../api/queries';
 
 type Settings = Schemas['BusinessSettingsDto'];
-/** 标签模式的下拉框只接受字符串，提交时再转成数字 */
-type SettingsForm = Omit<Settings, 'reminderDays'> & { reminderDays: string[] };
+/** 标签模式的下拉框只接受字符串，提交时再转成数字；手续费在界面上按百分比填 */
+type SettingsForm = Omit<Settings, 'reminderDays' | 'paymentFeeBp'> & {
+  reminderDays: string[];
+  feePercent: Record<PaymentMethod, number>;
+};
+
+const bpToPercent = (bp: Settings['paymentFeeBp']) =>
+  Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, (bp[m.value] ?? 0) / 100])) as Record<
+    PaymentMethod,
+    number
+  >;
+const percentToBp = (p: Record<PaymentMethod, number>) =>
+  Object.fromEntries(
+    PAYMENT_METHODS.map((m) => [m.value, Math.round((p[m.value] ?? 0) * 100)]),
+  ) as Settings['paymentFeeBp'];
 
 export function SettingsPage() {
   const { message, modal } = App.useApp();
@@ -26,9 +40,11 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (settings.data) {
+      const { paymentFeeBp, ...rest } = settings.data;
       form.setFieldsValue({
-        ...settings.data,
+        ...rest,
         reminderDays: settings.data.reminderDays.map(String),
+        feePercent: bpToPercent(paymentFeeBp),
       });
     }
   }, [settings.data, form]);
@@ -39,12 +55,18 @@ export function SettingsPage() {
       if (days.some((d) => !Number.isInteger(d) || d < 0 || d > 60)) {
         return Promise.reject(new Error('提醒天数要填 0–60 之间的整数'));
       }
-      return unwrap(api.PATCH('/api/settings', { body: { ...v, reminderDays: days } }));
+      const { feePercent, ...rest } = v;
+      return unwrap(
+        api.PATCH('/api/settings', {
+          body: { ...rest, reminderDays: days, paymentFeeBp: percentToBp(feePercent) },
+        }),
+      );
     },
     onSuccess: (saved) => {
       message.success('已保存');
       queryClient.setQueryData(['settings'], saved);
       void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['inventory-summary'] });
     },
   });
 
@@ -110,6 +132,33 @@ export function SettingsPage() {
             extra="上游扣费前几天生成「内部续费」或「取消自动续订」任务"
           >
             <InputNumber min={1} max={10} style={{ width: 200 }} />
+          </Form.Item>
+          <Form.Item
+            label="收款手续费率（%）"
+            extra="确认收款时按收款方式自动计算手续费，计入每单毛利。例如微信商户 0.6%"
+          >
+            <Space wrap>
+              {PAYMENT_METHODS.map((m) => (
+                <Form.Item key={m.value} name={['feePercent', m.value]} noStyle>
+                  <InputNumber
+                    min={0}
+                    max={20}
+                    step={0.1}
+                    precision={2}
+                    prefix={<span style={{ color: '#8c8c8c', marginRight: 4 }}>{m.label}</span>}
+                    style={{ width: 150 }}
+                  />
+                </Form.Item>
+              ))}
+            </Space>
+          </Form.Item>
+          <Form.Item
+            name="accountStockLow"
+            label="成品号库存预警（个）"
+            rules={[{ required: true }]}
+            extra="每个在卖成品号的套餐，在库数量低于这个值时在首页和库存页提醒"
+          >
+            <InputNumber min={0} max={1000} style={{ width: 200 }} />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={save.isPending}>
             保存

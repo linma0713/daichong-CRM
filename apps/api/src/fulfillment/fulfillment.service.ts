@@ -134,7 +134,8 @@ export class FulfillmentService {
     opts: { upstreamRenewAt?: Date },
     now = new Date(),
   ): Promise<Subscription> {
-    const newEnd = addMonths(maxDate(sub.endAt, now), order.termMonths);
+    const periodStart = maxDate(sub.endAt, now);
+    const newEnd = addMonths(periodStart, order.termMonths);
     const reenable = !sub.autoRenewOn;
     const updated = await tx.subscription.update({
       where: { id: sub.id },
@@ -159,7 +160,12 @@ export class FulfillmentService {
     });
     await tx.order.update({
       where: { id: order.id },
-      data: { status: 'COMPLETED', completedAt: now },
+      data: {
+        status: 'COMPLETED',
+        completedAt: now,
+        periodStartAt: periodStart,
+        periodEndAt: newEnd,
+      },
     });
     return updated;
   }

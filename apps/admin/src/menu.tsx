@@ -5,6 +5,7 @@ import {
   CalendarOutlined,
   ControlOutlined,
   DashboardOutlined,
+  DatabaseOutlined,
   FileTextOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
@@ -28,6 +29,7 @@ export const MENU: MenuNode[] = [
     anyPermission: ['customer:read', 'subscription:read'],
   },
   { key: 'catalog', label: '商品与套餐', path: '/catalog' },
+  { key: 'inventory', label: '库存与成本', path: '/inventory', permission: 'inventory:read' },
   {
     key: 'system',
     label: '系统管理',
@@ -53,6 +55,7 @@ export const MENU_ICONS: Record<string, ReactNode> = {
   tasks: <ThunderboltOutlined />,
   subscriptions: <CalendarOutlined />,
   catalog: <ShoppingOutlined />,
+  inventory: <DatabaseOutlined />,
   settings: <ControlOutlined />,
   system: <SettingOutlined />,
   users: <TeamOutlined />,

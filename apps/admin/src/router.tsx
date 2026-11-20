@@ -19,6 +19,7 @@ import { TasksPage } from './pages/tasks/TasksPage';
 import { SubscriptionsPage } from './pages/subscriptions/SubscriptionsPage';
 import { SubscriptionDetailPage } from './pages/subscriptions/SubscriptionDetailPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { InventoryPage } from './pages/inventory/InventoryPage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -104,6 +105,14 @@ const router = createBrowserRouter([
         ),
       },
       { path: 'catalog', element: <CatalogPage /> },
+      {
+        path: 'inventory',
+        element: (
+          <RequirePermission permission="inventory:read">
+            <InventoryPage />
+          </RequirePermission>
+        ),
+      },
       {
         path: 'settings',
         element: (

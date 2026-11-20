@@ -6,10 +6,14 @@ import {
   Badge,
   Button,
   Card,
+  Checkbox,
   DatePicker,
+  Divider,
   Form,
   Input,
+  InputNumber,
   Modal,
+  Radio,
   Select,
   Space,
   Table,
@@ -22,9 +26,9 @@ import {
 import { ReloadOutlined } from '@ant-design/icons';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs, { type Dayjs } from 'dayjs';
-import { TASK_TYPE_LABELS, TASK_TYPES, type TaskType } from '@crm/shared';
+import { TASK_TYPE_LABELS, TASK_TYPES, formatCents, type TaskType } from '@crm/shared';
 import { api, unwrap, type QueryOf, type Schemas } from '../../api/client';
-import { useStaffOptions } from '../../api/queries';
+import { useResources, useStaffOptions } from '../../api/queries';
 import { useAuth } from '../../auth/AuthProvider';
 import {
   AccountSecretButton,
@@ -357,9 +361,14 @@ interface CompleteForm {
   note?: string;
   activatedAt?: Dayjs;
   upstreamRenewAt?: Dayjs;
+  stockAccountId?: string;
   accountEmail?: string;
   accountPassword?: string;
   accountSecretNote?: string;
+  resourceId?: string;
+  chargeUsd?: number;
+  noCharge?: boolean;
+  reclaimTo?: 'STOCK' | 'VOID';
 }
 
 function CompleteModal({
@@ -372,9 +381,35 @@ function CompleteModal({
   onDone: () => void;
 }) {
   const { message } = App.useApp();
+  const queryClient = useQueryClient();
   const [form] = Form.useForm<CompleteForm>();
   const isActivate = task.type === 'ACTIVATE';
   const deliversAccount = isActivate && task.fulfillmentType === 'ACCOUNT';
+  const resources = useResources(task.chargeMode !== 'none');
+  const activeResources = resources.data?.filter((r) => r.active) ?? [];
+  const stock = useQuery({
+    queryKey: ['stock-accounts', { planId: task.planId, status: 'IN_STOCK', pageSize: 100 }],
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/stock-accounts', {
+          params: {
+            query: { planId: task.planId ?? undefined, status: 'IN_STOCK', pageSize: 100 },
+          },
+        }),
+      ),
+    enabled: deliversAccount && !!task.planId,
+  });
+  const stockItems = stock.data?.items ?? [];
+  const [source, setSource] = useState<'stock' | 'manual' | null>(null);
+  const accountSource = source ?? (stockItems.length ? 'stock' : 'manual');
+  const noCharge = Form.useWatch('noCharge', form);
+  const stockAccountId = Form.useWatch('stockAccountId', form);
+  const pickedStock = stockItems.find((a) => a.id === stockAccountId);
+  // 选的库存号已经过了上游付费日，要重新付费
+  const stockLapsed =
+    !!pickedStock?.upstreamRenewAt && dayjs(pickedStock.upstreamRenewAt).isBefore(dayjs());
+  const chargeRequired = task.chargeMode === 'required' || stockLapsed;
+  const defaultUsd = task.upstreamMonthlyUsdCents ? task.upstreamMonthlyUsdCents / 100 : undefined;
   const askUpstream = isActivate || task.type === 'RENEW' || task.type === 'INTERNAL_RENEW';
   const upstreamHint: Record<string, string> = {
     ACTIVATE: '不填 = 开通时间 + 1 个月',
@@ -395,9 +430,21 @@ function CompleteModal({
             note: v.note || undefined,
             activatedAt: v.activatedAt?.toISOString(),
             upstreamRenewAt: v.upstreamRenewAt?.toISOString(),
-            accountEmail: v.accountEmail || undefined,
+            stockAccountId:
+              deliversAccount && accountSource === 'stock' ? v.stockAccountId : undefined,
+            accountEmail:
+              deliversAccount && accountSource === 'stock'
+                ? undefined
+                : v.accountEmail || undefined,
             accountPassword: v.accountPassword || undefined,
             accountSecretNote: v.accountSecretNote || undefined,
+            resourceId: v.noCharge ? undefined : v.resourceId,
+            chargeUsdCents:
+              v.noCharge || !v.resourceId || v.chargeUsd === undefined || v.chargeUsd === null
+                ? undefined
+                : Math.round(v.chargeUsd * 100),
+            noCharge: v.noCharge || undefined,
+            reclaimTo: task.type === 'RECLAIM_ACCOUNT' ? v.reclaimTo : undefined,
           },
         }),
       ),
@@ -407,6 +454,9 @@ function CompleteModal({
           ? `已完成，订阅 ${t.subscription.code} 开始计时`
           : '已完成',
       );
+      for (const key of ['resources', 'stock-accounts', 'inventory-summary']) {
+        void queryClient.invalidateQueries({ queryKey: [key] });
+      }
       onDone();
       onClose();
     },
@@ -435,33 +485,126 @@ function CompleteModal({
               : undefined
         }
       />
-      <Form<CompleteForm> form={form} layout="vertical" onFinish={(v) => complete.mutate(v)}>
+      <Form<CompleteForm>
+        form={form}
+        layout="vertical"
+        initialValues={{ chargeUsd: defaultUsd, reclaimTo: 'STOCK' }}
+        onFinish={(v) => complete.mutate(v)}
+      >
         {deliversAccount && (
           <>
-            <Form.Item
-              name="accountEmail"
-              label="交付的成品号邮箱"
-              rules={[
-                { required: true, message: '请填写交付的账号' },
-                { type: 'email', message: '邮箱格式不正确' },
-              ]}
-            >
-              <Input autoComplete="off" />
+            <Form.Item label="交付哪个号">
+              <Radio.Group
+                value={accountSource}
+                onChange={(e) => setSource(e.target.value as 'stock' | 'manual')}
+                options={[
+                  {
+                    value: 'stock',
+                    label: `从库存选（在库 ${stockItems.length} 个）`,
+                    disabled: stockItems.length === 0,
+                  },
+                  { value: 'manual', label: '手动登记一个新号' },
+                ]}
+              />
             </Form.Item>
-            <Form.Item
-              name="accountPassword"
-              label="登录密码"
-              extra="新账号必填；回收再卖的旧账号不填则沿用原密码。加密保存。"
-            >
-              <Input.Password autoComplete="new-password" />
-            </Form.Item>
+            {accountSource === 'stock' ? (
+              <Form.Item
+                name="stockAccountId"
+                label="库存成品号"
+                initialValue={stockItems[0]?.id}
+                rules={[{ required: true, message: '请选择要交付的成品号' }]}
+                extra={
+                  stockLapsed
+                    ? '这个号的上游付费已过期，交付前要重新订阅，并在下面登记这次扣费'
+                    : '按入库时间先进先出；备号成本会结转到这笔订单'
+                }
+              >
+                <Select
+                  loading={stock.isLoading}
+                  options={stockItems.map((a) => ({
+                    value: a.id,
+                    label: `${a.email}（付费到 ${a.upstreamRenewAt ? dayjs(a.upstreamRenewAt).format('MM-DD') : '未付费'}）`,
+                  }))}
+                />
+              </Form.Item>
+            ) : (
+              <>
+                <Form.Item
+                  name="accountEmail"
+                  label="交付的成品号邮箱"
+                  rules={[
+                    { required: true, message: '请填写交付的账号' },
+                    { type: 'email', message: '邮箱格式不正确' },
+                  ]}
+                >
+                  <Input autoComplete="off" />
+                </Form.Item>
+                <Form.Item
+                  name="accountPassword"
+                  label="登录密码"
+                  extra="新账号必填；回收再卖的旧账号不填则沿用原密码。加密保存。"
+                >
+                  <Input.Password autoComplete="new-password" />
+                </Form.Item>
+              </>
+            )}
             <Form.Item
               name="accountSecretNote"
               label="其他敏感信息"
-              extra="恢复邮箱、备用码等，加密保存"
+              extra="恢复邮箱、备用码等，加密保存；不填则不改"
             >
               <Input.TextArea rows={2} maxLength={1000} />
             </Form.Item>
+          </>
+        )}
+        {task.chargeMode !== 'none' && (
+          <>
+            <Divider orientation="left" plain style={{ marginTop: 0 }}>
+              上游扣费
+            </Divider>
+            {!noCharge && (
+              <Space.Compact block>
+                <Form.Item
+                  name="resourceId"
+                  label="用哪个付款资源"
+                  style={{ flex: 1, marginRight: 12 }}
+                  rules={
+                    chargeRequired && activeResources.length > 0
+                      ? [{ required: true, message: '请选择付款资源，或勾选「本次未扣费」' }]
+                      : []
+                  }
+                  extra={
+                    activeResources.length === 0
+                      ? '还没有配置付款资源，这次可以先不登记'
+                      : chargeRequired
+                        ? '会从余额里扣，并按平均成本记到订单'
+                        : '从库存发号一般不用付费；号过期了要重新付才选'
+                  }
+                >
+                  <Select
+                    allowClear
+                    loading={resources.isLoading}
+                    options={activeResources.map((r) => ({
+                      value: r.id,
+                      label: `${r.name}（余额 ${formatCents(r.balanceUsdCents, '$')}）`,
+                    }))}
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="chargeUsd"
+                  label="扣费（美元）"
+                  style={{ width: 140 }}
+                  extra="不含手续费"
+                >
+                  <InputNumber min={0.01} style={{ width: '100%' }} />
+                </Form.Item>
+              </Space.Compact>
+            )}
+            {chargeRequired && (
+              <Form.Item name="noCharge" valuePropName="checked" style={{ marginTop: -8 }}>
+                <Checkbox>本次未扣费（例如账号本来就在付费期内）</Checkbox>
+              </Form.Item>
+            )}
           </>
         )}
         {isActivate && (
@@ -487,13 +630,23 @@ function CompleteModal({
           </Form.Item>
         )}
         {task.type === 'RECLAIM_ACCOUNT' && (
-          <Form.Item
-            name="accountPassword"
-            label="修改后的新密码"
-            extra="建议收回后立即改密；不填则不变"
-          >
-            <Input.Password autoComplete="new-password" />
-          </Form.Item>
+          <>
+            <Form.Item name="reclaimTo" label="收回后">
+              <Radio.Group
+                options={[
+                  { value: 'STOCK', label: '回库，之后再卖' },
+                  { value: 'VOID', label: '作废（号已不能用）' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item
+              name="accountPassword"
+              label="修改后的新密码"
+              extra="建议收回后立即改密；不填则不变"
+            >
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+          </>
         )}
         <Form.Item name="note" label="备注">
           <Input.TextArea rows={2} maxLength={500} />
