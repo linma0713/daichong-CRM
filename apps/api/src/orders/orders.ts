@@ -345,7 +345,11 @@ export class OrderProfitDto {
   estRemainingCostCents: number;
   @ApiProperty({ description: '有代理但还没完成的订单：完成后预计要计提的佣金（分）' })
   estCommissionCents: number;
-  @ApiProperty({ description: '预计毛利（分）= 毛利 − 预计还要发生的成本 − 预计佣金' })
+  @ApiProperty({ description: '待收款订单还没收的钱（分），预计毛利按收齐算' })
+  estUnpaidCents: number;
+  @ApiProperty({
+    description: '预计毛利（分）= 毛利 + 还没收的钱 − 预计还要发生的成本 − 预计佣金',
+  })
   estMarginCents: number;
   @ApiProperty({ type: [CostEntryDto] }) costs: CostEntryDto[];
 }
@@ -638,6 +642,7 @@ export class OrdersService {
       status: OrderStatus;
       productId: string;
       termMonths: number;
+      amountCents: number;
       paidCents: number;
       refundedCents: number;
       feeCents: number;
@@ -674,6 +679,9 @@ export class OrdersService {
         ? commissionOf(o.commissionBaseCents, o.agentRateBp) +
           commissionOf(o.commissionBaseCents, o.parentRateBp)
         : 0;
+    // 待收款的订单按收齐算，不然刚下单就显示一大笔负毛利
+    const estUnpaidCents =
+      o.status === 'PENDING_PAYMENT' ? Math.max(0, o.amountCents - o.paidCents) : 0;
     return {
       revenueCents: o.paidCents,
       refundedCents: o.refundedCents,
@@ -686,7 +694,8 @@ export class OrdersService {
       chargesExpected,
       estRemainingCostCents,
       estCommissionCents,
-      estMarginCents: marginCents - estRemainingCostCents - estCommissionCents,
+      estUnpaidCents,
+      estMarginCents: marginCents + estUnpaidCents - estRemainingCostCents - estCommissionCents,
       costs: entries.map((e) => ({
         id: e.id,
         kind: e.kind,

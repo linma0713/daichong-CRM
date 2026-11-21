@@ -10448,9 +10448,13 @@
             "type": "number",
             "description": "有代理但还没完成的订单：完成后预计要计提的佣金（分）"
           },
+          "estUnpaidCents": {
+            "type": "number",
+            "description": "待收款订单还没收的钱（分），预计毛利按收齐算"
+          },
           "estMarginCents": {
             "type": "number",
-            "description": "预计毛利（分）= 毛利 − 预计还要发生的成本 − 预计佣金"
+            "description": "预计毛利（分）= 毛利 + 还没收的钱 − 预计还要发生的成本 − 预计佣金"
           },
           "costs": {
             "type": "array",
@@ -10471,6 +10475,7 @@
           "chargesExpected",
           "estRemainingCostCents",
           "estCommissionCents",
+          "estUnpaidCents",
           "estMarginCents",
           "costs"
         ]
