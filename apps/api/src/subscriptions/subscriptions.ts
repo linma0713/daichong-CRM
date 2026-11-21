@@ -70,6 +70,7 @@ import { PageQueryDto } from '../common/pagination';
 import { SecretBox } from '../common/secret-box';
 import { productName } from '../catalog/catalog';
 import { FollowUpDto, visibleCustomers } from '../customers/customers';
+import { CustomerStatsService } from '../customers/stats';
 import { RefDto, TaskBriefDto, toCustomerBrief } from '../orders/orders';
 import { SettingsModule, SettingsService } from '../settings/settings';
 import { orderForPeriod } from '../inventory/ledger';
@@ -274,6 +275,7 @@ export class SubscriptionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: SettingsService,
+    private readonly stats: CustomerStatsService,
   ) {}
 
   async list(q: SubscriptionQueryDto, user: AuthUser): Promise<SubscriptionListDto> {
@@ -460,6 +462,7 @@ export class SubscriptionsService {
           },
         });
       }
+      await this.stats.refresh(tx, [sub.customerId]);
     });
     return this.get(id, user);
   }

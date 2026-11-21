@@ -8,6 +8,8 @@ import {
   ACCOUNT_STOCK_STATUS_LABELS,
   AGENT_STATUS_LABELS,
   COMMISSION_STATUS_LABELS,
+  CUSTOMER_STAGE_HINTS,
+  CUSTOMER_STAGE_LABELS,
   FULFILLMENT_TYPE_LABELS,
   ORDER_KIND_LABELS,
   ORDER_STATUS_LABELS,
@@ -22,6 +24,7 @@ import {
   type AccountStockStatus,
   type AgentStatus,
   type CommissionStatus,
+  type CustomerStage,
   type FulfillmentType,
   type OrderKind,
   type OrderStatus,
@@ -134,6 +137,24 @@ const SUB_STATUS_COLORS: Record<SubscriptionStatus, string> = {
 };
 export function SubscriptionStatusTag({ status }: { status: SubscriptionStatus }) {
   return <Tag color={SUB_STATUS_COLORS[status]}>{SUBSCRIPTION_STATUS_LABELS[status]}</Tag>;
+}
+
+const STAGE_COLORS: Record<CustomerStage, string> = {
+  LEAD: 'default',
+  NEW: 'cyan',
+  ACTIVE: 'green',
+  DORMANT: 'orange',
+  CHURNED: 'red',
+};
+export function CustomerStageTag({ stage, vip }: { stage: CustomerStage; vip?: boolean }) {
+  return (
+    <span style={{ whiteSpace: 'nowrap' }}>
+      <Tooltip title={CUSTOMER_STAGE_HINTS[stage]}>
+        <Tag color={STAGE_COLORS[stage]}>{CUSTOMER_STAGE_LABELS[stage]}</Tag>
+      </Tooltip>
+      {vip && <Tag color="gold">VIP</Tag>}
+    </span>
+  );
 }
 
 const TICKET_TYPE_COLORS: Record<TicketType, string> = {

@@ -544,6 +544,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/customers/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 客户分层统计：各阶段人数、VIP、待召回、流失原因 */
+        get: operations["Customers_segments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/customers/{id}": {
         parameters: {
             query?: never;
@@ -591,6 +608,23 @@ export interface paths {
         put?: never;
         /** 记录跟进 / 续费提醒 */
         post: operations["Customers_addFollowUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customers/{id}/lost-reason": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 记录流失原因（客户之后再付款会自动清掉） */
+        post: operations["Customers_setLostReason"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1525,6 +1559,59 @@ export interface paths {
         patch: operations["Agents_update"];
         trace?: never;
     };
+    "/api/scripts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 话术列表（所有员工可查看） */
+        get: operations["Scripts_list"];
+        put?: never;
+        /** 新增话术 */
+        post: operations["Scripts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scripts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 删除话术 */
+        delete: operations["Scripts_remove"];
+        options?: never;
+        head?: never;
+        /** 修改话术 */
+        patch: operations["Scripts_update"];
+        trace?: never;
+    };
+    "/api/scripts/{id}/used": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 记录复制了一次（常用的排前面） */
+        post: operations["Scripts_used"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1901,6 +1988,16 @@ export interface components {
              * @example 9
              */
             dailyDigestHour: number;
+            /**
+             * @description 累计实付满多少（分）算 VIP 客户
+             * @example 300000
+             */
+            vipThresholdCents: number;
+            /**
+             * @description 服务结束后多少天内算「沉睡」（召回期），超过算「流失」
+             * @example 30
+             */
+            recallWindowDays: number;
         };
         UpdateSettingsDto: {
             exchangeRate?: number;
@@ -1915,6 +2012,8 @@ export interface components {
             commissionFreezeDays?: number;
             commissionIncludeWarranty?: boolean;
             dailyDigestHour?: number;
+            vipThresholdCents?: number;
+            recallWindowDays?: number;
         };
         PlanDto: {
             id: string;
@@ -2006,6 +2105,8 @@ export interface components {
             warrantyPriceCents?: number | null;
             active?: boolean;
         };
+        /** @enum {string} */
+        CustomerStage: "LEAD" | "NEW" | "ACTIVE" | "DORMANT" | "CHURNED";
         UserBriefDto: {
             id: string;
             displayName: string;
@@ -2044,6 +2145,24 @@ export interface components {
             activeSubscriptionCount: number;
             /** @description 最近一个到期时间 */
             nextExpiryAt: string | null;
+            stage: components["schemas"]["CustomerStage"];
+            stageChangedAt: string | null;
+            /** @description 累计实付达到 VIP 门槛 */
+            vip: boolean;
+            /** @description 累计实付（分）= 已收 − 已退 */
+            netPaidCents: number;
+            /** @description 收齐款的订单数 */
+            paidOrderCount: number;
+            firstPaidAt: string | null;
+            lastPaidAt: string | null;
+            /** @description 最晚的服务结束时间 */
+            serviceEndAt: string | null;
+            /** @description 最近一次跟进时间 */
+            lastContactAt: string | null;
+            /** @enum {string|null} */
+            lostReason: "price" | "no_need" | "competitor" | "official" | "bad_experience" | "unreachable" | "other" | null;
+            lostNote: string | null;
+            lostReasonAt: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -2051,10 +2170,32 @@ export interface components {
             items: components["schemas"]["CustomerDto"][];
             total: number;
         };
+        StageCountDto: {
+            stage: components["schemas"]["CustomerStage"];
+            count: number;
+        };
+        LostReasonCountDto: {
+            /** @description null = 没记录原因 */
+            reason: string | null;
+            count: number;
+        };
+        CustomerSegmentsDto: {
+            total: number;
+            stages: components["schemas"]["StageCountDto"][];
+            vip: number;
+            /** @description VIP 门槛（分） */
+            vipThresholdCents: number;
+            /** @description 召回期（天） */
+            recallWindowDays: number;
+            /** @description 沉睡客户里服务结束后还没联系过的 */
+            dormantUncontacted: number;
+            /** @description 沉睡 + 流失客户的流失原因分布 */
+            lostReasons: components["schemas"]["LostReasonCountDto"][];
+        };
         FollowUpDto: {
             id: string;
             /** @enum {string} */
-            kind: "note" | "renewal_reminder";
+            kind: "note" | "renewal_reminder" | "recall" | "lost_reason";
             content: string;
             user: components["schemas"]["UserBriefDto"];
             subscriptionId: string | null;
@@ -2084,6 +2225,24 @@ export interface components {
             activeSubscriptionCount: number;
             /** @description 最近一个到期时间 */
             nextExpiryAt: string | null;
+            stage: components["schemas"]["CustomerStage"];
+            stageChangedAt: string | null;
+            /** @description 累计实付达到 VIP 门槛 */
+            vip: boolean;
+            /** @description 累计实付（分）= 已收 − 已退 */
+            netPaidCents: number;
+            /** @description 收齐款的订单数 */
+            paidOrderCount: number;
+            firstPaidAt: string | null;
+            lastPaidAt: string | null;
+            /** @description 最晚的服务结束时间 */
+            serviceEndAt: string | null;
+            /** @description 最近一次跟进时间 */
+            lastContactAt: string | null;
+            /** @enum {string|null} */
+            lostReason: "price" | "no_need" | "competitor" | "official" | "bad_experience" | "unreachable" | "other" | null;
+            lostNote: string | null;
+            lostReasonAt: string | null;
             /** Format: date-time */
             createdAt: string;
             /** @description 最近 50 条跟进记录 */
@@ -2129,10 +2288,19 @@ export interface components {
         CreateFollowUpDto: {
             /** @example 已微信提醒续费，客户说周末付款 */
             content: string;
-            /** @enum {string} */
-            kind?: "note" | "renewal_reminder";
+            /**
+             * @description 跟进 / 续费提醒 / 召回
+             * @enum {string}
+             */
+            kind?: "note" | "renewal_reminder" | "recall";
             /** @description 关联的订阅（续费提醒时填写） */
             subscriptionId?: string;
+        };
+        LostReasonDto: {
+            /** @enum {string} */
+            reason: "price" | "no_need" | "competitor" | "official" | "bad_experience" | "unreachable" | "other";
+            /** @example 说官方涨价后觉得不划算 */
+            note?: string;
         };
         /** @enum {string} */
         OrderStatus: "PENDING_PAYMENT" | "FULFILLING" | "COMPLETED" | "CANCELLED";
@@ -2402,6 +2570,8 @@ export interface components {
             refunds: components["schemas"]["OrderRefundDto"][];
             /** @description 还可以申请退款的金额（分）= 已收 − 已退 − 审批中 */
             refundableCents: number;
+            /** @description 这笔订单买到的服务期结束时间（开通 / 续费完成后才有） */
+            periodEndAt: string | null;
             /** @description 有「查看成本」权限时返回 */
             profit: components["schemas"]["OrderProfitDto"] | null;
             /** @description 这笔订单的代理佣金；没有佣金查看权限时为空 */
@@ -2759,6 +2929,8 @@ export interface components {
             releasedCommissions: number;
             /** @description 每月 1 号自动生成的上月佣金对账单数 */
             statementsGenerated: number;
+            /** @description 分层阶段有变化的客户数（例如新客满 30 天变活跃、沉睡超过召回期变流失） */
+            customerStageChanges: number;
         };
         NotifyScanResultDto: {
             /** @description 另一个实例正在扫描，这次跳过 */
@@ -3369,6 +3541,8 @@ export interface components {
             total: number;
             /** @description 本月新增 */
             newThisMonth: number;
+            /** @description 待召回：沉睡、服务结束后还没联系过的（我负责的） */
+            recallPending: number;
         };
         InventoryAlertDto: {
             /** @description 余额低于预警线的付款资源数 */
@@ -3847,6 +4021,40 @@ export interface components {
             remark?: string | null;
             name?: string;
             status?: components["schemas"]["AgentStatus"];
+        };
+        ScriptDto: {
+            id: string;
+            /** @enum {string} */
+            category: "renewal" | "recall" | "delivery" | "quote" | "aftersales" | "other";
+            title: string;
+            content: string;
+            sortOrder: number;
+            /** @description 被复制的次数 */
+            useCount: number;
+            lastUsedAt: string | null;
+            createdBy: components["schemas"]["UserBriefDto"] | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateScriptDto: {
+            /** @enum {string} */
+            category: "renewal" | "recall" | "delivery" | "quote" | "aftersales" | "other";
+            /** @example 到期前提醒 */
+            title: string;
+            /** @example {客户称呼}您好，您的 Claude {套餐} 将在 {到期日} 到期… */
+            content: string;
+            /**
+             * @description 同一分类里的排序，小的在前
+             * @example 10
+             */
+            sortOrder?: number;
+        };
+        UpdateScriptDto: {
+            /** @enum {string} */
+            category?: "renewal" | "recall" | "delivery" | "quote" | "aftersales" | "other";
+            title?: string;
+            content?: string;
+            sortOrder?: number;
         };
     };
     responses: never;
@@ -4798,6 +5006,15 @@ export interface operations {
                 tag?: string;
                 /** @description 绑定的代理 */
                 agentId?: string;
+                stage?: components["schemas"]["CustomerStage"];
+                /** @description 只看 VIP（累计实付达到业务设置里的门槛） */
+                vip?: boolean;
+                /** @description 只看服务结束后还没联系过的（召回用） */
+                uncontacted?: boolean;
+                /** @description 流失原因 */
+                lostReason?: "price" | "no_need" | "competitor" | "official" | "bad_experience" | "unreachable" | "other";
+                /** @description createdAt 最新录入 / netPaid 累计实付从高到低 / serviceEnd 服务最近结束 / lastContact 最久没联系 */
+                sort?: "createdAt" | "netPaid" | "serviceEnd" | "lastContact";
             };
             header?: never;
             path?: never;
@@ -4834,6 +5051,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerDto"];
+                };
+            };
+        };
+    };
+    Customers_segments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerSegmentsDto"];
                 };
             };
         };
@@ -4951,6 +5187,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FollowUpDto"];
+                };
+            };
+        };
+    };
+    Customers_setLostReason: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LostReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailDto"];
                 };
             };
         };
@@ -6485,6 +6746,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentDetailDto"];
+                };
+            };
+        };
+    };
+    Scripts_list: {
+        parameters: {
+            query?: {
+                category?: "renewal" | "recall" | "delivery" | "quote" | "aftersales" | "other";
+                /** @description 标题或内容 */
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScriptDto"][];
+                };
+            };
+        };
+    };
+    Scripts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScriptDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScriptDto"];
+                };
+            };
+        };
+    };
+    Scripts_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Scripts_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScriptDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScriptDto"];
+                };
+            };
+        };
+    };
+    Scripts_used: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
                 };
             };
         };

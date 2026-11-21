@@ -82,6 +82,7 @@ import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service';
 import { SettingsModule, SettingsService } from '../settings/settings';
 import { NotifyService } from '../notify/notify';
+import { CustomerStatsService } from '../customers/stats';
 
 const ORDER_KINDS: OrderKind[] = ['NEW', 'RENEWAL'];
 
@@ -361,6 +362,12 @@ export class OrderDetailDto extends OrderDto {
   @ApiProperty({ type: [OrderRefundDto] }) refunds: OrderRefundDto[];
   @ApiProperty({ description: '还可以申请退款的金额（分）= 已收 − 已退 − 审批中' })
   refundableCents: number;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: '这笔订单买到的服务期结束时间（开通 / 续费完成后才有）',
+  })
+  periodEndAt: Date | null;
   @ApiProperty({ type: OrderProfitDto, nullable: true, description: '有「查看成本」权限时返回' })
   profit: OrderProfitDto | null;
   @ApiProperty({
@@ -473,6 +480,7 @@ export class OrdersService {
     private readonly secrets: SecretBox,
     private readonly settings: SettingsService,
     private readonly notify: NotifyService,
+    private readonly stats: CustomerStatsService,
   ) {}
 
   async list(q: OrderQueryDto, user: AuthUser): Promise<OrderListDto> {
@@ -562,6 +570,7 @@ export class OrdersService {
         createdAt: r.createdAt,
       })),
       refundableCents: Math.max(0, o.paidCents - o.refundedCents - pending),
+      periodEndAt: o.periodEndAt,
       payments: o.payments.map((p) => ({
         id: p.id,
         amountCents: p.amountCents,
@@ -811,6 +820,7 @@ export class OrdersService {
         to: [order.ownerId],
         except: user.id,
       });
+      await this.stats.refresh(tx, [order.customerId]);
     });
     return this.get(id, user);
   }

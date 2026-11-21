@@ -73,6 +73,7 @@ import { CommissionEngine } from '../commissions/engine';
 import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service';
 import { LedgerModule, LedgerService } from '../inventory/ledger';
 import { NotifyService } from '../notify/notify';
+import { CustomerStatsService } from '../customers/stats';
 
 const OPEN: TaskStatus[] = ['PENDING', 'IN_PROGRESS', 'FAILED'];
 /**
@@ -439,6 +440,7 @@ export class TasksService {
     private readonly ledger: LedgerService,
     private readonly commissions: CommissionEngine,
     private readonly notify: NotifyService,
+    private readonly stats: CustomerStatsService,
   ) {}
 
   /** 我的在班状态，以及所有充值员的在班情况和手上未完成的任务数 */
@@ -726,6 +728,8 @@ export class TasksService {
           note: dto.note?.trim() || task.note,
         },
       });
+      // 开通 / 续费 / 回收会改变客户的订阅状态，马上刷新客户分层
+      await this.stats.refresh(tx, [task.customerId]);
     });
     return this.get(id);
   }

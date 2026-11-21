@@ -284,6 +284,17 @@ export function DashboardPage() {
                 <Col {...colProps}>
                   <StatCard title="本月新客户" value={d.customers.newThisMonth} to="/customers" />
                 </Col>
+                {can('customer:write') && (
+                  <Col {...colProps}>
+                    <StatCard
+                      title="待召回客户"
+                      value={d.customers.recallPending}
+                      to="/customers?view=DORMANT"
+                      danger={d.customers.recallPending > 0}
+                      hint="我负责的沉睡客户，服务结束后还没联系过"
+                    />
+                  </Col>
+                )}
               </>
             )}
           </Row>

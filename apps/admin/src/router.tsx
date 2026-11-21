@@ -12,6 +12,7 @@ import { AuditLogsPage } from './pages/system/AuditLogsPage';
 import { NotifyChannelsPage } from './pages/system/NotifyChannelsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { CustomersPage } from './pages/customers/CustomersPage';
+import { ScriptsPage } from './pages/customers/ScriptsPage';
 import { CustomerDetailPage } from './pages/customers/CustomerDetailPage';
 import { CatalogPage } from './pages/catalog/CatalogPage';
 import { OrdersPage } from './pages/orders/OrdersPage';
@@ -113,6 +114,14 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission anyOf={['customer:read', 'subscription:read']}>
             <SubscriptionDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'scripts',
+        element: (
+          <RequirePermission anyOf={['customer:read', 'script:write']}>
+            <ScriptsPage />
           </RequirePermission>
         ),
       },

@@ -39,6 +39,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [
       { code: 'customer:read', name: '查看客户' },
       { code: 'customer:write', name: '新增 / 编辑客户' },
+      { code: 'script:write', name: '管理话术库（所有员工都能查看和复制话术）' },
     ],
   },
   {

@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
+  Alert,
   App,
   Button,
   Card,
+  Checkbox,
   Col,
   Form,
   Input,
@@ -12,14 +14,25 @@ import {
   Select,
   Space,
   Table,
+  Tabs,
   Tag,
+  Tooltip,
   Typography,
   type TableColumnsType,
 } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CUSTOMER_SOURCES, type CustomerSource } from '@crm/shared';
-import { api, unwrap, type Schemas } from '../../api/client';
+import {
+  CUSTOMER_SOURCES,
+  CUSTOMER_STAGE_LABELS,
+  LOST_REASONS,
+  formatCents,
+  lostReasonLabel,
+  type CustomerSource,
+  type CustomerStage,
+  type LostReason,
+} from '@crm/shared';
+import { api, unwrap, type QueryOf, type Schemas } from '../../api/client';
 import { useStaffOptions } from '../../api/queries';
 import { useAuth } from '../../auth/AuthProvider';
 import {
@@ -27,12 +40,28 @@ import {
   AgentLink,
   AgentSelect,
   CustomerSelect,
+  CustomerStageTag,
+  Money,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
+import { ScriptPicker } from '../../components/scripts';
+import { LostReasonModal, RecallModal, customerVars } from './modals';
 
 type Customer = Schemas['CustomerDto'];
+type CustomerQuery = QueryOf<'/api/customers'>;
+type Sort = NonNullable<CustomerQuery['sort']>;
+type View = 'all' | CustomerStage | 'vip';
 
 const SOURCE_LABELS = Object.fromEntries(CUSTOMER_SOURCES.map((s) => [s.value, s.label]));
+const SORT_OPTIONS: { value: Sort; label: string }[] = [
+  { value: 'createdAt', label: '最新录入' },
+  { value: 'netPaid', label: '累计实付最多' },
+  { value: 'serviceEnd', label: '服务最近结束' },
+  { value: 'lastContact', label: '最久没联系' },
+];
+const VIEWS: View[] = ['all', 'LEAD', 'NEW', 'ACTIVE', 'DORMANT', 'CHURNED', 'vip'];
+/** 召回相关的视图：显示服务结束、上次联系和召回操作 */
+const isRecallView = (v: View) => v === 'DORMANT' || v === 'CHURNED';
 
 interface Filters {
   page: number;
@@ -41,19 +70,72 @@ interface Filters {
   source?: CustomerSource;
   ownerId?: string;
   agentId?: string;
+  lostReason?: LostReason;
+  uncontacted?: boolean;
+  sort?: Sort;
 }
+
+/** 切换视图时的默认筛选：沉睡只看结束后没联系过的、按服务最近结束排；VIP 按累计实付排 */
+function viewDefaults(v: View): Partial<Filters> {
+  return {
+    uncontacted: v === 'DORMANT' ? true : undefined,
+    sort: isRecallView(v) ? 'serviceEnd' : v === 'vip' ? 'netPaid' : undefined,
+  };
+}
+
+/** 服务结束后还没联系过 */
+const uncontacted = (c: Customer) =>
+  !!c.serviceEndAt &&
+  (!c.lastContactAt || new Date(c.lastContactAt).getTime() < new Date(c.serviceEndAt).getTime());
 
 export function CustomersPage() {
   const { can, profile } = useAuth();
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<Filters>({ page: 1, pageSize: 20 });
+  // 工作台「待召回客户」带 ?view=DORMANT 进来
+  const [params] = useSearchParams();
+  const initialView = VIEWS.find((v) => v === params.get('view')) ?? 'all';
+  const [view, setView] = useState<View>(initialView);
+  const [filters, setFilters] = useState<Filters>(() => ({
+    page: 1,
+    pageSize: 20,
+    ...viewDefaults(initialView),
+  }));
   const [creating, setCreating] = useState(false);
+  const [recalling, setRecalling] = useState<Customer | null>(null);
+  const [losing, setLosing] = useState<Customer | null>(null);
   const staff = useStaffOptions();
+  const query: CustomerQuery = {
+    ...filters,
+    stage: view !== 'all' && view !== 'vip' ? view : undefined,
+    vip: view === 'vip' ? true : undefined,
+    uncontacted: view === 'DORMANT' ? filters.uncontacted : undefined,
+    lostReason: isRecallView(view) ? filters.lostReason : undefined,
+  };
   const customers = useQuery({
-    queryKey: ['customers', filters],
-    queryFn: () => unwrap(api.GET('/api/customers', { params: { query: filters } })),
+    queryKey: ['customers', query],
+    queryFn: () => unwrap(api.GET('/api/customers', { params: { query } })),
     placeholderData: keepPreviousData,
   });
+  const segments = useQuery({
+    queryKey: ['customers', 'segments'],
+    queryFn: () => unwrap(api.GET('/api/customers/segments')),
+  });
+  const seg = segments.data;
+  const stageCount = (stage: CustomerStage) =>
+    seg?.stages.find((s) => s.stage === stage)?.count ?? 0;
+  const canWrite = can('customer:write');
+  const recall = isRecallView(view);
+
+  const switchView = (v: View) => {
+    setView(v);
+    setFilters((f) => ({
+      page: 1,
+      pageSize: f.pageSize,
+      keyword: f.keyword,
+      ownerId: f.ownerId,
+      ...viewDefaults(v),
+    }));
+  };
 
   const columns: TableColumnsType<Customer> = [
     {
@@ -62,11 +144,38 @@ export function CustomersPage() {
       render: (_, c) => (
         <Space direction="vertical" size={0}>
           <Link to={`/customers/${c.id}`}>
-            <Typography.Text strong>{c.name}</Typography.Text>
+            <Typography.Text strong style={{ whiteSpace: 'nowrap' }}>
+              {c.name}
+            </Typography.Text>
           </Link>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             {c.code}
           </Typography.Text>
+          {c.tags.length > 0 && (
+            <Space size={2} wrap>
+              {c.tags.map((t) => (
+                <Tag key={t} style={{ marginInlineEnd: 0, fontSize: 11 }}>
+                  {t}
+                </Tag>
+              ))}
+            </Space>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: '阶段',
+      key: 'stage',
+      render: (_, c) => (
+        <Space direction="vertical" size={2}>
+          <CustomerStageTag stage={c.stage} vip={c.vip} />
+          {c.lostReason && (
+            <Tooltip title={c.lostNote ?? undefined}>
+              <Typography.Text type="danger" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                {lostReasonLabel(c.lostReason)}
+              </Typography.Text>
+            </Tooltip>
+          )}
         </Space>
       ),
     },
@@ -83,70 +192,154 @@ export function CustomersPage() {
         </Space>
       ),
     },
+    ...(recall
+      ? []
+      : [
+          {
+            title: '来源',
+            key: 'source',
+            render: (_: unknown, c: Customer) => (
+              <Space direction="vertical" size={0}>
+                <span>{SOURCE_LABELS[c.source] ?? c.source}</span>
+                {c.referrer && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    推荐人：{c.referrer.name}
+                  </Typography.Text>
+                )}
+                {c.agent && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    代理：
+                    <AgentLink agent={c.agent} />
+                  </Typography.Text>
+                )}
+              </Space>
+            ),
+          },
+        ]),
     {
-      title: '来源',
-      key: 'source',
-      render: (_, c) => (
-        <Space direction="vertical" size={0}>
-          <span>{SOURCE_LABELS[c.source] ?? c.source}</span>
-          {c.referrer && (
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              推荐人：{c.referrer.name}
-            </Typography.Text>
-          )}
-          {c.agent && (
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              代理：
-              <AgentLink agent={c.agent} />
-            </Typography.Text>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: '标签',
-      key: 'tags',
+      title: '累计实付',
+      key: 'netPaid',
       render: (_, c) =>
-        c.tags.length ? (
-          <Space size={4} wrap>
-            {c.tags.map((t) => (
-              <Tag key={t}>{t}</Tag>
-            ))}
+        c.paidOrderCount > 0 ? (
+          <Space direction="vertical" size={0}>
+            <Money cents={c.netPaidCents} />
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {c.paidOrderCount} 单
+            </Typography.Text>
           </Space>
         ) : (
-          '—'
+          <Typography.Text type="secondary">—</Typography.Text>
         ),
     },
     {
-      title: '服务中订阅',
+      title: '服务',
       key: 'subs',
       render: (_, c) =>
         c.activeSubscriptionCount > 0 ? (
           <Space direction="vertical" size={0}>
-            <span>{c.activeSubscriptionCount} 个</span>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            <span>服务中 {c.activeSubscriptionCount} 个</span>
+            <Typography.Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
               最近到期 {formatTime(c.nextExpiryAt).slice(0, 10)}
             </Typography.Text>
           </Space>
+        ) : c.serviceEndAt ? (
+          <Typography.Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+            {formatTime(c.serviceEndAt).slice(0, 10)} 结束
+          </Typography.Text>
         ) : (
           <Typography.Text type="secondary">无</Typography.Text>
         ),
     },
-    { title: '负责人', key: 'owner', render: (_, c) => c.owner.displayName },
-    { title: '录入时间', key: 'createdAt', render: (_, c) => formatTime(c.createdAt) },
+    {
+      title: '上次联系',
+      key: 'lastContact',
+      render: (_, c) => (
+        <Space direction="vertical" size={0}>
+          <span style={{ whiteSpace: 'nowrap' }}>
+            {c.lastContactAt ? formatTime(c.lastContactAt).slice(0, 10) : '—'}
+          </span>
+          {recall && uncontacted(c) && <Tag color="red">结束后没联系过</Tag>}
+        </Space>
+      ),
+    },
+    {
+      title: '负责人',
+      key: 'owner',
+      render: (_, c) => <span style={{ whiteSpace: 'nowrap' }}>{c.owner.displayName}</span>,
+    },
+    ...(view === 'all' || view === 'LEAD'
+      ? [
+          {
+            title: '录入时间',
+            key: 'createdAt',
+            render: (_: unknown, c: Customer) => (
+              <span style={{ whiteSpace: 'nowrap' }}>{formatTime(c.createdAt).slice(0, 10)}</span>
+            ),
+          },
+        ]
+      : []),
+    ...(recall && canWrite
+      ? [
+          {
+            title: '操作',
+            key: 'actions',
+            fixed: 'right' as const,
+            render: (_: unknown, c: Customer) => (
+              <Space size={0} wrap style={{ maxWidth: 150 }}>
+                <ScriptPicker category="recall" vars={customerVars(c)} />
+                <Button type="link" size="small" onClick={() => setRecalling(c)}>
+                  记录召回
+                </Button>
+                <Button type="link" size="small" danger onClick={() => setLosing(c)}>
+                  流失原因
+                </Button>
+              </Space>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
     <Card
       title="客户"
       extra={
-        can('customer:write') && (
+        canWrite && (
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
             新增客户
           </Button>
         )
       }
     >
+      <Tabs
+        activeKey={view}
+        onChange={(k) => switchView(k as View)}
+        items={VIEWS.map((v) => ({
+          key: v,
+          label:
+            v === 'all'
+              ? `全部 ${seg?.total ?? ''}`
+              : v === 'vip'
+                ? `VIP ${seg?.vip ?? ''}`
+                : `${CUSTOMER_STAGE_LABELS[v]} ${seg ? stageCount(v) : ''}`,
+        }))}
+      />
+      {view === 'DORMANT' && seg && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={`服务结束 ${seg.recallWindowDays} 天内的客户，是召回的黄金期（超过就算流失）。先点「话术」复制发给客户，再点「记录召回」写下沟通情况；客户明确不续了就记个流失原因。`}
+        />
+      )}
+      {view === 'vip' && seg && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={`累计实付满 ${formatCents(seg.vipThresholdCents)} 的客户（门槛在业务设置里改）。`}
+        />
+      )}
       <div className="page-toolbar">
         <div className="page-toolbar-filters">
           <Input.Search
@@ -157,13 +350,31 @@ export function CustomersPage() {
               setFilters((f) => ({ ...f, page: 1, keyword: keyword || undefined }))
             }
           />
-          <Select
-            placeholder="来源"
-            allowClear
-            style={{ width: 120 }}
-            options={CUSTOMER_SOURCES.map((s) => ({ value: s.value, label: s.label }))}
-            onChange={(source?: CustomerSource) => setFilters((f) => ({ ...f, page: 1, source }))}
-          />
+          {!recall && (
+            <Select
+              placeholder="来源"
+              allowClear
+              style={{ width: 120 }}
+              value={filters.source}
+              options={CUSTOMER_SOURCES.map((s) => ({ value: s.value, label: s.label }))}
+              onChange={(source?: CustomerSource) => setFilters((f) => ({ ...f, page: 1, source }))}
+            />
+          )}
+          {recall && (
+            <Select
+              placeholder="流失原因"
+              allowClear
+              style={{ width: 170 }}
+              value={filters.lostReason}
+              options={LOST_REASONS.map((r) => ({
+                value: r.value,
+                label: `${r.label} ${seg?.lostReasons.find((x) => x.reason === r.value)?.count ?? 0}`,
+              }))}
+              onChange={(lostReason?: LostReason) =>
+                setFilters((f) => ({ ...f, page: 1, lostReason }))
+              }
+            />
+          )}
           {profile?.dataScope !== 'SELF' && (
             <Select
               placeholder="负责人"
@@ -171,22 +382,46 @@ export function CustomersPage() {
               showSearch
               optionFilterProp="label"
               style={{ width: 140 }}
+              value={filters.ownerId}
               options={(staff.data ?? []).map((s) => ({ value: s.id, label: s.displayName }))}
               onChange={(ownerId?: string) => setFilters((f) => ({ ...f, page: 1, ownerId }))}
             />
           )}
-          {AGENT_VIEW_PERMISSIONS.some((p) => can(p)) && (
+          {!recall && AGENT_VIEW_PERMISSIONS.some((p) => can(p)) && (
             <AgentSelect
               placeholder="代理"
               allowDisabled
               style={{ width: 160 }}
+              value={filters.agentId}
               onChange={(agentId) =>
                 setFilters((f) => ({ ...f, page: 1, agentId: agentId ?? undefined }))
               }
             />
           )}
+          <Select<Sort>
+            style={{ width: 140 }}
+            value={filters.sort ?? 'createdAt'}
+            options={SORT_OPTIONS}
+            onChange={(sort) => setFilters((f) => ({ ...f, page: 1, sort }))}
+          />
+          {view === 'DORMANT' && (
+            <Checkbox
+              checked={!!filters.uncontacted}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, page: 1, uncontacted: e.target.checked || undefined }))
+              }
+            >
+              只看结束后没联系过的（{seg?.dormantUncontacted ?? 0}）
+            </Checkbox>
+          )}
         </div>
-        <Button icon={<ReloadOutlined />} onClick={() => void customers.refetch()}>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={() => {
+            void customers.refetch();
+            void segments.refetch();
+          }}
+        >
           刷新
         </Button>
       </div>
@@ -195,7 +430,7 @@ export function CustomersPage() {
         columns={columns}
         dataSource={customers.data?.items}
         loading={customers.isFetching}
-        scroll={{ x: 960 }}
+        scroll={{ x: 1100 }}
         pagination={{
           current: filters.page,
           pageSize: filters.pageSize,
@@ -212,6 +447,8 @@ export function CustomersPage() {
           onSaved={(c) => navigate(`/customers/${c.id}`)}
         />
       )}
+      {recalling && <RecallModal customer={recalling} onClose={() => setRecalling(null)} />}
+      {losing && <LostReasonModal customer={losing} onClose={() => setLosing(null)} />}
     </Card>
   );
 }

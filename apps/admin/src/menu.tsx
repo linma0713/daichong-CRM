@@ -13,6 +13,7 @@ import {
   DashboardOutlined,
   DatabaseOutlined,
   FileTextOutlined,
+  MessageOutlined,
   RollbackOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
@@ -34,6 +35,12 @@ export const MENU: MenuNode[] = [
     label: '订阅与到期',
     path: '/subscriptions',
     anyPermission: ['customer:read', 'subscription:read'],
+  },
+  {
+    key: 'scripts',
+    label: '话术库',
+    path: '/scripts',
+    anyPermission: ['customer:read', 'script:write'],
   },
   {
     key: 'tickets',
@@ -88,6 +95,7 @@ export const MENU_ICONS: Record<string, ReactNode> = {
   orders: <FileTextOutlined />,
   tasks: <ThunderboltOutlined />,
   subscriptions: <CalendarOutlined />,
+  scripts: <MessageOutlined />,
   tickets: <CustomerServiceOutlined />,
   refunds: <RollbackOutlined />,
   agents: <ClusterOutlined />,

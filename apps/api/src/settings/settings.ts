@@ -15,6 +15,7 @@ import {
 } from 'class-validator';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CustomerStatsService } from '../customers/stats';
 import { Audit, CurrentUser, RequirePermissions } from '../auth/decorators';
 import type { AuthUser } from '../common/auth-user';
 
@@ -145,6 +146,21 @@ export class BusinessSettingsDto {
   @Min(0)
   @Max(23)
   dailyDigestHour: number = 9;
+
+  @ApiProperty({ description: '累计实付满多少（分）算 VIP 客户', example: 300000 })
+  @IsInt()
+  @Min(0)
+  @Max(100_000_000)
+  vipThresholdCents: number = 300000;
+
+  @ApiProperty({
+    description: '服务结束后多少天内算「沉睡」（召回期），超过算「流失」',
+    example: 30,
+  })
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  recallWindowDays: number = 30;
 }
 
 export class UpdateSettingsDto {
@@ -230,6 +246,20 @@ export class UpdateSettingsDto {
   @Min(0)
   @Max(23)
   dailyDigestHour?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100_000_000)
+  vipThresholdCents?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  recallWindowDays?: number;
 }
 
 type SettingKey = keyof BusinessSettingsDto;
@@ -246,6 +276,8 @@ const KEYS: SettingKey[] = [
   'commissionFreezeDays',
   'commissionIncludeWarranty',
   'dailyDigestHour',
+  'vipThresholdCents',
+  'recallWindowDays',
 ];
 /** 存成对象的设置项：读取时和默认值合并，新增字段有默认值 */
 const OBJECT_DEFAULTS: Partial<Record<SettingKey, () => object>> = {
@@ -256,7 +288,10 @@ const OBJECT_DEFAULTS: Partial<Record<SettingKey, () => object>> = {
 
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stats: CustomerStatsService,
+  ) {}
 
   async getAll(): Promise<BusinessSettingsDto> {
     const rows = await this.prisma.setting.findMany({ where: { key: { in: KEYS } } });
@@ -295,6 +330,8 @@ export class SettingsService {
       );
     }
     await this.prisma.$transaction(ops);
+    // 召回期变了，沉睡 / 流失的划分跟着变
+    if (dto.recallWindowDays !== undefined) await this.stats.refresh(this.prisma);
     return this.getAll();
   }
 }
