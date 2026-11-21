@@ -20,7 +20,7 @@ import {
   Typography,
   type TableColumnsType,
 } from 'antd';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CUSTOMER_SOURCES,
@@ -46,6 +46,8 @@ import {
 } from '../../components/business';
 import { formatTime } from '../../components/format';
 import { ScriptPicker } from '../../components/scripts';
+import { ExportButton, customerCsv } from '../../components/exports';
+import { ImportCustomersModal } from './ImportCustomersModal';
 import { LostReasonModal, RecallModal, customerVars } from './modals';
 
 type Customer = Schemas['CustomerDto'];
@@ -105,6 +107,7 @@ export function CustomersPage() {
     ...viewDefaults(initialView),
   }));
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [recalling, setRecalling] = useState<Customer | null>(null);
   const [losing, setLosing] = useState<Customer | null>(null);
   const staff = useStaffOptions();
@@ -315,9 +318,14 @@ export function CustomersPage() {
       title="客户"
       extra={
         canWrite && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
-            新增客户
-          </Button>
+          <Space>
+            <Button icon={<UploadOutlined />} onClick={() => setImporting(true)}>
+              导入
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+              新增客户
+            </Button>
+          </Space>
         )
       }
     >
@@ -437,15 +445,25 @@ export function CustomersPage() {
             </Checkbox>
           )}
         </div>
-        <Button
-          icon={<ReloadOutlined />}
-          onClick={() => {
-            void customers.refetch();
-            void segments.refetch();
-          }}
-        >
-          刷新
-        </Button>
+        <Space>
+          {can('customer:export') && (
+            <ExportButton
+              name="customers"
+              tip="按当前筛选导出客户清单（含联系方式），会记到操作日志"
+              fetch={() => unwrap(api.GET('/api/exports/customers', { params: { query } }))}
+              toRows={customerCsv}
+            />
+          )}
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => {
+              void customers.refetch();
+              void segments.refetch();
+            }}
+          >
+            刷新
+          </Button>
+        </Space>
       </div>
       <Table<Customer>
         rowKey="id"
@@ -469,6 +487,7 @@ export function CustomersPage() {
           onSaved={(c) => navigate(`/customers/${c.id}`)}
         />
       )}
+      {importing && <ImportCustomersModal onClose={() => setImporting(false)} />}
       {recalling && <RecallModal customer={recalling} onClose={() => setRecalling(null)} />}
       {losing && <LostReasonModal customer={losing} onClose={() => setLosing(null)} />}
     </Card>

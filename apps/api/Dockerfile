@@ -25,6 +25,8 @@ FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /out ./
+# 附件目录：挂卷前先建好并交给 node 用户，新卷会继承这个属主
+RUN mkdir -p /app/uploads && chown node:node /app/uploads
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=5 \

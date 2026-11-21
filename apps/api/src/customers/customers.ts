@@ -370,7 +370,7 @@ const customerInclude = {
 } satisfies Prisma.CustomerInclude;
 type CustomerRow = Prisma.CustomerGetPayload<{ include: typeof customerInclude }>;
 
-const CONTACT_FIELDS = [
+export const CONTACT_FIELDS = [
   ['wechat', '微信'],
   ['telegram', 'Telegram'],
   ['email', '邮箱'],
@@ -383,7 +383,10 @@ export function visibleCustomers(user: AuthUser): Prisma.CustomerWhereInput {
 }
 
 /** 能否把客户交给 targetOwner 负责：全部范围可以给任何人，小组范围只能给同组同事 */
-function assertCanAssign(user: AuthUser, target: { id: string; teamId: string | null }): void {
+export function assertCanAssign(
+  user: AuthUser,
+  target: { id: string; teamId: string | null },
+): void {
   if (target.id === user.id || user.dataScope === 'ALL') return;
   if (user.dataScope === 'TEAM' && user.teamId && target.teamId === user.teamId) return;
   throw new ForbiddenException({

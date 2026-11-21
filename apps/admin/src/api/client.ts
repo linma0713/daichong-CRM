@@ -76,3 +76,11 @@ export async function unwrap<T>(
   if (error !== undefined || !response.ok) throw toApiError(error, response.status);
   return data as T;
 }
+
+/**
+ * 不走 openapi-fetch 的请求（上传文件、下载附件），同样自动带令牌、过期自动刷新。
+ * path 以 /api 开头。
+ */
+export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  return authFetch(new Request(new URL(path, window.location.origin), init));
+}

@@ -1751,6 +1751,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 某条业务（订单、工单、退款、客户、对账单）的附件 */
+        get: operations["Attachments_list"];
+        put?: never;
+        /** 上传附件（图片或 PDF，10 MB 以内） */
+        post: operations["Attachments_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/attachments/{id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 下载 / 预览附件文件 */
+        get: operations["Attachments_file"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/attachments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 删除附件（上传的人或管理员） */
+        delete: operations["Attachments_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customers/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 批量导入客户（一次最多 500 行）。dryRun=true 只检查；正式导入时有问题的行会跳过 */
+        post: operations["CustomerImport_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 导出客户清单（筛选条件同客户列表，最多 5000 条，记日志） */
+        get: operations["Exports_customers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 导出订单清单（筛选条件同订单列表，最多 5000 条，记日志） */
+        get: operations["Exports_orders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4394,6 +4497,74 @@ export interface components {
         CancelRewardDto: {
             /** @example 推荐人自己说不用了 */
             reason: string;
+        };
+        AttachmentDto: {
+            id: string;
+            /** @enum {string} */
+            ownerType: "order" | "ticket" | "refund" | "customer" | "statement";
+            ownerId: string;
+            fileName: string;
+            /** @example image/png */
+            mimeType: string;
+            /** @description 字节数 */
+            size: number;
+            uploadedBy: components["schemas"]["UserBriefDto"];
+            /** Format: date-time */
+            createdAt: string;
+            /** @description 当前员工能不能删（上传的人或管理员） */
+            canDelete: boolean;
+        };
+        ImportCustomerRowDto: {
+            name?: string;
+            wechat?: string;
+            telegram?: string;
+            phone?: string;
+            email?: string;
+            /** @description 来源：中文名或英文值，不填为自然流量 */
+            source?: string;
+            /** @description 渠道名称 */
+            channel?: string;
+            /** @description 标签，用逗号、顿号或空格隔开 */
+            tags?: string;
+            remark?: string;
+            /** @description 负责人：员工姓名或登录名，不填为自己 */
+            owner?: string;
+            /** @description 这一行在表格里的行号，提示里用它；不传按第几行数据算 */
+            line?: number;
+        };
+        ImportCustomersDto: {
+            rows: components["schemas"]["ImportCustomerRowDto"][];
+            /** @description true 只检查不导入 */
+            dryRun?: boolean;
+        };
+        ImportRowResultDto: {
+            /** @description 表格行号（传了 line 用 line，否则是第几行数据） */
+            row: number;
+            name: string;
+            /** @enum {string} */
+            status: "ok" | "error";
+            errors: string[];
+            /** @description 负责人姓名 */
+            ownerName: string | null;
+        };
+        ImportResultDto: {
+            total: number;
+            /** @description 可以导入的行数 */
+            valid: number;
+            /** @description 实际新建的客户数（只检查时为 0） */
+            created: number;
+            rows: components["schemas"]["ImportRowResultDto"][];
+        };
+        CustomerExportDto: {
+            items: components["schemas"]["CustomerDto"][];
+            total: number;
+            /** @description 超过 5000 条时只导出前 5000 条 */
+            truncated: boolean;
+        };
+        OrderExportDto: {
+            items: components["schemas"]["OrderDto"][];
+            total: number;
+            truncated: boolean;
         };
     };
     responses: never;
@@ -7454,6 +7625,191 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReferralRewardDto"];
+                };
+            };
+        };
+    };
+    Attachments_list: {
+        parameters: {
+            query: {
+                ownerType: "order" | "ticket" | "refund" | "customer" | "statement";
+                ownerId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentDto"][];
+                };
+            };
+        };
+    };
+    Attachments_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @enum {string} */
+                    ownerType: "order" | "ticket" | "refund" | "customer" | "statement";
+                    ownerId: string;
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentDto"];
+                };
+            };
+        };
+    };
+    Attachments_file: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Attachments_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    CustomerImport_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCustomersDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResultDto"];
+                };
+            };
+        };
+    };
+    Exports_customers: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description 编号、称呼、微信、Telegram、邮箱或手机号 */
+                keyword?: string;
+                source?: "organic" | "referral" | "agent" | "ads" | "other";
+                /** @description 负责人 */
+                ownerId?: string;
+                tag?: string;
+                /** @description 绑定的代理 */
+                agentId?: string;
+                /** @description 获客渠道；none = 没标渠道的 */
+                channelId?: string;
+                stage?: components["schemas"]["CustomerStage"];
+                /** @description 只看 VIP（累计实付达到业务设置里的门槛） */
+                vip?: boolean;
+                /** @description 只看服务结束后还没联系过的（召回用） */
+                uncontacted?: boolean;
+                /** @description 流失原因 */
+                lostReason?: "price" | "no_need" | "competitor" | "official" | "bad_experience" | "unreachable" | "other";
+                /** @description createdAt 最新录入 / netPaid 累计实付从高到低 / serviceEnd 服务最近结束 / lastContact 最久没联系 */
+                sort?: "createdAt" | "netPaid" | "serviceEnd" | "lastContact";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerExportDto"];
+                };
+            };
+        };
+    };
+    Exports_orders: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description 订单编号或客户称呼 */
+                keyword?: string;
+                status?: components["schemas"]["OrderStatus"];
+                kind?: components["schemas"]["OrderKind"];
+                customerId?: string;
+                subscriptionId?: string;
+                /** @description 直推代理 */
+                agentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderExportDto"];
                 };
             };
         };

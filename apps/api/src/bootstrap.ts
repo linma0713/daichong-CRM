@@ -6,6 +6,8 @@ import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 export function configureApp(app: INestApplication): void {
   app.setGlobalPrefix('api');
   (app as NestExpressApplication).set('trust proxy', 1);
+  // 默认 100kb 不够批量导入 500 行客户用
+  (app as NestExpressApplication).useBodyParser('json', { limit: '2mb' });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

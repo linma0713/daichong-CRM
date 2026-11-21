@@ -1018,5 +1018,6 @@ export class OrdersController {
   imports: [FulfillmentModule, SettingsModule],
   providers: [OrdersService],
   controllers: [OrdersController],
+  exports: [OrdersService],
 })
 export class OrdersModule {}

@@ -33,6 +33,7 @@ import {
   OrderStatusTag,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
+import { ExportButton, orderCsv } from '../../components/exports';
 
 type Order = Schemas['OrderDto'];
 type Filters = QueryOf<'/api/orders'> & { page: number; pageSize: number };
@@ -96,9 +97,19 @@ export function OrdersPage() {
             />
           )}
         </div>
-        <Button icon={<ReloadOutlined />} onClick={() => void orders.refetch()}>
-          刷新
-        </Button>
+        <Space>
+          {can('order:export') && (
+            <ExportButton
+              name="orders"
+              tip="按当前筛选导出订单清单，会记到操作日志"
+              fetch={() => unwrap(api.GET('/api/exports/orders', { params: { query: filters } }))}
+              toRows={orderCsv}
+            />
+          )}
+          <Button icon={<ReloadOutlined />} onClick={() => void orders.refetch()}>
+            刷新
+          </Button>
+        </Space>
       </div>
       <OrderTable
         data={orders.data?.items}

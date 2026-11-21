@@ -53,6 +53,7 @@ import { ScriptPicker } from '../../components/scripts';
 import { RefundRequestModal } from '../aftersales/modals';
 import { CommissionTable } from '../commissions/CommissionTable';
 import { RefundTable } from '../aftersales/TicketDetailPage';
+import { Attachments } from '../../components/attachments';
 
 export function OrderDetailPage() {
   const { id = '' } = useParams();
@@ -300,6 +301,15 @@ export function OrderDetailPage() {
             { title: '到账时间', key: 'receivedAt', render: (_, p) => formatTime(p.receivedAt) },
             { title: '确认人', key: 'by', render: (_, p) => p.confirmedBy.displayName },
           ]}
+        />
+      </Card>
+
+      <Card title="附件" size="small">
+        <Attachments
+          ownerType="order"
+          ownerId={o.id}
+          canUpload={can('order:write') || can('payment:confirm')}
+          hint="收款截图、转账记录、客户确认的聊天截图"
         />
       </Card>
 

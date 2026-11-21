@@ -5,3 +5,4 @@ export * from './business';
 export * from './notify';
 export * from './customer';
 export * from './marketing';
+export * from './attachments';

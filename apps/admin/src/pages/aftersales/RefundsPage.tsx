@@ -27,6 +27,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { CustomerLink, Money, RefundStatusTag } from '../../components/business';
 import { formatTime } from '../../components/format';
 import { useAftersalesRefresh } from './modals';
+import { Attachments, AttachmentsButton } from '../../components/attachments';
 
 type Refund = Schemas['RefundDto'];
 type View = RefundStatus | 'all';
@@ -35,6 +36,7 @@ const METHOD_LABELS = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.
 export function RefundsPage() {
   const { can } = useAuth();
   const approver = can('refund:approve');
+  const canUpload = approver || can('ticket:handle');
   const [view, setView] = useState<View>('PENDING');
   const [filters, setFilters] = useState<{ page: number; pageSize: number; keyword?: string }>({
     page: 1,
@@ -101,6 +103,15 @@ export function RefundsPage() {
             {r.ticket && <Link to={`/tickets/${r.ticket.id}`}>工单 {r.ticket.code}</Link>}
             {r.terminate && <Tag color="red">退款后终止服务</Tag>}
           </Space>
+          <div style={{ marginLeft: -7 }}>
+            <AttachmentsButton
+              ownerType="refund"
+              ownerId={r.id}
+              title={`退款凭证：${r.code}`}
+              canUpload={canUpload}
+              hint="退款截图、客户确认记录等"
+            />
+          </div>
           {r.rejectReason && (
             <Typography.Text type="secondary">驳回：{r.rejectReason}</Typography.Text>
           )}
@@ -297,6 +308,15 @@ function ReviewModal({
           </Descriptions.Item>
         )}
       </Descriptions>
+      <Typography.Text strong>凭证</Typography.Text>
+      <div style={{ margin: '8px 0 16px' }}>
+        <Attachments
+          ownerType="refund"
+          ownerId={r.id}
+          canUpload
+          hint={approve ? '退款转账截图' : '驳回依据截图'}
+        />
+      </div>
       <Form<ReviewForm>
         form={form}
         layout="vertical"

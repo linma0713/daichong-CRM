@@ -92,6 +92,7 @@ export const BUILT_IN_ROLES: BuiltInRole[] = [
       'commission:settle',
       'agent:write',
       'marketing:write',
+      'order:export',
     ],
     dataScope: 'ALL',
   },

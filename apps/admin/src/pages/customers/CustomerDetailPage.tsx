@@ -35,6 +35,7 @@ import { OrderTable } from '../orders/OrdersPage';
 import { SubscriptionTable } from '../subscriptions/SubscriptionsPage';
 import { CustomerFormModal } from './CustomersPage';
 import { LostReasonModal } from './modals';
+import { Attachments } from '../../components/attachments';
 
 const KIND = Object.fromEntries(FOLLOW_UP_KINDS.map((k) => [k.value, k]));
 type ManualKind = Exclude<FollowUpKind, 'lost_reason'>;
@@ -257,6 +258,15 @@ export function CustomerDetailPage() {
           <OrderTable data={orders.data?.items} loading={orders.isFetching} hideCustomer />
         </Card>
       )}
+
+      <Card title="附件" size="small">
+        <Attachments
+          ownerType="customer"
+          ownerId={c.id}
+          canUpload={canWrite}
+          hint="聊天记录、客户发来的资料截图"
+        />
+      </Card>
 
       <Card title="跟进记录" size="small">
         {canWrite && (

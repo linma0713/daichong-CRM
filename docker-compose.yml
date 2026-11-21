@@ -33,6 +33,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-crm}?schema=public
       API_PORT: 3000
       TZ: Asia/Shanghai
+      UPLOAD_DIR: /app/uploads
+    # 附件（收款截图、凭证）存在这个卷里，和数据库一样需要备份
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,3 +54,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:
