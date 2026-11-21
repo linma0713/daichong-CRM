@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router';
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   Avatar,
   Button,
@@ -18,12 +18,14 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  MobileOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../auth/AuthProvider';
 import { filterMenu, type MenuNode } from '../auth/permissions';
 import { MENU, MENU_ICONS } from '../menu';
 import { DutySwitch, NotificationBell } from '../components/notify';
+import { mobilePathFor, prefersMobile, setUiPref } from '../mobile/device';
 
 type MenuItem = Required<MenuProps>['items'][number];
 
@@ -90,6 +92,11 @@ export function AdminLayout() {
   );
 
   const menuOpen = isMobile ? drawerOpen : !collapsed;
+  const here = location.pathname + location.search;
+
+  // 手机上（没选过电脑版）打开有手机版的页面，直接换成手机版，例如企业微信推送的任务链接
+  const mobileTarget = prefersMobile() ? mobilePathFor(here) : null;
+  if (mobileTarget) return <Navigate to={mobileTarget} replace />;
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -150,6 +157,18 @@ export function AdminLayout() {
             onClick={() => (isMobile ? setDrawerOpen(true) : setCollapsed(!collapsed))}
           />
           <Space size={isMobile ? 8 : 16}>
+            {screens.md === false && (
+              <Button
+                size="small"
+                icon={<MobileOutlined />}
+                onClick={() => {
+                  setUiPref('mobile');
+                  navigate(mobilePathFor(here) ?? '/m');
+                }}
+              >
+                手机版
+              </Button>
+            )}
             <DutySwitch />
             <NotificationBell />
             <Dropdown menu={{ items: userMenu, onClick: onUserMenu }} placement="bottomRight">
