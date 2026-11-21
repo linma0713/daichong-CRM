@@ -43,6 +43,7 @@ import {
   feeOf,
   hasPermission,
   parseNo,
+  resolveCommissionRates,
   type CostKind,
   type FulfillmentType,
   type OrderKind,
@@ -56,9 +57,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Audit, CurrentUser, RequirePermissions } from '../auth/decorators';
 import type { AuthUser } from '../common/auth-user';
 import {
+  AgentBriefDto,
   CustomerBriefDto,
   UserBriefDto,
+  agentBriefSelect,
   customerBriefSelect,
+  toAgentBrief,
   userBriefSelect,
 } from '../common/briefs';
 import { scopeWhere } from '../common/data-scope';
@@ -100,6 +104,11 @@ export class OrderQueryDto extends PageQueryDto {
   @IsOptional()
   @IsString()
   subscriptionId?: string;
+
+  @ApiPropertyOptional({ description: '直推代理' })
+  @IsOptional()
+  @IsString()
+  agentId?: string;
 }
 
 export class CreateOrderDto {
@@ -141,6 +150,13 @@ export class CreateOrderDto {
   @IsString()
   @MaxLength(200)
   accountPassword?: string;
+
+  @ApiPropertyOptional({
+    description: '代理代录：客户还没绑定代理时填写，下单同时把客户绑给这个代理',
+  })
+  @IsOptional()
+  @IsString()
+  agentId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -214,6 +230,26 @@ export class OrderDto {
   @ApiProperty({ type: String, nullable: true }) completedAt: Date | null;
   @ApiProperty({ type: String, nullable: true }) cancelledAt: Date | null;
   @ApiProperty({ type: String, nullable: true }) cancelReason: string | null;
+  @ApiProperty({ type: AgentBriefDto, nullable: true, description: '直推代理' })
+  agent: AgentBriefDto | null;
+  @ApiProperty({ type: AgentBriefDto, nullable: true, description: '直推代理的上级' })
+  parentAgent: AgentBriefDto | null;
+  @ApiProperty({ description: '是否客户的首单（决定按首单还是续费比例算佣金）' })
+  firstOrder: boolean;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '直推佣金比例快照（万分比）；没有代理或佣金查看权限时为空',
+  })
+  agentRateBp: number | null;
+  @ApiProperty({ type: Number, nullable: true, description: '上级管理佣金比例快照（万分比）' })
+  parentRateBp: number | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '佣金基数（分）= 应收，按设置决定是否扣掉质保费',
+  })
+  commissionBaseCents: number | null;
   @ApiProperty({
     type: Number,
     nullable: true,
@@ -313,6 +349,8 @@ const orderInclude = {
   subscription: { select: { id: true, no: true } },
   owner: { select: userBriefSelect },
   createdBy: { select: userBriefSelect },
+  agent: { select: agentBriefSelect },
+  parentAgent: { select: agentBriefSelect },
 } satisfies Prisma.OrderInclude;
 type OrderRow = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
 
@@ -344,7 +382,14 @@ export function orderMargin(o: {
 
 export const canSeeCost = (user: AuthUser) => hasPermission(user.permissions, 'finance:read');
 
+/** 能看佣金比例和金额：代理相关权限或财务查看 */
+export const canSeeCommission = (user: AuthUser) =>
+  ['agent:read', 'agent:write', 'commission:settle', 'finance:read'].some((p) =>
+    hasPermission(user.permissions, p),
+  );
+
 function toOrderDto(o: OrderRow, user: AuthUser): OrderDto {
+  const commission = canSeeCommission(user) && !!o.agentId;
   return {
     id: o.id,
     code: displayNo('D', o.no),
@@ -375,6 +420,12 @@ function toOrderDto(o: OrderRow, user: AuthUser): OrderDto {
     completedAt: o.completedAt,
     cancelledAt: o.cancelledAt,
     cancelReason: o.cancelReason,
+    agent: o.agent ? toAgentBrief(o.agent) : null,
+    parentAgent: o.parentAgent ? toAgentBrief(o.parentAgent) : null,
+    firstOrder: o.firstOrder,
+    agentRateBp: commission ? o.agentRateBp : null,
+    parentRateBp: commission ? o.parentRateBp : null,
+    commissionBaseCents: commission ? o.commissionBaseCents : null,
     marginCents: canSeeCost(user) ? orderMargin(o) : null,
     createdAt: o.createdAt,
   };
@@ -402,6 +453,7 @@ export class OrdersService {
       kind: q.kind,
       customerId: q.customerId,
       subscriptionId: q.subscriptionId,
+      agentId: q.agentId,
       OR: kw
         ? [
             ...(no !== undefined ? [{ no }] : []),
@@ -564,8 +616,17 @@ export class OrdersService {
       throw badRequest('这个商品没有设置质保价，不能加购质保');
     }
     const warrantyCents = dto.withWarranty ? (product.warrantyPriceCents ?? 0) : 0;
+    const amountCents = product.priceCents - discount + warrantyCents;
+    const settings = await this.settings.getAll();
 
     const id = await this.prisma.$transaction(async (tx) => {
+      const commission = await this.commissionSnapshot(tx, {
+        customer,
+        requestedAgentId: dto.agentId,
+        product,
+        baseCents: amountCents - (settings.commissionIncludeWarranty ? 0 : warrantyCents),
+        defaults: settings.commissionRatesBp,
+      });
       let accountId: string | null = null;
       let accountEmail: string | null = null;
       let subscriptionId: string | null = null;
@@ -615,7 +676,8 @@ export class OrdersService {
           discountCents: discount,
           withWarranty: !!dto.withWarranty,
           warrantyCents,
-          amountCents: product.priceCents - discount + warrantyCents,
+          amountCents,
+          ...commission,
           accountId,
           accountEmail,
           remark: dto.remark?.trim() || null,
@@ -675,6 +737,74 @@ export class OrdersService {
       data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: reason.trim() },
     });
     return this.get(id, user);
+  }
+
+  /**
+   * 下单时定下这单的代理和佣金比例（之后改比例不影响已下的单）。
+   * 客户已绑定代理就算这个代理的；没绑定时可以在下单时指定代理，同时把客户绑过去。
+   */
+  private async commissionSnapshot(
+    tx: Tx,
+    input: {
+      customer: { id: string; agentId: string | null };
+      requestedAgentId: string | undefined;
+      product: {
+        firstRateBp: number | null;
+        renewalRateBp: number | null;
+        parentRateBp: number | null;
+      };
+      baseCents: number;
+      defaults: { first: number; renewal: number; parent: number };
+    },
+  ) {
+    const { customer, requestedAgentId, product } = input;
+    const previous = await tx.order.count({
+      where: { customerId: customer.id, status: { not: 'CANCELLED' } },
+    });
+    const firstOrder = previous === 0;
+    let agentId = customer.agentId;
+    if (requestedAgentId && agentId && requestedAgentId !== agentId) {
+      throw badRequest('客户已绑定其他代理，订单只能算绑定的代理；要改绑请先在客户资料里修改');
+    }
+    if (!agentId && requestedAgentId) {
+      const requested = await tx.agent.findUnique({ where: { id: requestedAgentId } });
+      if (!requested) throw badRequest('代理不存在');
+      if (requested.status !== 'ACTIVE') throw badRequest('代理已停用，不能绑定新客户');
+      await tx.customer.update({
+        where: { id: customer.id },
+        data: { agentId: requested.id, agentBoundAt: new Date() },
+      });
+      agentId = requested.id;
+    }
+    if (!agentId) {
+      return {
+        firstOrder,
+        agentId: null,
+        agentRateBp: 0,
+        parentAgentId: null,
+        parentRateBp: 0,
+        commissionBaseCents: 0,
+      };
+    }
+    const agent = await tx.agent.findUniqueOrThrow({
+      where: { id: agentId },
+      include: { parent: true },
+    });
+    const rates = resolveCommissionRates({
+      defaults: input.defaults,
+      product,
+      agent,
+      parent: agent.parent ?? undefined,
+      firstOrder,
+    });
+    return {
+      firstOrder,
+      agentId: agent.id,
+      agentRateBp: rates.agentRateBp,
+      parentAgentId: agent.parent ? agent.parent.id : null,
+      parentRateBp: rates.parentRateBp,
+      commissionBaseCents: Math.max(0, input.baseCents),
+    };
   }
 
   private async markPaid(tx: Tx, id: string): Promise<void> {

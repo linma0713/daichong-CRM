@@ -70,3 +70,13 @@ export function useResources(enabled = true) {
     enabled,
   });
 }
+
+/** 代理下拉选项（录客户、录订单、设置上级时选择） */
+export function useAgentOptions(enabled = true) {
+  return useQuery({
+    queryKey: ['agent-options'],
+    queryFn: () => unwrap(api.GET('/api/agents/options')),
+    staleTime: 60_000,
+    enabled,
+  });
+}

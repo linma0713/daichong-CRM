@@ -127,7 +127,52 @@ export class ProductDto {
     description: '加购质保的价格（分）；为空 = 不提供质保',
   })
   warrantyPriceCents: number | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '首单佣金比例（万分比）；为空按全局默认',
+  })
+  firstRateBp: number | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '续费佣金比例（万分比）；为空按全局默认',
+  })
+  renewalRateBp: number | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '上级管理佣金比例（万分比）；为空按全局默认',
+  })
+  parentRateBp: number | null;
   @ApiProperty() active: boolean;
+}
+
+/** 商品单独的佣金比例：null = 按全局默认；只影响之后的订单 */
+class ProductRateFields {
+  @ApiPropertyOptional({ type: Number, nullable: true, description: '首单佣金比例（万分比）' })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsInt()
+  @Min(0)
+  @Max(5000)
+  firstRateBp?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: '续费佣金比例（万分比）' })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsInt()
+  @Min(0)
+  @Max(5000)
+  renewalRateBp?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: '上级管理佣金比例（万分比）' })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsInt()
+  @Min(0)
+  @Max(5000)
+  parentRateBp?: number | null;
 }
 
 export class ProductQueryDto {
@@ -138,7 +183,7 @@ export class ProductQueryDto {
   activeOnly?: boolean;
 }
 
-export class CreateProductDto {
+export class CreateProductDto extends ProductRateFields {
   @ApiProperty()
   @IsString()
   planId: string;
@@ -177,7 +222,7 @@ export class CreateProductDto {
   active?: boolean;
 }
 
-export class UpdateProductDto {
+export class UpdateProductDto extends ProductRateFields {
   @ApiPropertyOptional({ description: '售价（分）。只影响之后的订单' })
   @IsOptional()
   @IsInt()
@@ -292,6 +337,9 @@ export class CatalogService {
       estCostCents,
       estMarginCents: p.priceCents - estCostCents,
       warrantyPriceCents: p.warrantyPriceCents,
+      firstRateBp: p.firstRateBp,
+      renewalRateBp: p.renewalRateBp,
+      parentRateBp: p.parentRateBp,
       active: p.active,
     };
   }
@@ -348,7 +396,7 @@ export class CatalogController {
 
   @Patch('products/:id')
   @RequirePermissions('product:write')
-  @Audit('product.update', '修改商品售价、质保价或上下架')
+  @Audit('product.update', '修改商品售价、质保价、佣金比例或上下架')
   @ApiOperation({ summary: '修改商品售价、质保价或上下架（只影响之后的订单）' })
   @ApiOkResponse({ type: ProductDto })
   updateProduct(@Param('id') id: string, @Body() dto: UpdateProductDto): Promise<ProductDto> {

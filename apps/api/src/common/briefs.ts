@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { displayNo } from '@crm/shared';
 
 /** 各模块共用的简要信息 */
 export class UserBriefDto {
@@ -58,4 +59,16 @@ export function toAccountBrief(a: {
     hasPassword: !!a.passwordEnc,
     hasSecretNote: !!a.secretNoteEnc,
   };
+}
+
+export class AgentBriefDto {
+  @ApiProperty() id: string;
+  @ApiProperty({ example: 'A00003' }) code: string;
+  @ApiProperty() name: string;
+}
+
+export const agentBriefSelect = { id: true, no: true, name: true } as const;
+
+export function toAgentBrief(a: { id: string; no: number; name: string }): AgentBriefDto {
+  return { id: a.id, code: displayNo('A', a.no), name: a.name };
 }

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { displayNo, feeOf, formatCents, parseNo, proratedRefund, termLabel } from './business';
+import {
+  displayNo,
+  feeOf,
+  formatCents,
+  formatRate,
+  parseNo,
+  proratedRefund,
+  resolveCommissionRates,
+  termLabel,
+} from './business';
 
 describe('business helpers', () => {
   it('formatCents', () => {
@@ -55,5 +64,84 @@ describe('proratedRefund', () => {
       remainingDays: 0,
       amountCents: 0,
     });
+  });
+});
+
+describe('resolveCommissionRates', () => {
+  const defaults = { first: 1500, renewal: 800, parent: 300 };
+  const agent = { status: 'ACTIVE' as const, firstRateBp: null, renewalRateBp: null };
+  const parent = { status: 'ACTIVE' as const, parentRateBp: null };
+
+  it('没有单独设置时用全局默认；首单和续费分开', () => {
+    expect(resolveCommissionRates({ defaults, agent, parent, firstOrder: true })).toEqual({
+      agentRateBp: 1500,
+      parentRateBp: 300,
+    });
+    expect(resolveCommissionRates({ defaults, agent, parent, firstOrder: false })).toEqual({
+      agentRateBp: 800,
+      parentRateBp: 300,
+    });
+  });
+
+  it('没有上级时上级比例为 0', () => {
+    expect(resolveCommissionRates({ defaults, agent, firstOrder: true }).parentRateBp).toBe(0);
+  });
+
+  it('代理单独设置 > 商品设置 > 全局默认', () => {
+    const product = { firstRateBp: 1200, renewalRateBp: null, parentRateBp: 200 };
+    expect(resolveCommissionRates({ defaults, product, agent, parent, firstOrder: true })).toEqual({
+      agentRateBp: 1200,
+      parentRateBp: 200,
+    });
+    expect(
+      resolveCommissionRates({
+        defaults,
+        product,
+        agent: { ...agent, firstRateBp: 2000 },
+        parent: { ...parent, parentRateBp: 500 },
+        firstOrder: true,
+      }),
+    ).toEqual({ agentRateBp: 2000, parentRateBp: 500 });
+    expect(
+      resolveCommissionRates({ defaults, product, agent, parent, firstOrder: false }).agentRateBp,
+    ).toBe(800);
+  });
+
+  it('单独设置成 0 表示不给佣金，不会退回默认值', () => {
+    expect(
+      resolveCommissionRates({
+        defaults,
+        agent: { ...agent, renewalRateBp: 0 },
+        firstOrder: false,
+      }).agentRateBp,
+    ).toBe(0);
+  });
+
+  it('停用的代理不再产生佣金；上级停用只影响上级', () => {
+    expect(
+      resolveCommissionRates({
+        defaults,
+        agent: { ...agent, status: 'DISABLED' },
+        parent,
+        firstOrder: true,
+      }),
+    ).toEqual({ agentRateBp: 0, parentRateBp: 0 });
+    expect(
+      resolveCommissionRates({
+        defaults,
+        agent,
+        parent: { ...parent, status: 'DISABLED' },
+        firstOrder: true,
+      }),
+    ).toEqual({ agentRateBp: 1500, parentRateBp: 0 });
+  });
+});
+
+describe('formatRate', () => {
+  it('万分比转百分比', () => {
+    expect(formatRate(1500)).toBe('15%');
+    expect(formatRate(750)).toBe('7.5%');
+    expect(formatRate(0)).toBe('0%');
+    expect(formatRate(1234)).toBe('12.34%');
   });
 });

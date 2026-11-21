@@ -75,7 +75,7 @@ describe('M2 财务对账与数据看板', () => {
       TRUNCATE TABLE "AuditLog", "Session", "UserRole", "User", "Role", "Team", "Customer",
         "FollowUp", "Plan", "Product", "Order", "Payment", "ClaudeAccount", "Subscription",
         "FulfillmentTask", "Setting", "PaymentResource", "ResourceTransaction", "CostEntry",
-        "Ticket", "TicketEvent", "Refund"
+        "Ticket", "TicketEvent", "Refund", "Agent"
         RESTART IDENTITY CASCADE`);
     await runSeed(prisma, { adminUsername: 'admin', adminPassword: PASSWORD });
     await prisma.user.updateMany({ data: { mustChangePassword: false } });

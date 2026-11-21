@@ -5,6 +5,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsInt,
   IsNumber,
   IsOptional,
@@ -24,6 +25,27 @@ export class PaymentFeeRatesDto {
   @ApiProperty({ example: 0 }) @IsInt() @Min(0) @Max(2000) usdt: number = 0;
   @ApiProperty({ example: 0 }) @IsInt() @Min(0) @Max(2000) bank: number = 0;
   @ApiProperty({ example: 0 }) @IsInt() @Min(0) @Max(2000) other: number = 0;
+}
+
+/** 代理佣金默认比例（万分比，1500 = 15%）；商品或单个代理可以单独设置 */
+export class CommissionRatesDto {
+  @ApiProperty({ description: '客户首单，直推代理', example: 1500 })
+  @IsInt()
+  @Min(0)
+  @Max(5000)
+  first: number = 1500;
+
+  @ApiProperty({ description: '客户之后的订单（续费、再买），直推代理', example: 800 })
+  @IsInt()
+  @Min(0)
+  @Max(5000)
+  renewal: number = 800;
+
+  @ApiProperty({ description: '上级代理的管理佣金', example: 300 })
+  @IsInt()
+  @Min(0)
+  @Max(5000)
+  parent: number = 300;
 }
 
 /** 各类售后工单的处理时限（小时） */
@@ -99,6 +121,24 @@ export class BusinessSettingsDto {
   @Min(1)
   @Max(720)
   ticketAutoCloseHours: number = 48;
+
+  @ApiProperty({
+    type: CommissionRatesDto,
+    description: '代理佣金默认比例（万分比）；只影响之后的新订单',
+  })
+  @ValidateNested()
+  @Type(() => CommissionRatesDto)
+  commissionRatesBp: CommissionRatesDto = new CommissionRatesDto();
+
+  @ApiProperty({ description: '没加购质保的订单，完成后冻结几天佣金才能结算', example: 7 })
+  @IsInt()
+  @Min(0)
+  @Max(90)
+  commissionFreezeDays: number = 7;
+
+  @ApiProperty({ description: '佣金基数是否包含质保费', example: false })
+  @IsBoolean()
+  commissionIncludeWarranty: boolean = false;
 }
 
 export class UpdateSettingsDto {
@@ -159,6 +199,24 @@ export class UpdateSettingsDto {
   @Min(1)
   @Max(720)
   ticketAutoCloseHours?: number;
+
+  @ApiProperty({ required: false, type: CommissionRatesDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CommissionRatesDto)
+  commissionRatesBp?: CommissionRatesDto;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(90)
+  commissionFreezeDays?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  commissionIncludeWarranty?: boolean;
 }
 
 type SettingKey = keyof BusinessSettingsDto;
@@ -171,11 +229,15 @@ const KEYS: SettingKey[] = [
   'accountStockLow',
   'ticketSlaHours',
   'ticketAutoCloseHours',
+  'commissionRatesBp',
+  'commissionFreezeDays',
+  'commissionIncludeWarranty',
 ];
 /** 存成对象的设置项：读取时和默认值合并，新增字段有默认值 */
 const OBJECT_DEFAULTS: Partial<Record<SettingKey, () => object>> = {
   paymentFeeBp: () => new PaymentFeeRatesDto(),
   ticketSlaHours: () => new TicketSlaHoursDto(),
+  commissionRatesBp: () => new CommissionRatesDto(),
 };
 
 @Injectable()
@@ -194,6 +256,7 @@ export class SettingsService {
       ...result,
       paymentFeeBp: { ...result.paymentFeeBp },
       ticketSlaHours: { ...result.ticketSlaHours },
+      commissionRatesBp: { ...result.commissionRatesBp },
     };
   }
 

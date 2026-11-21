@@ -1146,6 +1146,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 代理列表（含客户数、订单数、业绩） */
+        get: operations["Agents_list"];
+        put?: never;
+        /** 新增代理 */
+        post: operations["Agents_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 代理下拉选项（录客户、录订单时选择） */
+        get: operations["Agents_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 代理详情（下级、客户、订单） */
+        get: operations["Agents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 修改代理；改比例只影响之后的新订单 */
+        patch: operations["Agents_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1368,6 +1421,23 @@ export interface components {
             /** @example 24 */
             OTHER: number;
         };
+        CommissionRatesDto: {
+            /**
+             * @description 客户首单，直推代理
+             * @example 1500
+             */
+            first: number;
+            /**
+             * @description 客户之后的订单（续费、再买），直推代理
+             * @example 800
+             */
+            renewal: number;
+            /**
+             * @description 上级代理的管理佣金
+             * @example 300
+             */
+            parent: number;
+        };
         BusinessSettingsDto: {
             /**
              * @description 美元兑人民币汇率，用于估算成本和毛利
@@ -1407,6 +1477,18 @@ export interface components {
              * @example 48
              */
             ticketAutoCloseHours: number;
+            /** @description 代理佣金默认比例（万分比）；只影响之后的新订单 */
+            commissionRatesBp: components["schemas"]["CommissionRatesDto"];
+            /**
+             * @description 没加购质保的订单，完成后冻结几天佣金才能结算
+             * @example 7
+             */
+            commissionFreezeDays: number;
+            /**
+             * @description 佣金基数是否包含质保费
+             * @example false
+             */
+            commissionIncludeWarranty: boolean;
         };
         UpdateSettingsDto: {
             exchangeRate?: number;
@@ -1417,6 +1499,9 @@ export interface components {
             accountStockLow?: number;
             ticketSlaHours?: components["schemas"]["TicketSlaHoursDto"];
             ticketAutoCloseHours?: number;
+            commissionRatesBp?: components["schemas"]["CommissionRatesDto"];
+            commissionFreezeDays?: number;
+            commissionIncludeWarranty?: boolean;
         };
         PlanDto: {
             id: string;
@@ -1467,9 +1552,21 @@ export interface components {
             estMarginCents: number;
             /** @description 加购质保的价格（分）；为空 = 不提供质保 */
             warrantyPriceCents: number | null;
+            /** @description 首单佣金比例（万分比）；为空按全局默认 */
+            firstRateBp: number | null;
+            /** @description 续费佣金比例（万分比）；为空按全局默认 */
+            renewalRateBp: number | null;
+            /** @description 上级管理佣金比例（万分比）；为空按全局默认 */
+            parentRateBp: number | null;
             active: boolean;
         };
         CreateProductDto: {
+            /** @description 首单佣金比例（万分比） */
+            firstRateBp?: number | null;
+            /** @description 续费佣金比例（万分比） */
+            renewalRateBp?: number | null;
+            /** @description 上级管理佣金比例（万分比） */
+            parentRateBp?: number | null;
             planId: string;
             /**
              * @description 服务时长（月）
@@ -1484,6 +1581,12 @@ export interface components {
             active?: boolean;
         };
         UpdateProductDto: {
+            /** @description 首单佣金比例（万分比） */
+            firstRateBp?: number | null;
+            /** @description 续费佣金比例（万分比） */
+            renewalRateBp?: number | null;
+            /** @description 上级管理佣金比例（万分比） */
+            parentRateBp?: number | null;
             /** @description 售价（分）。只影响之后的订单 */
             priceCents?: number;
             /** @description 加购质保的价格（分）；null = 不提供质保。只影响之后的订单 */
@@ -1496,6 +1599,12 @@ export interface components {
         };
         CustomerRefDto: {
             id: string;
+            code: string;
+            name: string;
+        };
+        AgentBriefDto: {
+            id: string;
+            /** @example A00003 */
             code: string;
             name: string;
         };
@@ -1514,6 +1623,10 @@ export interface components {
             remark: string | null;
             owner: components["schemas"]["UserBriefDto"];
             referrer: components["schemas"]["CustomerRefDto"] | null;
+            /** @description 绑定的代理 */
+            agent: components["schemas"]["AgentBriefDto"] | null;
+            /** @description 绑定代理的时间 */
+            agentBoundAt: string | null;
             /** @description 服务中的订阅数 */
             activeSubscriptionCount: number;
             /** @description 最近一个到期时间 */
@@ -1550,6 +1663,10 @@ export interface components {
             remark: string | null;
             owner: components["schemas"]["UserBriefDto"];
             referrer: components["schemas"]["CustomerRefDto"] | null;
+            /** @description 绑定的代理 */
+            agent: components["schemas"]["AgentBriefDto"] | null;
+            /** @description 绑定代理的时间 */
+            agentBoundAt: string | null;
             /** @description 服务中的订阅数 */
             activeSubscriptionCount: number;
             /** @description 最近一个到期时间 */
@@ -1568,6 +1685,8 @@ export interface components {
             source?: "organic" | "referral" | "agent" | "ads" | "other";
             /** @description 推荐人（老客户 ID） */
             referrerId?: string | null;
+            /** @description 绑定的代理：客户之后的订单都算这个代理的。改绑 / 解绑需要「编辑代理」权限 */
+            agentId?: string | null;
             tags?: string[];
             remark?: string | null;
             /** @example 王先生 */
@@ -1584,6 +1703,8 @@ export interface components {
             source?: "organic" | "referral" | "agent" | "ads" | "other";
             /** @description 推荐人（老客户 ID） */
             referrerId?: string | null;
+            /** @description 绑定的代理：客户之后的订单都算这个代理的。改绑 / 解绑需要「编辑代理」权限 */
+            agentId?: string | null;
             tags?: string[];
             remark?: string | null;
             name?: string;
@@ -1652,6 +1773,18 @@ export interface components {
             completedAt: string | null;
             cancelledAt: string | null;
             cancelReason: string | null;
+            /** @description 直推代理 */
+            agent: components["schemas"]["AgentBriefDto"] | null;
+            /** @description 直推代理的上级 */
+            parentAgent: components["schemas"]["AgentBriefDto"] | null;
+            /** @description 是否客户的首单（决定按首单还是续费比例算佣金） */
+            firstOrder: boolean;
+            /** @description 直推佣金比例快照（万分比）；没有代理或佣金查看权限时为空 */
+            agentRateBp: number | null;
+            /** @description 上级管理佣金比例快照（万分比） */
+            parentRateBp: number | null;
+            /** @description 佣金基数（分）= 应收，按设置决定是否扣掉质保费 */
+            commissionBaseCents: number | null;
             /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
             marginCents: number | null;
             /** Format: date-time */
@@ -1786,6 +1919,18 @@ export interface components {
             completedAt: string | null;
             cancelledAt: string | null;
             cancelReason: string | null;
+            /** @description 直推代理 */
+            agent: components["schemas"]["AgentBriefDto"] | null;
+            /** @description 直推代理的上级 */
+            parentAgent: components["schemas"]["AgentBriefDto"] | null;
+            /** @description 是否客户的首单（决定按首单还是续费比例算佣金） */
+            firstOrder: boolean;
+            /** @description 直推佣金比例快照（万分比）；没有代理或佣金查看权限时为空 */
+            agentRateBp: number | null;
+            /** @description 上级管理佣金比例快照（万分比） */
+            parentRateBp: number | null;
+            /** @description 佣金基数（分）= 应收，按设置决定是否扣掉质保费 */
+            commissionBaseCents: number | null;
             /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
             marginCents: number | null;
             /** Format: date-time */
@@ -1815,6 +1960,8 @@ export interface components {
             accountEmail?: string;
             /** @description 代充新购：客户的 Claude 账号密码（加密保存） */
             accountPassword?: string;
+            /** @description 代理代录：客户还没绑定代理时填写，下单同时把客户绑给这个代理 */
+            agentId?: string;
             remark?: string;
         };
         AddPaymentDto: {
@@ -2844,6 +2991,150 @@ export interface components {
             staff: components["schemas"]["StaffPerfDto"];
             ltv: components["schemas"]["LtvStatsDto"];
         };
+        /** @enum {string} */
+        AgentStatus: "ACTIVE" | "DISABLED";
+        AgentDto: {
+            id: string;
+            /** @example A00003 */
+            code: string;
+            name: string;
+            wechat: string | null;
+            phone: string | null;
+            parent: components["schemas"]["AgentBriefDto"] | null;
+            status: components["schemas"]["AgentStatus"];
+            firstRateBp: number | null;
+            renewalRateBp: number | null;
+            parentRateBp: number | null;
+            payoutMethod: string | null;
+            payoutAccount: string | null;
+            remark: string | null;
+            /** @description 下级代理数 */
+            childCount: number;
+            /** @description 绑定的客户数 */
+            customerCount: number;
+            /** @description 已收款的订单数（不含已取消） */
+            orderCount: number;
+            /** @description 业绩（分）= 这些订单的已收 − 已退款 */
+            salesCents: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AgentListDto: {
+            items: components["schemas"]["AgentDto"][];
+            total: number;
+        };
+        AgentOptionDto: {
+            id: string;
+            /** @example A00003 */
+            code: string;
+            name: string;
+            status: components["schemas"]["AgentStatus"];
+            parentName: string | null;
+        };
+        AgentCustomerDto: {
+            id: string;
+            /** @example C00012 */
+            code: string;
+            name: string;
+            wechat: string | null;
+            telegram: string | null;
+            /** @description 绑定时间 */
+            boundAt: string | null;
+        };
+        AgentOrderDto: {
+            id: string;
+            code: string;
+            customer: components["schemas"]["CustomerBriefDto"];
+            productName: string;
+            status: components["schemas"]["OrderStatus"];
+            amountCents: number;
+            paidCents: number;
+            refundedCents: number;
+            /** @description 是否客户首单 */
+            firstOrder: boolean;
+            /**
+             * @description DIRECT 自己的客户 / PARENT 下级代理的客户
+             * @enum {string}
+             */
+            role: "DIRECT" | "PARENT";
+            /** @description 直推代理 */
+            agent: components["schemas"]["AgentBriefDto"];
+            /** @description 这个代理在这笔订单里的佣金比例（万分比） */
+            rateBp: number;
+            /** @description 佣金基数（分） */
+            baseCents: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AgentDetailDto: {
+            id: string;
+            /** @example A00003 */
+            code: string;
+            name: string;
+            wechat: string | null;
+            phone: string | null;
+            parent: components["schemas"]["AgentBriefDto"] | null;
+            status: components["schemas"]["AgentStatus"];
+            firstRateBp: number | null;
+            renewalRateBp: number | null;
+            parentRateBp: number | null;
+            payoutMethod: string | null;
+            payoutAccount: string | null;
+            remark: string | null;
+            /** @description 下级代理数 */
+            childCount: number;
+            /** @description 绑定的客户数 */
+            customerCount: number;
+            /** @description 已收款的订单数（不含已取消） */
+            orderCount: number;
+            /** @description 业绩（分）= 这些订单的已收 − 已退款 */
+            salesCents: number;
+            /** Format: date-time */
+            createdAt: string;
+            children: components["schemas"]["AgentDto"][];
+            /** @description 最近 100 个绑定客户 */
+            customers: components["schemas"]["AgentCustomerDto"][];
+            /** @description 最近 100 笔订单（含下级代理的） */
+            orders: components["schemas"]["AgentOrderDto"][];
+        };
+        CreateAgentDto: {
+            /** @description 首单佣金比例（万分比） */
+            firstRateBp?: number | null;
+            /** @description 续费佣金比例（万分比） */
+            renewalRateBp?: number | null;
+            /** @description 作为上级时拿的管理佣金比例（万分比） */
+            parentRateBp?: number | null;
+            wechat?: string | null;
+            phone?: string | null;
+            /** @description 上级代理；最多两级 */
+            parentId?: string | null;
+            /** @enum {string|null} */
+            payoutMethod?: "wechat" | "alipay" | "usdt" | "bank" | "other" | null;
+            /** @description 佣金收款账号 */
+            payoutAccount?: string | null;
+            remark?: string | null;
+            /** @example 小红书-阿杰 */
+            name: string;
+        };
+        UpdateAgentDto: {
+            /** @description 首单佣金比例（万分比） */
+            firstRateBp?: number | null;
+            /** @description 续费佣金比例（万分比） */
+            renewalRateBp?: number | null;
+            /** @description 作为上级时拿的管理佣金比例（万分比） */
+            parentRateBp?: number | null;
+            wechat?: string | null;
+            phone?: string | null;
+            /** @description 上级代理；最多两级 */
+            parentId?: string | null;
+            /** @enum {string|null} */
+            payoutMethod?: "wechat" | "alipay" | "usdt" | "bank" | "other" | null;
+            /** @description 佣金收款账号 */
+            payoutAccount?: string | null;
+            remark?: string | null;
+            name?: string;
+            status?: components["schemas"]["AgentStatus"];
+        };
     };
     responses: never;
     parameters: never;
@@ -3555,6 +3846,8 @@ export interface operations {
                 /** @description 负责人 */
                 ownerId?: string;
                 tag?: string;
+                /** @description 绑定的代理 */
+                agentId?: string;
             };
             header?: never;
             path?: never;
@@ -3723,6 +4016,8 @@ export interface operations {
                 kind?: components["schemas"]["OrderKind"];
                 customerId?: string;
                 subscriptionId?: string;
+                /** @description 直推代理 */
+                agentId?: string;
             };
             header?: never;
             path?: never;
@@ -4871,6 +5166,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnalyticsDto"];
+                };
+            };
+        };
+    };
+    Agents_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description 编号、名称、微信或手机号 */
+                keyword?: string;
+                status?: components["schemas"]["AgentStatus"];
+                /** @description 只看某个代理的下级 */
+                parentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentListDto"];
+                };
+            };
+        };
+    };
+    Agents_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDetailDto"];
+                };
+            };
+        };
+    };
+    Agents_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOptionDto"][];
+                };
+            };
+        };
+    };
+    Agents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDetailDto"];
+                };
+            };
+        };
+    };
+    Agents_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAgentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDetailDto"];
                 };
             };
         };

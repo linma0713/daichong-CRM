@@ -18,11 +18,18 @@ import {
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { FULFILLMENT_TYPE_LABELS, FULFILLMENT_TYPES, formatCents, termLabel } from '@crm/shared';
+import {
+  FULFILLMENT_TYPE_LABELS,
+  FULFILLMENT_TYPES,
+  formatCents,
+  formatRate,
+  termLabel,
+} from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { useBusinessSettings, usePlans, useProducts } from '../../api/queries';
 import { useAuth } from '../../auth/AuthProvider';
-import { FulfillmentTag, Money } from '../../components/business';
+import { AGENT_VIEW_PERMISSIONS, FulfillmentTag, Money } from '../../components/business';
+import { bpToPercent, percentToBp } from '../../components/format';
 
 type Plan = Schemas['PlanDto'];
 type Product = Schemas['ProductDto'];
@@ -42,6 +49,10 @@ export function CatalogPage() {
   const settings = useBusinessSettings();
   const [editingPlan, setEditingPlan] = useState<Plan | 'new' | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | 'new' | null>(null);
+  const showRates = canWrite || AGENT_VIEW_PERMISSIONS.some((p) => can(p));
+  const hasRateOverride = (products.data ?? []).some(
+    (p) => p.firstRateBp !== null || p.renewalRateBp !== null || p.parentRateBp !== null,
+  );
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['plans'] });
@@ -129,6 +140,24 @@ export function CatalogPage() {
           <Money cents={p.warrantyPriceCents} />
         ),
     },
+    ...(showRates && hasRateOverride
+      ? [
+          {
+            title: '代理佣金',
+            key: 'rates',
+            render: (_: unknown, p: Product) =>
+              p.firstRateBp === null && p.renewalRateBp === null && p.parentRateBp === null ? (
+                <Typography.Text type="secondary">按默认</Typography.Text>
+              ) : (
+                <Space direction="vertical" size={0} style={{ fontSize: 12 }}>
+                  {p.firstRateBp !== null && <span>首单 {formatRate(p.firstRateBp)}</span>}
+                  {p.renewalRateBp !== null && <span>续费 {formatRate(p.renewalRateBp)}</span>}
+                  {p.parentRateBp !== null && <span>上级 {formatRate(p.parentRateBp)}</span>}
+                </Space>
+              ),
+          },
+        ]
+      : []),
     {
       title: '状态',
       key: 'active',
@@ -141,7 +170,7 @@ export function CatalogPage() {
       key: 'actions',
       render: (_, p) => (
         <Button type="link" size="small" onClick={() => setEditingProduct(p)}>
-          改价 / 上下架
+          修改
         </Button>
       ),
     });
@@ -204,6 +233,7 @@ export function CatalogPage() {
           product={editingProduct === 'new' ? null : editingProduct}
           plans={plans.data ?? []}
           exchangeRate={settings.data?.exchangeRate ?? 7.2}
+          commissionDefaults={settings.data?.commissionRatesBp}
           onClose={() => setEditingProduct(null)}
           onSaved={invalidate}
         />
@@ -312,21 +342,33 @@ interface ProductForm {
   /** 质保价（元）；空 = 不提供质保 */
   warranty?: number | null;
   active: boolean;
+  /** 代理佣金比例（%）；空 = 按业务设置的默认 */
+  firstPercent?: number | null;
+  renewalPercent?: number | null;
+  parentPercent?: number | null;
 }
 
 const warrantyCents = (v: number | null | undefined) =>
   v === undefined || v === null ? null : toCents(v);
 
+const rateBody = (v: ProductForm) => ({
+  firstRateBp: percentToBp(v.firstPercent),
+  renewalRateBp: percentToBp(v.renewalPercent),
+  parentRateBp: percentToBp(v.parentPercent),
+});
+
 function ProductModal({
   product,
   plans,
   exchangeRate,
+  commissionDefaults,
   onClose,
   onSaved,
 }: {
   product: Product | null;
   plans: Plan[];
   exchangeRate: number;
+  commissionDefaults?: Schemas['CommissionRatesDto'];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -350,6 +392,7 @@ function ProductModal({
                 priceCents: toCents(v.price),
                 warrantyPriceCents: warrantyCents(v.warranty),
                 active: v.active,
+                ...rateBody(v),
               },
             }),
           )
@@ -362,6 +405,7 @@ function ProductModal({
                 priceCents: toCents(v.price),
                 warrantyPriceCents: warrantyCents(v.warranty),
                 active: v.active,
+                ...rateBody(v),
               },
             }),
           ),
@@ -391,6 +435,9 @@ function ProductModal({
                 price: toYuan(product.priceCents),
                 warranty:
                   product.warrantyPriceCents === null ? null : toYuan(product.warrantyPriceCents),
+                firstPercent: bpToPercent(product.firstRateBp),
+                renewalPercent: bpToPercent(product.renewalRateBp),
+                parentPercent: bpToPercent(product.parentRateBp),
               }
             : { termMonths: 1, fulfillmentType: 'RECHARGE', active: true }
         }
@@ -447,6 +494,33 @@ function ProductModal({
           extra="客户下单时可以加购：服务期内包换 + 按剩余天数退款，质保费不退。留空 = 这个商品不提供质保"
         >
           <InputNumber min={0} max={1000000} precision={2} prefix="¥" style={{ width: '100%' }} />
+        </Form.Item>
+        <Form.Item
+          label="代理佣金比例（%）"
+          extra="这个商品单独的佣金比例，留空按业务设置的默认；代理自己单独设置的比例优先。只影响之后的新订单"
+        >
+          <Space wrap>
+            {(
+              [
+                ['firstPercent', '首单', commissionDefaults?.first],
+                ['renewalPercent', '续费', commissionDefaults?.renewal],
+                ['parentPercent', '上级', commissionDefaults?.parent],
+              ] as const
+            ).map(([name, label, def]) => (
+              <Form.Item key={name} name={name} noStyle>
+                <InputNumber
+                  min={0}
+                  max={50}
+                  step={0.5}
+                  precision={2}
+                  prefix={<span style={{ color: '#8c8c8c', marginRight: 4 }}>{label}</span>}
+                  suffix="%"
+                  placeholder={def !== undefined ? `默认 ${def / 100}` : '默认'}
+                  style={{ width: 150 }}
+                />
+              </Form.Item>
+            ))}
+          </Space>
         </Form.Item>
         <Form.Item name="active" label="在售" valuePropName="checked">
           <Switch />

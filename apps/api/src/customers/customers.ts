@@ -35,13 +35,20 @@ import {
   CUSTOMER_SOURCE_VALUES,
   ErrorCode,
   displayNo,
+  hasPermission,
   parseNo,
   type CustomerSource,
 } from '@crm/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { Audit, CurrentUser, RequirePermissions } from '../auth/decorators';
 import type { AuthUser } from '../common/auth-user';
-import { UserBriefDto, userBriefSelect } from '../common/briefs';
+import {
+  AgentBriefDto,
+  UserBriefDto,
+  agentBriefSelect,
+  toAgentBrief,
+  userBriefSelect,
+} from '../common/briefs';
 import { scopeWhere } from '../common/data-scope';
 import { badRequest, notFound } from '../common/errors';
 import { OkDto } from '../auth/auth.dto';
@@ -69,6 +76,11 @@ export class CustomerQueryDto extends PageQueryDto {
   @IsOptional()
   @IsString()
   tag?: string;
+
+  @ApiPropertyOptional({ description: '绑定的代理' })
+  @IsOptional()
+  @IsString()
+  agentId?: string;
 }
 
 class CustomerFields {
@@ -106,6 +118,16 @@ class CustomerFields {
   @ValidateIf((_, v) => v !== null)
   @IsString()
   referrerId?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: '绑定的代理：客户之后的订单都算这个代理的。改绑 / 解绑需要「编辑代理」权限',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  agentId?: string | null;
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
@@ -187,6 +209,10 @@ export class CustomerDto {
   @ApiProperty({ type: String, nullable: true }) remark: string | null;
   @ApiProperty({ type: UserBriefDto }) owner: UserBriefDto;
   @ApiProperty({ type: CustomerRefDto, nullable: true }) referrer: CustomerRefDto | null;
+  @ApiProperty({ type: AgentBriefDto, nullable: true, description: '绑定的代理' })
+  agent: AgentBriefDto | null;
+  @ApiProperty({ type: String, nullable: true, description: '绑定代理的时间' })
+  agentBoundAt: Date | null;
   @ApiProperty({ description: '服务中的订阅数' }) activeSubscriptionCount: number;
   @ApiProperty({ type: String, nullable: true, description: '最近一个到期时间' })
   nextExpiryAt: Date | null;
@@ -217,6 +243,7 @@ export class CustomerDetailDto extends CustomerDto {
 const customerInclude = {
   owner: { select: userBriefSelect },
   referrer: { select: { id: true, no: true, name: true } },
+  agent: { select: agentBriefSelect },
 } satisfies Prisma.CustomerInclude;
 type CustomerRow = Prisma.CustomerGetPayload<{ include: typeof customerInclude }>;
 
@@ -256,6 +283,7 @@ export class CustomersService {
       AND: [visibleCustomers(user)],
       source: q.source,
       ownerId: q.ownerId,
+      agentId: q.agentId,
       tags: q.tag ? { has: q.tag } : undefined,
       OR: kw
         ? [
@@ -304,17 +332,20 @@ export class CustomersService {
     const ownerId = dto.ownerId ?? user.id;
     const owner = await this.findActiveUser(ownerId);
     assertCanAssign(user, owner);
-    const data = this.normalize(dto);
+    const { agentId, ...data } = this.normalize(dto);
     await this.assertNoDuplicate(data);
     await this.assertReferrer(data.referrerId, undefined, user);
+    if (agentId) await this.assertAgent(agentId);
     const row = await this.prisma.customer.create({
       data: {
         name: dto.name.trim(),
         ...data,
-        source: data.source ?? 'organic',
+        source: data.source ?? (agentId ? 'agent' : 'organic'),
         tags: data.tags ?? [],
         ownerId,
         teamId: owner.teamId,
+        agentId: agentId ?? null,
+        agentBoundAt: agentId ? new Date() : null,
       },
       include: customerInclude,
     });
@@ -322,13 +353,28 @@ export class CustomersService {
   }
 
   async update(id: string, dto: UpdateCustomerDto, user: AuthUser): Promise<CustomerDto> {
-    await this.findVisible(id, user);
-    const data = this.normalize(dto);
+    const current = await this.findVisible(id, user);
+    const { agentId, ...data } = this.normalize(dto);
     await this.assertNoDuplicate(data, id);
     await this.assertReferrer(data.referrerId, id, user);
+    const agentChanged = agentId !== undefined && agentId !== current.agentId;
+    if (agentChanged) {
+      // 第一次绑定客服就能做；已经绑了代理再改绑 / 解绑，会影响代理的业绩归属，要「编辑代理」权限
+      if (current.agentId && !hasPermission(user.permissions, 'agent:write')) {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: '客户已绑定代理，改绑或解绑需要「编辑代理」权限',
+        });
+      }
+      if (agentId) await this.assertAgent(agentId);
+    }
     const row = await this.prisma.customer.update({
       where: { id },
-      data: { ...data, name: dto.name?.trim() },
+      data: {
+        ...data,
+        name: dto.name?.trim(),
+        ...(agentChanged ? { agentId, agentBoundAt: agentId ? new Date() : null } : {}),
+      },
       include: customerInclude,
     });
     return (await this.withSubscriptionStats([row]))[0];
@@ -403,6 +449,7 @@ export class CustomersService {
       phone: clean(dto.phone),
       source: dto.source,
       referrerId: dto.referrerId,
+      agentId: dto.agentId === undefined ? undefined : dto.agentId || null,
       tags: dto.tags ? [...new Set(dto.tags.map((t) => t.trim()).filter(Boolean))] : undefined,
       remark: clean(dto.remark),
     };
@@ -446,6 +493,13 @@ export class CustomersService {
     if (!ref) throw badRequest('推荐人不存在');
   }
 
+  /** 新绑定的代理必须存在且在合作中 */
+  private async assertAgent(agentId: string): Promise<void> {
+    const agent = await this.prisma.agent.findUnique({ where: { id: agentId } });
+    if (!agent) throw badRequest('代理不存在');
+    if (agent.status !== 'ACTIVE') throw badRequest('代理已停用，不能绑定新客户');
+  }
+
   private async findActiveUser(id: string) {
     const u = await this.prisma.user.findFirst({
       where: { id, deletedAt: null, status: 'ACTIVE' },
@@ -480,6 +534,8 @@ export class CustomersService {
       referrer: r.referrer
         ? { id: r.referrer.id, code: displayNo('C', r.referrer.no), name: r.referrer.name }
         : null,
+      agent: r.agent ? toAgentBrief(r.agent) : null,
+      agentBoundAt: r.agentBoundAt,
       activeSubscriptionCount: byId.get(r.id)?._count._all ?? 0,
       nextExpiryAt: byId.get(r.id)?._min.endAt ?? null,
       createdAt: r.createdAt,
