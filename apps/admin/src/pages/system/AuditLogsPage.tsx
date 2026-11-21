@@ -51,7 +51,7 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'plan.create', label: '新增套餐' },
   { value: 'plan.update', label: '修改套餐' },
   { value: 'product.create', label: '新增商品' },
-  { value: 'product.update', label: '修改商品售价、质保价或上下架' },
+  { value: 'product.update', label: '修改商品售价、质保价、佣金比例或上下架' },
   { value: 'order.create', label: '录入订单' },
   { value: 'order.payment', label: '确认收款' },
   { value: 'order.cancel', label: '取消订单' },
@@ -82,6 +82,8 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'refund.request', label: '申请退款' },
   { value: 'refund.approve', label: '审批退款并出账' },
   { value: 'refund.reject', label: '驳回退款' },
+  { value: 'agent.create', label: '新增代理' },
+  { value: 'agent.update', label: '修改代理（资料、上级、佣金比例或停用）' },
   { value: 'settings.update', label: '修改业务设置' },
   { value: 'job.sweep', label: '手动运行到期巡检' },
 ];

@@ -23,6 +23,9 @@ import {
 import { api, unwrap, type QueryOf, type Schemas } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
 import {
+  AGENT_VIEW_PERMISSIONS,
+  AgentLink,
+  AgentSelect,
   CustomerLink,
   Margin,
   Money,
@@ -82,6 +85,16 @@ export function OrdersPage() {
             }))}
             onChange={(kind?: OrderKind) => setFilters((f) => ({ ...f, page: 1, kind }))}
           />
+          {AGENT_VIEW_PERMISSIONS.some((p) => can(p)) && (
+            <AgentSelect
+              placeholder="代理"
+              allowDisabled
+              style={{ width: 160 }}
+              onChange={(agentId) =>
+                setFilters((f) => ({ ...f, page: 1, agentId: agentId ?? undefined }))
+              }
+            />
+          )}
         </div>
         <Button icon={<ReloadOutlined />} onClick={() => void orders.refetch()}>
           刷新
@@ -174,6 +187,15 @@ export function OrderTable({
         </Space>
       ),
     },
+    ...(data?.some((o) => o.agent)
+      ? [
+          {
+            title: '代理',
+            key: 'agent',
+            render: (_: unknown, o: Order) => (o.agent ? <AgentLink agent={o.agent} /> : '—'),
+          },
+        ]
+      : []),
     { title: '状态', key: 'status', render: (_, o) => <OrderStatusTag status={o.status} /> },
     ...(data?.some((o) => o.marginCents !== null)
       ? [

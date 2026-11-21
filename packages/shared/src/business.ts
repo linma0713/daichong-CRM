@@ -234,9 +234,12 @@ export function formatCents(cents: number, currency: '¥' | '$' = '¥'): string 
 
 /**
  * 编号显示：C00012（客户）、D00012（订单）、S00012（订阅）、T00012（任务）、
- * R00012（付款资源）、G00012（售后工单）、K00012（退款）
+ * R00012（付款资源）、G00012（售后工单）、K00012（退款）、A00012（代理）、J00012（佣金对账单）
  */
-export function displayNo(prefix: 'C' | 'D' | 'S' | 'T' | 'R' | 'G' | 'K', no: number): string {
+export function displayNo(
+  prefix: 'C' | 'D' | 'S' | 'T' | 'R' | 'G' | 'K' | 'A' | 'J',
+  no: number,
+): string {
   return `${prefix}${String(no).padStart(5, '0')}`;
 }
 
@@ -245,4 +248,57 @@ export function parseNo(keyword: string | undefined, prefix: string): number | u
   if (!keyword) return undefined;
   const m = new RegExp(`^${prefix}?0*(\\d{1,9})$`, 'i').exec(keyword.trim());
   return m ? Number(m[1]) : undefined;
+}
+
+// ─── M3 代理与佣金 ───
+
+export type AgentStatus = 'ACTIVE' | 'DISABLED';
+export const AGENT_STATUSES: AgentStatus[] = ['ACTIVE', 'DISABLED'];
+export const AGENT_STATUS_LABELS: Record<AgentStatus, string> = {
+  ACTIVE: '合作中',
+  DISABLED: '已停用',
+};
+
+/** 佣金比例，万分比（1500 = 15%） */
+export interface CommissionRates {
+  /** 客户首单，直推代理拿 */
+  first: number;
+  /** 客户之后的订单（续费、再买），直推代理拿 */
+  renewal: number;
+  /** 上级代理从下级代理的订单里拿的管理佣金 */
+  parent: number;
+}
+
+interface RateOverrides {
+  firstRateBp: number | null;
+  renewalRateBp: number | null;
+  parentRateBp: number | null;
+}
+
+/**
+ * 下单时定佣金比例：单个代理单独设置的 > 商品设置的 > 全局默认。
+ * 停用的代理不再产生新佣金；直推代理停用时上级也不拿。
+ */
+export function resolveCommissionRates(input: {
+  defaults: CommissionRates;
+  product?: RateOverrides | null;
+  agent: { status: AgentStatus } & Pick<RateOverrides, 'firstRateBp' | 'renewalRateBp'>;
+  parent?: ({ status: AgentStatus } & Pick<RateOverrides, 'parentRateBp'>) | null;
+  firstOrder: boolean;
+}): { agentRateBp: number; parentRateBp: number } {
+  const { defaults, product, agent, parent, firstOrder } = input;
+  if (agent.status !== 'ACTIVE') return { agentRateBp: 0, parentRateBp: 0 };
+  const agentRateBp = firstOrder
+    ? (agent.firstRateBp ?? product?.firstRateBp ?? defaults.first)
+    : (agent.renewalRateBp ?? product?.renewalRateBp ?? defaults.renewal);
+  const parentRateBp =
+    parent && parent.status === 'ACTIVE'
+      ? (parent.parentRateBp ?? product?.parentRateBp ?? defaults.parent)
+      : 0;
+  return { agentRateBp, parentRateBp };
+}
+
+/** 万分比显示为百分比：1500 → 15%，750 → 7.5% */
+export function formatRate(bp: number): string {
+  return `${Number((bp / 100).toFixed(2))}%`;
 }

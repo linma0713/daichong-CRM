@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PASSWORD_RULE } from '@crm/shared';
-import { beijingToday, formatTime, randomPassword } from './format';
+import { beijingToday, bpToPercent, formatTime, percentToBp, randomPassword } from './format';
 
 describe('randomPassword', () => {
   it('生成的密码总是符合密码规则', () => {
@@ -26,5 +26,15 @@ describe('beijingToday', () => {
     expect(beijingToday(Date.parse('2026-11-20T15:59:00Z')).format('YYYY-MM-DD')).toBe(
       '2026-11-20',
     );
+  });
+});
+
+describe('佣金比例 万分比 ⇄ 百分比', () => {
+  it('互相转换，空值保持为空', () => {
+    expect(bpToPercent(1500)).toBe(15);
+    expect(bpToPercent(null)).toBeNull();
+    expect(percentToBp(7.5)).toBe(750);
+    expect(percentToBp(0.35)).toBe(35);
+    expect(percentToBp(undefined)).toBeNull();
   });
 });

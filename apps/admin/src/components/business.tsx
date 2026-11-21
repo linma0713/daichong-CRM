@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { Alert, App, Button, Descriptions, Select, Tag, Tooltip, Typography } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import {
   ACCOUNT_STOCK_STATUS_LABELS,
+  AGENT_STATUS_LABELS,
   FULFILLMENT_TYPE_LABELS,
   ORDER_KIND_LABELS,
   ORDER_STATUS_LABELS,
@@ -17,6 +18,7 @@ import {
   TICKET_TYPE_LABELS,
   formatCents,
   type AccountStockStatus,
+  type AgentStatus,
   type FulfillmentType,
   type OrderKind,
   type OrderStatus,
@@ -28,6 +30,7 @@ import {
   type TicketType,
 } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../api/client';
+import { useAgentOptions } from '../api/queries';
 import { useAuth } from '../auth/AuthProvider';
 
 /** 业务页面共用的小组件：状态标签、金额、客户链接、查看密码等 */
@@ -282,7 +285,9 @@ export function CustomerSelect({
   onChange,
   initialOption,
   placeholder = '输入客户编号、称呼或微信搜索',
+  id,
 }: {
+  id?: string;
   value?: string;
   onChange?: (id: string | undefined) => void;
   initialOption?: { value: string; label: string };
@@ -307,6 +312,7 @@ export function CustomerSelect({
   }
   return (
     <Select
+      id={id}
       showSearch
       allowClear
       value={value}
@@ -317,6 +323,85 @@ export function CustomerSelect({
       loading={customers.isFetching}
       options={options}
       notFoundContent={customers.isFetching ? '搜索中…' : '没有找到客户'}
+    />
+  );
+}
+
+/** 能看代理和佣金的权限：任意一个即可（和后端 AGENT_VIEW_PERMISSIONS 一致） */
+export const AGENT_VIEW_PERMISSIONS = ['agent:read', 'agent:write', 'commission:settle'];
+
+export function AgentStatusTag({ status }: { status: AgentStatus }) {
+  return <Tag color={status === 'ACTIVE' ? 'green' : 'default'}>{AGENT_STATUS_LABELS[status]}</Tag>;
+}
+
+/** 代理名称 + 编号；有代理查看权限时可以点进详情 */
+export function AgentLink({ agent }: { agent: Schemas['AgentBriefDto'] }) {
+  const { can } = useAuth();
+  const text = (
+    <>
+      {agent.name}
+      <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 4 }}>
+        {agent.code}
+      </Typography.Text>
+    </>
+  );
+  return AGENT_VIEW_PERMISSIONS.some((p) => can(p)) ? (
+    <Link to={`/agents/${agent.id}`}>{text}</Link>
+  ) : (
+    <span>{text}</span>
+  );
+}
+
+/** 选择代理的下拉框；停用的代理不能选。topLevelOnly 只列一级代理（设置上级时用） */
+export function AgentSelect({
+  value,
+  onChange,
+  placeholder = '搜索代理名称或编号',
+  topLevelOnly,
+  excludeId,
+  allowClear = true,
+  allowDisabled,
+  disabled,
+  style,
+  id,
+}: {
+  value?: string | null;
+  onChange?: (id: string | null) => void;
+  placeholder?: string;
+  topLevelOnly?: boolean;
+  excludeId?: string;
+  allowClear?: boolean;
+  /** 筛选时用：停用的代理也能选 */
+  allowDisabled?: boolean;
+  disabled?: boolean;
+  style?: CSSProperties;
+  /** Form.Item 传进来的 id，让标签能点到下拉框 */
+  id?: string;
+}) {
+  const agents = useAgentOptions();
+  const options = (agents.data ?? [])
+    .filter((a) => (!topLevelOnly || a.parentName === null) && a.id !== excludeId)
+    .map((a) => ({
+      value: a.id,
+      label: `${a.name}（${a.code}${a.parentName ? ` · 上级 ${a.parentName}` : ''}）${
+        a.status === 'ACTIVE' ? '' : ' · 已停用'
+      }`,
+      disabled: !allowDisabled && a.status !== 'ACTIVE' && a.id !== value,
+    }));
+  return (
+    <Select
+      id={id}
+      showSearch
+      allowClear={allowClear}
+      value={value ?? undefined}
+      placeholder={placeholder}
+      optionFilterProp="label"
+      loading={agents.isLoading}
+      options={options}
+      disabled={disabled}
+      style={style}
+      onChange={(v?: string) => onChange?.(v ?? null)}
+      notFoundContent={agents.isLoading ? '加载中…' : '没有代理，先在「代理」页新增'}
     />
   );
 }

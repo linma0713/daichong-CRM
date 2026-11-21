@@ -8,6 +8,7 @@ import {
   InputNumber,
   Select,
   Space,
+  Switch,
   Typography,
 } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,10 +18,17 @@ import { useBusinessSettings } from '../../api/queries';
 
 type Settings = Schemas['BusinessSettingsDto'];
 /** 标签模式的下拉框只接受字符串，提交时再转成数字；手续费在界面上按百分比填 */
-type SettingsForm = Omit<Settings, 'reminderDays' | 'paymentFeeBp'> & {
+type SettingsForm = Omit<Settings, 'reminderDays' | 'paymentFeeBp' | 'commissionRatesBp'> & {
   reminderDays: string[];
   feePercent: Record<PaymentMethod, number>;
+  commissionPercent: { first: number; renewal: number; parent: number };
 };
+
+const COMMISSION_FIELDS = [
+  ['first', '客户首单'],
+  ['renewal', '续费 / 再买'],
+  ['parent', '上级管理'],
+] as const;
 
 const bpToPercent = (bp: Settings['paymentFeeBp']) =>
   Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, (bp[m.value] ?? 0) / 100])) as Record<
@@ -40,11 +48,16 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (settings.data) {
-      const { paymentFeeBp, ...rest } = settings.data;
+      const { paymentFeeBp, commissionRatesBp, ...rest } = settings.data;
       form.setFieldsValue({
         ...rest,
         reminderDays: settings.data.reminderDays.map(String),
         feePercent: bpToPercent(paymentFeeBp),
+        commissionPercent: {
+          first: commissionRatesBp.first / 100,
+          renewal: commissionRatesBp.renewal / 100,
+          parent: commissionRatesBp.parent / 100,
+        },
       });
     }
   }, [settings.data, form]);
@@ -55,10 +68,20 @@ export function SettingsPage() {
       if (days.some((d) => !Number.isInteger(d) || d < 0 || d > 60)) {
         return Promise.reject(new Error('提醒天数要填 0–60 之间的整数'));
       }
-      const { feePercent, ...rest } = v;
+      const { feePercent, commissionPercent, ...rest } = v;
+      const toBp = (p: number) => Math.round((p ?? 0) * 100);
       return unwrap(
         api.PATCH('/api/settings', {
-          body: { ...rest, reminderDays: days, paymentFeeBp: percentToBp(feePercent) },
+          body: {
+            ...rest,
+            reminderDays: days,
+            paymentFeeBp: percentToBp(feePercent),
+            commissionRatesBp: {
+              first: toBp(commissionPercent.first),
+              renewal: toBp(commissionPercent.renewal),
+              parent: toBp(commissionPercent.parent),
+            },
+          },
         }),
       );
     },
@@ -197,6 +220,50 @@ export function SettingsPage() {
             extra="工单标记「已解决」后，客户没有再反馈，超过这个时间自动关闭"
           >
             <InputNumber min={1} max={720} style={{ width: 200 }} />
+          </Form.Item>
+          <Typography.Title level={5} style={{ marginTop: 8 }}>
+            代理佣金
+          </Typography.Title>
+          <Form.Item
+            label="默认佣金比例（%）"
+            extra="直推代理：客户首单按「首单」，之后的续费、再买按「续费」；上级代理另拿「上级管理」。商品或单个代理可以单独设置，改比例只影响之后的新订单"
+          >
+            <Space wrap>
+              {COMMISSION_FIELDS.map(([key, label]) => (
+                <Form.Item
+                  key={key}
+                  name={['commissionPercent', key]}
+                  noStyle
+                  rules={[{ required: true }]}
+                >
+                  <InputNumber
+                    min={0}
+                    max={50}
+                    step={0.5}
+                    precision={2}
+                    prefix={<span style={{ color: '#8c8c8c', marginRight: 4 }}>{label}</span>}
+                    suffix="%"
+                    style={{ width: 180 }}
+                  />
+                </Form.Item>
+              ))}
+            </Space>
+          </Form.Item>
+          <Form.Item
+            name="commissionIncludeWarranty"
+            label="佣金基数包含质保费"
+            valuePropName="checked"
+            extra="关闭时佣金按「应收 − 质保费」算；退款按退款金额占比扣减佣金"
+          >
+            <Switch />
+          </Form.Item>
+          <Form.Item
+            name="commissionFreezeDays"
+            label="佣金冻结期（天）"
+            rules={[{ required: true }]}
+            extra="没加购质保的订单，完成后冻结这么多天，期间退款佣金作废；加购质保的按服务月逐月释放"
+          >
+            <InputNumber min={0} max={90} style={{ width: 200 }} />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={save.isPending}>
             保存

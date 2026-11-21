@@ -25,3 +25,11 @@ export function randomPassword(): string {
 export function beijingToday(now = Date.now()): dayjs.Dayjs {
   return dayjs(new Date(now + 8 * 3600 * 1000).toISOString().slice(0, 10));
 }
+
+/** 万分比 ⇄ 百分比（界面上按 % 填写佣金比例）；null 表示「不单独设置」 */
+export function bpToPercent(bp: number | null | undefined): number | null {
+  return bp === null || bp === undefined ? null : bp / 100;
+}
+export function percentToBp(percent: number | null | undefined): number | null {
+  return percent === null || percent === undefined ? null : Math.round(percent * 100);
+}

@@ -106,10 +106,11 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     key: 'agent',
     name: '代理与佣金',
-    available: false,
+    available: true,
     permissions: [
-      { code: 'agent:write', name: '管理代理' },
-      { code: 'commission:settle', name: '佣金对账与打款' },
+      { code: 'agent:read', name: '查看代理、佣金和对账单' },
+      { code: 'agent:write', name: '新增 / 编辑代理、调整代理佣金比例、改绑客户的代理' },
+      { code: 'commission:settle', name: '生成佣金对账单、确认并登记打款' },
     ],
   },
   {

@@ -29,12 +29,14 @@ import {
   COST_KIND_LABELS,
   PAYMENT_METHODS,
   formatCents,
+  formatRate,
   termLabel,
   type PaymentMethod,
 } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
 import {
+  AgentLink,
   CustomerLink,
   FulfillmentTag,
   Money,
@@ -192,6 +194,28 @@ export function OrderDetailPage() {
             )}
           </Descriptions.Item>
           <Descriptions.Item label="负责客服">{o.owner.displayName}</Descriptions.Item>
+          {o.agent && (
+            <Descriptions.Item label="代理">
+              <Space direction="vertical" size={0}>
+                <Space size={4} wrap>
+                  <AgentLink agent={o.agent} />
+                  {o.firstOrder && <Tag color="blue">首单</Tag>}
+                  {o.agentRateBp !== null && <span>佣金 {formatRate(o.agentRateBp)}</span>}
+                </Space>
+                {o.parentAgent && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    上级 {o.parentAgent.name}
+                    {o.parentRateBp !== null && ` · 管理佣金 ${formatRate(o.parentRateBp)}`}
+                  </Typography.Text>
+                )}
+                {o.commissionBaseCents !== null && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    佣金基数 {formatCents(o.commissionBaseCents)}
+                  </Typography.Text>
+                )}
+              </Space>
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label="录入">
             {o.createdBy.displayName} · {formatTime(o.createdAt)}
           </Descriptions.Item>

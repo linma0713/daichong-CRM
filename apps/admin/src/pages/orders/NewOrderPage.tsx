@@ -18,7 +18,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { formatCents, type OrderKind } from '@crm/shared';
 import { api, unwrap } from '../../api/client';
 import { useProducts } from '../../api/queries';
-import { CustomerSelect, FulfillmentTag } from '../../components/business';
+import { AgentLink, AgentSelect, CustomerSelect, FulfillmentTag } from '../../components/business';
 import { formatTime } from '../../components/format';
 
 interface OrderForm {
@@ -30,6 +30,7 @@ interface OrderForm {
   withWarranty?: boolean;
   accountEmail?: string;
   accountPassword?: string;
+  agentId?: string | null;
   remark?: string;
 }
 
@@ -51,6 +52,14 @@ export function NewOrderPage() {
       unwrap(api.GET('/api/customers/{id}', { params: { path: { id: presetCustomerId! } } })),
     enabled: !!presetCustomerId,
   });
+  // 选中客户的资料：看有没有绑定代理
+  const selectedCustomer = useQuery({
+    queryKey: ['customer', customerId],
+    queryFn: () =>
+      unwrap(api.GET('/api/customers/{id}', { params: { path: { id: customerId! } } })),
+    enabled: !!customerId,
+  });
+  const boundAgent = selectedCustomer.data?.agent ?? null;
   const products = useProducts(true);
   const subs = useQuery({
     queryKey: ['subscriptions', { customerId, pageSize: 100 }],
@@ -95,6 +104,7 @@ export function NewOrderPage() {
             withWarranty: v.withWarranty && product?.warrantyPriceCents !== null ? true : undefined,
             accountEmail: v.kind === 'NEW' ? v.accountEmail || undefined : undefined,
             accountPassword: v.kind === 'NEW' ? v.accountPassword || undefined : undefined,
+            agentId: boundAgent ? undefined : v.agentId || undefined,
             remark: v.remark || undefined,
           },
         }),
@@ -129,9 +139,35 @@ export function NewOrderPage() {
                   }
                 : undefined
             }
-            onChange={() => form.setFieldValue('subscriptionId', undefined)}
+            onChange={() => {
+              form.setFieldValue('subscriptionId', undefined);
+              form.setFieldValue('agentId', undefined);
+            }}
           />
         </Form.Item>
+        {customerId &&
+          selectedCustomer.data &&
+          (boundAgent ? (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message={
+                <span>
+                  这位客户是代理 <AgentLink agent={boundAgent} />{' '}
+                  带来的，这笔订单的佣金算给这个代理（下单时按当前比例定下来）。
+                </span>
+              }
+            />
+          ) : (
+            <Form.Item
+              name="agentId"
+              label="代理（选填）"
+              extra="代理带来的客户在这里选；保存后客户会绑定这个代理，之后的订单都算这个代理的"
+            >
+              <AgentSelect placeholder="没有代理就不用选" />
+            </Form.Item>
+          ))}
         <Form.Item name="kind" label="类型">
           <Radio.Group
             optionType="button"

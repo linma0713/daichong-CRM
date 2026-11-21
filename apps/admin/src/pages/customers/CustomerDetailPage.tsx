@@ -22,6 +22,7 @@ import { CUSTOMER_SOURCES } from '@crm/shared';
 import { api, unwrap } from '../../api/client';
 import { useStaffOptions } from '../../api/queries';
 import { useAuth } from '../../auth/AuthProvider';
+import { AgentLink } from '../../components/business';
 import { formatTime } from '../../components/format';
 import { OrderTable } from '../orders/OrdersPage';
 import { SubscriptionTable } from '../subscriptions/SubscriptionsPage';
@@ -145,6 +146,14 @@ export function CustomerDetailPage() {
               </Typography.Link>
             )}
           </Descriptions.Item>
+          {c.agent && (
+            <Descriptions.Item label="代理">
+              <AgentLink agent={c.agent} />
+              <Typography.Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                {formatTime(c.agentBoundAt)} 绑定
+              </Typography.Text>
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label="负责人">{c.owner.displayName}</Descriptions.Item>
           <Descriptions.Item label="录入时间">{formatTime(c.createdAt)}</Descriptions.Item>
           {c.remark && <Descriptions.Item label="备注">{c.remark}</Descriptions.Item>}

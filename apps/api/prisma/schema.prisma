@@ -156,8 +156,10 @@ model Customer {
   referrerId    String?
   referrer      Customer?         @relation("CustomerReferral", fields: [referrerId], references: [id], onDelete: SetNull)
   referrals     Customer[]        @relation("CustomerReferral")
-  /// M3 代理：客户首单绑定的代理（预留）
+  /// 绑定的代理：客户首单（或建档时）绑定，以后的订单都算这个代理的
   agentId       String?
+  agent         Agent?            @relation(fields: [agentId], references: [id])
+  agentBoundAt  DateTime?
   tags          String[]
   remark        String?
   ownerId       String
@@ -178,6 +180,7 @@ model Customer {
   @@index([ownerId])
   @@index([teamId])
   @@index([createdAt])
+  @@index([agentId])
 }
 
 /// 客户跟进记录：沟通备注、续费提醒等，构成客户时间线
@@ -233,6 +236,10 @@ model Product {
   priceCents         Int
   /// 加购质保的价格（分）；为空 = 这个商品不提供质保
   warrantyPriceCents Int?
+  /// 这个商品单独的佣金比例（万分比）；为空按全局默认，代理单独设置的优先
+  firstRateBp        Int?
+  renewalRateBp      Int?
+  parentRateBp       Int?
   active             Boolean         @default(true)
   orders             Order[]
   createdAt          DateTime        @default(now())
@@ -258,66 +265,81 @@ enum OrderStatus {
 
 /// 订单 = 一笔交易。下单时把商品信息和价格存成快照，之后改价不影响历史订单
 model Order {
-  id              String            @id @default(cuid())
+  id                  String            @id @default(cuid())
   /// 订单编号，界面显示为 D00001
-  no              Int               @unique @default(autoincrement())
-  kind            OrderKind
-  status          OrderStatus       @default(PENDING_PAYMENT)
-  customerId      String
-  customer        Customer          @relation(fields: [customerId], references: [id])
-  productId       String
-  product         Product           @relation(fields: [productId], references: [id])
+  no                  Int               @unique @default(autoincrement())
+  kind                OrderKind
+  status              OrderStatus       @default(PENDING_PAYMENT)
+  customerId          String
+  customer            Customer          @relation(fields: [customerId], references: [id])
+  productId           String
+  product             Product           @relation(fields: [productId], references: [id])
   /// 续费订单：要延长的订阅；新购订单：开通后回填
-  subscriptionId  String?
-  subscription    Subscription?     @relation(fields: [subscriptionId], references: [id])
+  subscriptionId      String?
+  subscription        Subscription?     @relation(fields: [subscriptionId], references: [id])
   // ── 快照 ──
-  planName        String
-  termMonths      Int
-  fulfillmentType FulfillmentType
-  listPriceCents  Int
-  discountCents   Int               @default(0)
+  planName            String
+  termMonths          Int
+  fulfillmentType     FulfillmentType
+  listPriceCents      Int
+  discountCents       Int               @default(0)
   /// 是否加购了质保（服务期内包换 + 按天退款）
-  withWarranty    Boolean           @default(false)
+  withWarranty        Boolean           @default(false)
   /// 质保费（分），已含在应收里；默认不退
-  warrantyCents   Int               @default(0)
+  warrantyCents       Int               @default(0)
   /// 应收金额（分）= 标价 − 优惠 + 质保费
-  amountCents     Int
-  paidCents       Int               @default(0)
+  amountCents         Int
+  paidCents           Int               @default(0)
   /// 已退款合计（分）
-  refundedCents   Int               @default(0)
+  refundedCents       Int               @default(0)
   /// 代充：客户的 Claude 账号（下单时录入）；续费：订阅对应的账号
-  accountId       String?
-  account         ClaudeAccount?    @relation(fields: [accountId], references: [id])
-  accountEmail    String?
-  remark          String?
-  ownerId         String
-  owner           User              @relation("OrderOwner", fields: [ownerId], references: [id])
-  teamId          String?
-  createdById     String
-  createdBy       User              @relation("OrderCreator", fields: [createdById], references: [id])
-  payments        Payment[]
-  tasks           FulfillmentTask[]
-  costEntries     CostEntry[]
-  tickets         Ticket[]
-  refunds         Refund[]
+  accountId           String?
+  account             ClaudeAccount?    @relation(fields: [accountId], references: [id])
+  accountEmail        String?
+  remark              String?
+  ownerId             String
+  owner               User              @relation("OrderOwner", fields: [ownerId], references: [id])
+  teamId              String?
+  createdById         String
+  createdBy           User              @relation("OrderCreator", fields: [createdById], references: [id])
+  payments            Payment[]
+  tasks               FulfillmentTask[]
+  costEntries         CostEntry[]
+  tickets             Ticket[]
+  refunds             Refund[]
   /// 这笔订单买到的服务期（开通 / 续费生效时回填），用来把每月上游扣费归到对应订单
-  periodStartAt   DateTime?
-  periodEndAt     DateTime?
+  periodStartAt       DateTime?
+  periodEndAt         DateTime?
   /// 已发生的成本合计（分），由 CostEntry 汇总
-  costCents       Int               @default(0)
+  costCents           Int               @default(0)
   /// 收款手续费合计（分），由 Payment.feeCents 汇总
-  feeCents        Int               @default(0)
-  paidAt          DateTime?
-  completedAt     DateTime?
-  cancelledAt     DateTime?
-  cancelReason    String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  feeCents            Int               @default(0)
+  // ── 代理与佣金快照（下单时定，之后改比例不影响这笔订单） ──
+  agentId             String?
+  agent               Agent?            @relation("OrderAgent", fields: [agentId], references: [id])
+  /// 是否客户的首单（首单和续费的佣金比例不同）
+  firstOrder          Boolean           @default(false)
+  /// 直推代理的佣金比例（万分比）
+  agentRateBp         Int               @default(0)
+  parentAgentId       String?
+  parentAgent         Agent?            @relation("OrderParentAgent", fields: [parentAgentId], references: [id])
+  /// 上级代理的管理佣金比例（万分比）
+  parentRateBp        Int               @default(0)
+  /// 佣金基数（分）= 应收，按设置决定是否扣掉质保费
+  commissionBaseCents Int               @default(0)
+  paidAt              DateTime?
+  completedAt         DateTime?
+  cancelledAt         DateTime?
+  cancelReason        String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   @@index([customerId])
   @@index([ownerId])
   @@index([teamId])
   @@index([status, createdAt])
+  @@index([agentId])
+  @@index([parentAgentId])
 }
 
 /// 收款记录。现在由员工手动确认；以后接入支付时，channel / externalId 记录支付平台流水
@@ -736,4 +758,43 @@ model Refund {
   @@index([status, createdAt])
   @@index([orderId])
   @@index([paidAt])
+}
+
+// ─────────────── M3 代理与佣金 ───────────────
+
+enum AgentStatus {
+  ACTIVE
+  /// 停用：不再产生新佣金，已有佣金照常结算
+  DISABLED
+}
+
+/// 代理：不登录系统，由员工维护资料、代录订单、月底对账。最多两级
+model Agent {
+  id            String      @id @default(cuid())
+  /// 代理编号，界面显示为 A00001
+  no            Int         @unique @default(autoincrement())
+  name          String
+  wechat        String?
+  phone         String?
+  /// 上级代理；上级本身不能再有上级
+  parentId      String?
+  parent        Agent?      @relation("AgentTree", fields: [parentId], references: [id])
+  children      Agent[]     @relation("AgentTree")
+  status        AgentStatus @default(ACTIVE)
+  /// 单独设置的佣金比例（万分比），为空按商品或全局默认
+  firstRateBp   Int?
+  renewalRateBp Int?
+  /// 作为上级时，从下级代理的订单里拿的管理佣金比例
+  parentRateBp  Int?
+  /// 佣金打款方式（alipay / wechat / bank / usdt / other）和账号
+  payoutMethod  String?
+  payoutAccount String?
+  remark        String?
+  customers     Customer[]
+  orders        Order[]     @relation("OrderAgent")
+  parentOrders  Order[]     @relation("OrderParentAgent")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([parentId])
 }

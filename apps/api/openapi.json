@@ -1246,6 +1246,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "description": "绑定的代理",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1574,6 +1583,15 @@
             "name": "subscriptionId",
             "required": false,
             "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "description": "直推代理",
             "schema": {
               "type": "string"
             }
@@ -3846,6 +3864,226 @@
           "数据看板"
         ]
       }
+    },
+    "/api/agents": {
+      "get": {
+        "operationId": "Agents_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "编号、名称、微信或手机号",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AgentStatus"
+            }
+          },
+          {
+            "name": "parentId",
+            "required": false,
+            "in": "query",
+            "description": "只看某个代理的下级",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "代理列表（含客户数、订单数、业绩）",
+        "tags": [
+          "代理"
+        ]
+      },
+      "post": {
+        "operationId": "Agents_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAgentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "新增代理",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/agents/options": {
+      "get": {
+        "operationId": "Agents_options",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AgentOptionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "代理下拉选项（录客户、录订单时选择）",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/agents/{id}": {
+      "get": {
+        "operationId": "Agents_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "代理详情（下级、客户、订单）",
+        "tags": [
+          "代理"
+        ]
+      },
+      "patch": {
+        "operationId": "Agents_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAgentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改代理；改比例只影响之后的新订单",
+        "tags": [
+          "代理"
+        ]
+      }
     }
   },
   "info": {
@@ -4642,6 +4880,31 @@
           "OTHER"
         ]
       },
+      "CommissionRatesDto": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "number",
+            "description": "客户首单，直推代理",
+            "example": 1500
+          },
+          "renewal": {
+            "type": "number",
+            "description": "客户之后的订单（续费、再买），直推代理",
+            "example": 800
+          },
+          "parent": {
+            "type": "number",
+            "description": "上级代理的管理佣金",
+            "example": 300
+          }
+        },
+        "required": [
+          "first",
+          "renewal",
+          "parent"
+        ]
+      },
       "BusinessSettingsDto": {
         "type": "object",
         "properties": {
@@ -4697,6 +4960,24 @@
             "type": "number",
             "description": "工单标记「已解决」后多少小时自动关闭",
             "example": 48
+          },
+          "commissionRatesBp": {
+            "description": "代理佣金默认比例（万分比）；只影响之后的新订单",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommissionRatesDto"
+              }
+            ]
+          },
+          "commissionFreezeDays": {
+            "type": "number",
+            "description": "没加购质保的订单，完成后冻结几天佣金才能结算",
+            "example": 7
+          },
+          "commissionIncludeWarranty": {
+            "type": "boolean",
+            "description": "佣金基数是否包含质保费",
+            "example": false
           }
         },
         "required": [
@@ -4707,7 +4988,10 @@
           "paymentFeeBp",
           "accountStockLow",
           "ticketSlaHours",
-          "ticketAutoCloseHours"
+          "ticketAutoCloseHours",
+          "commissionRatesBp",
+          "commissionFreezeDays",
+          "commissionIncludeWarranty"
         ]
       },
       "UpdateSettingsDto": {
@@ -4739,6 +5023,15 @@
           },
           "ticketAutoCloseHours": {
             "type": "number"
+          },
+          "commissionRatesBp": {
+            "$ref": "#/components/schemas/CommissionRatesDto"
+          },
+          "commissionFreezeDays": {
+            "type": "number"
+          },
+          "commissionIncludeWarranty": {
+            "type": "boolean"
           }
         }
       },
@@ -4873,6 +5166,21 @@
             "nullable": true,
             "description": "加购质保的价格（分）；为空 = 不提供质保"
           },
+          "firstRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "首单佣金比例（万分比）；为空按全局默认"
+          },
+          "renewalRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "续费佣金比例（万分比）；为空按全局默认"
+          },
+          "parentRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "上级管理佣金比例（万分比）；为空按全局默认"
+          },
           "active": {
             "type": "boolean"
           }
@@ -4888,12 +5196,30 @@
           "estCostCents",
           "estMarginCents",
           "warrantyPriceCents",
+          "firstRateBp",
+          "renewalRateBp",
+          "parentRateBp",
           "active"
         ]
       },
       "CreateProductDto": {
         "type": "object",
         "properties": {
+          "firstRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "首单佣金比例（万分比）"
+          },
+          "renewalRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "续费佣金比例（万分比）"
+          },
+          "parentRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "上级管理佣金比例（万分比）"
+          },
           "planId": {
             "type": "string"
           },
@@ -4932,6 +5258,21 @@
       "UpdateProductDto": {
         "type": "object",
         "properties": {
+          "firstRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "首单佣金比例（万分比）"
+          },
+          "renewalRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "续费佣金比例（万分比）"
+          },
+          "parentRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "上级管理佣金比例（万分比）"
+          },
           "priceCents": {
             "type": "number",
             "description": "售价（分）。只影响之后的订单"
@@ -4969,6 +5310,26 @@
           },
           "code": {
             "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ]
+      },
+      "AgentBriefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "A00003"
           },
           "name": {
             "type": "string"
@@ -5041,6 +5402,21 @@
               }
             ]
           },
+          "agent": {
+            "nullable": true,
+            "description": "绑定的代理",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentBriefDto"
+              }
+            ]
+          },
+          "agentBoundAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "绑定代理的时间"
+          },
           "activeSubscriptionCount": {
             "type": "number",
             "description": "服务中的订阅数"
@@ -5068,6 +5444,8 @@
           "remark",
           "owner",
           "referrer",
+          "agent",
+          "agentBoundAt",
           "activeSubscriptionCount",
           "nextExpiryAt",
           "createdAt"
@@ -5189,6 +5567,21 @@
               }
             ]
           },
+          "agent": {
+            "nullable": true,
+            "description": "绑定的代理",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentBriefDto"
+              }
+            ]
+          },
+          "agentBoundAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "绑定代理的时间"
+          },
           "activeSubscriptionCount": {
             "type": "number",
             "description": "服务中的订阅数"
@@ -5223,6 +5616,8 @@
           "remark",
           "owner",
           "referrer",
+          "agent",
+          "agentBoundAt",
           "activeSubscriptionCount",
           "nextExpiryAt",
           "createdAt",
@@ -5262,6 +5657,11 @@
             "type": "string",
             "nullable": true,
             "description": "推荐人（老客户 ID）"
+          },
+          "agentId": {
+            "type": "string",
+            "nullable": true,
+            "description": "绑定的代理：客户之后的订单都算这个代理的。改绑 / 解绑需要「编辑代理」权限"
           },
           "tags": {
             "type": "array",
@@ -5319,6 +5719,11 @@
             "type": "string",
             "nullable": true,
             "description": "推荐人（老客户 ID）"
+          },
+          "agentId": {
+            "type": "string",
+            "nullable": true,
+            "description": "绑定的代理：客户之后的订单都算这个代理的。改绑 / 解绑需要「编辑代理」权限"
           },
           "tags": {
             "type": "array",
@@ -5552,6 +5957,45 @@
             "type": "string",
             "nullable": true
           },
+          "agent": {
+            "nullable": true,
+            "description": "直推代理",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentBriefDto"
+              }
+            ]
+          },
+          "parentAgent": {
+            "nullable": true,
+            "description": "直推代理的上级",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentBriefDto"
+              }
+            ]
+          },
+          "firstOrder": {
+            "type": "boolean",
+            "description": "是否客户的首单（决定按首单还是续费比例算佣金）"
+          },
+          "agentRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "直推佣金比例快照（万分比）；没有代理或佣金查看权限时为空"
+          },
+          "parentRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "上级管理佣金比例快照（万分比）"
+          },
+          "commissionBaseCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "佣金基数（分）= 应收，按设置决定是否扣掉质保费"
+          },
           "marginCents": {
             "type": "number",
             "nullable": true,
@@ -5590,6 +6034,12 @@
           "completedAt",
           "cancelledAt",
           "cancelReason",
+          "agent",
+          "parentAgent",
+          "firstOrder",
+          "agentRateBp",
+          "parentRateBp",
+          "commissionBaseCents",
           "marginCents",
           "createdAt"
         ]
@@ -6064,6 +6514,45 @@
             "type": "string",
             "nullable": true
           },
+          "agent": {
+            "nullable": true,
+            "description": "直推代理",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentBriefDto"
+              }
+            ]
+          },
+          "parentAgent": {
+            "nullable": true,
+            "description": "直推代理的上级",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentBriefDto"
+              }
+            ]
+          },
+          "firstOrder": {
+            "type": "boolean",
+            "description": "是否客户的首单（决定按首单还是续费比例算佣金）"
+          },
+          "agentRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "直推佣金比例快照（万分比）；没有代理或佣金查看权限时为空"
+          },
+          "parentRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "上级管理佣金比例快照（万分比）"
+          },
+          "commissionBaseCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "佣金基数（分）= 应收，按设置决定是否扣掉质保费"
+          },
           "marginCents": {
             "type": "number",
             "nullable": true,
@@ -6134,6 +6623,12 @@
           "completedAt",
           "cancelledAt",
           "cancelReason",
+          "agent",
+          "parentAgent",
+          "firstOrder",
+          "agentRateBp",
+          "parentRateBp",
+          "commissionBaseCents",
           "marginCents",
           "createdAt",
           "payments",
@@ -6179,6 +6674,10 @@
           "accountPassword": {
             "type": "string",
             "description": "代充新购：客户的 Claude 账号密码（加密保存）"
+          },
+          "agentId": {
+            "type": "string",
+            "description": "代理代录：客户还没绑定代理时填写，下单同时把客户绑给这个代理"
           },
           "remark": {
             "type": "string"
@@ -9685,6 +10184,533 @@
           "staff",
           "ltv"
         ]
+      },
+      "AgentStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "DISABLED"
+        ]
+      },
+      "AgentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "A00003"
+          },
+          "name": {
+            "type": "string"
+          },
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "parent": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentBriefDto"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentStatus"
+              }
+            ]
+          },
+          "firstRateBp": {
+            "type": "number",
+            "nullable": true
+          },
+          "renewalRateBp": {
+            "type": "number",
+            "nullable": true
+          },
+          "parentRateBp": {
+            "type": "number",
+            "nullable": true
+          },
+          "payoutMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "payoutAccount": {
+            "type": "string",
+            "nullable": true
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "childCount": {
+            "type": "number",
+            "description": "下级代理数"
+          },
+          "customerCount": {
+            "type": "number",
+            "description": "绑定的客户数"
+          },
+          "orderCount": {
+            "type": "number",
+            "description": "已收款的订单数（不含已取消）"
+          },
+          "salesCents": {
+            "type": "number",
+            "description": "业绩（分）= 这些订单的已收 − 已退款"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "wechat",
+          "phone",
+          "parent",
+          "status",
+          "firstRateBp",
+          "renewalRateBp",
+          "parentRateBp",
+          "payoutMethod",
+          "payoutAccount",
+          "remark",
+          "childCount",
+          "customerCount",
+          "orderCount",
+          "salesCents",
+          "createdAt"
+        ]
+      },
+      "AgentListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "AgentOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "A00003"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentStatus"
+              }
+            ]
+          },
+          "parentName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "status",
+          "parentName"
+        ]
+      },
+      "AgentCustomerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "C00012"
+          },
+          "name": {
+            "type": "string"
+          },
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "telegram": {
+            "type": "string",
+            "nullable": true
+          },
+          "boundAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "绑定时间"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "wechat",
+          "telegram",
+          "boundAt"
+        ]
+      },
+      "AgentOrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatus"
+              }
+            ]
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "paidCents": {
+            "type": "number"
+          },
+          "refundedCents": {
+            "type": "number"
+          },
+          "firstOrder": {
+            "type": "boolean",
+            "description": "是否客户首单"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "DIRECT",
+              "PARENT"
+            ],
+            "description": "DIRECT 自己的客户 / PARENT 下级代理的客户"
+          },
+          "agent": {
+            "description": "直推代理",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentBriefDto"
+              }
+            ]
+          },
+          "rateBp": {
+            "type": "number",
+            "description": "这个代理在这笔订单里的佣金比例（万分比）"
+          },
+          "baseCents": {
+            "type": "number",
+            "description": "佣金基数（分）"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "customer",
+          "productName",
+          "status",
+          "amountCents",
+          "paidCents",
+          "refundedCents",
+          "firstOrder",
+          "role",
+          "agent",
+          "rateBp",
+          "baseCents",
+          "createdAt"
+        ]
+      },
+      "AgentDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "A00003"
+          },
+          "name": {
+            "type": "string"
+          },
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "parent": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentBriefDto"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentStatus"
+              }
+            ]
+          },
+          "firstRateBp": {
+            "type": "number",
+            "nullable": true
+          },
+          "renewalRateBp": {
+            "type": "number",
+            "nullable": true
+          },
+          "parentRateBp": {
+            "type": "number",
+            "nullable": true
+          },
+          "payoutMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "payoutAccount": {
+            "type": "string",
+            "nullable": true
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "childCount": {
+            "type": "number",
+            "description": "下级代理数"
+          },
+          "customerCount": {
+            "type": "number",
+            "description": "绑定的客户数"
+          },
+          "orderCount": {
+            "type": "number",
+            "description": "已收款的订单数（不含已取消）"
+          },
+          "salesCents": {
+            "type": "number",
+            "description": "业绩（分）= 这些订单的已收 − 已退款"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentDto"
+            }
+          },
+          "customers": {
+            "description": "最近 100 个绑定客户",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentCustomerDto"
+            }
+          },
+          "orders": {
+            "description": "最近 100 笔订单（含下级代理的）",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentOrderDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "wechat",
+          "phone",
+          "parent",
+          "status",
+          "firstRateBp",
+          "renewalRateBp",
+          "parentRateBp",
+          "payoutMethod",
+          "payoutAccount",
+          "remark",
+          "childCount",
+          "customerCount",
+          "orderCount",
+          "salesCents",
+          "createdAt",
+          "children",
+          "customers",
+          "orders"
+        ]
+      },
+      "CreateAgentDto": {
+        "type": "object",
+        "properties": {
+          "firstRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "首单佣金比例（万分比）"
+          },
+          "renewalRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "续费佣金比例（万分比）"
+          },
+          "parentRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "作为上级时拿的管理佣金比例（万分比）"
+          },
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true,
+            "description": "上级代理；最多两级"
+          },
+          "payoutMethod": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "wechat",
+              "alipay",
+              "usdt",
+              "bank",
+              "other"
+            ]
+          },
+          "payoutAccount": {
+            "type": "string",
+            "nullable": true,
+            "description": "佣金收款账号"
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "example": "小红书-阿杰"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateAgentDto": {
+        "type": "object",
+        "properties": {
+          "firstRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "首单佣金比例（万分比）"
+          },
+          "renewalRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "续费佣金比例（万分比）"
+          },
+          "parentRateBp": {
+            "type": "number",
+            "nullable": true,
+            "description": "作为上级时拿的管理佣金比例（万分比）"
+          },
+          "wechat": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true,
+            "description": "上级代理；最多两级"
+          },
+          "payoutMethod": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "wechat",
+              "alipay",
+              "usdt",
+              "bank",
+              "other"
+            ]
+          },
+          "payoutAccount": {
+            "type": "string",
+            "nullable": true,
+            "description": "佣金收款账号"
+          },
+          "remark": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentStatus"
+              }
+            ]
+          }
+        }
       }
     }
   }

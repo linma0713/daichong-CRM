@@ -22,7 +22,12 @@ import { CUSTOMER_SOURCES, type CustomerSource } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { useStaffOptions } from '../../api/queries';
 import { useAuth } from '../../auth/AuthProvider';
-import { CustomerSelect } from '../../components/business';
+import {
+  AGENT_VIEW_PERMISSIONS,
+  AgentLink,
+  AgentSelect,
+  CustomerSelect,
+} from '../../components/business';
 import { formatTime } from '../../components/format';
 
 type Customer = Schemas['CustomerDto'];
@@ -35,6 +40,7 @@ interface Filters {
   keyword?: string;
   source?: CustomerSource;
   ownerId?: string;
+  agentId?: string;
 }
 
 export function CustomersPage() {
@@ -86,6 +92,12 @@ export function CustomersPage() {
           {c.referrer && (
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               推荐人：{c.referrer.name}
+            </Typography.Text>
+          )}
+          {c.agent && (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              代理：
+              <AgentLink agent={c.agent} />
             </Typography.Text>
           )}
         </Space>
@@ -163,6 +175,16 @@ export function CustomersPage() {
               onChange={(ownerId?: string) => setFilters((f) => ({ ...f, page: 1, ownerId }))}
             />
           )}
+          {AGENT_VIEW_PERMISSIONS.some((p) => can(p)) && (
+            <AgentSelect
+              placeholder="代理"
+              allowDisabled
+              style={{ width: 160 }}
+              onChange={(agentId) =>
+                setFilters((f) => ({ ...f, page: 1, agentId: agentId ?? undefined }))
+              }
+            />
+          )}
         </div>
         <Button icon={<ReloadOutlined />} onClick={() => void customers.refetch()}>
           刷新
@@ -202,6 +224,7 @@ interface CustomerForm {
   email?: string;
   source: CustomerSource;
   referrerId?: string | null;
+  agentId?: string | null;
   tags: string[];
   remark?: string;
   ownerId?: string;
@@ -217,12 +240,15 @@ export function CustomerFormModal({
   onSaved: (c: Schemas['CustomerDto']) => void;
 }) {
   const { message } = App.useApp();
-  const { profile } = useAuth();
+  const { profile, can } = useAuth();
   const queryClient = useQueryClient();
   const staff = useStaffOptions();
   const [form] = Form.useForm<CustomerForm>();
   const source = Form.useWatch('source', form);
   const isNew = customer === null;
+  // 代理字段：来源选「代理」或者已经绑定了代理时显示；已绑定后改绑要「编辑代理」权限
+  const showAgent = source === 'agent' || !!customer?.agent;
+  const agentLocked = !!customer?.agent && !can('agent:write');
   // 指定其他负责人需要「全部数据」或同组范围
   const ownerOptions = (staff.data ?? [])
     .filter(
@@ -243,6 +269,7 @@ export function CustomerFormModal({
         email: v.email || null,
         source: v.source,
         referrerId: v.source === 'referral' ? (v.referrerId ?? null) : null,
+        agentId: showAgent && !agentLocked ? (v.agentId ?? null) : undefined,
         tags: v.tags,
         remark: v.remark || null,
       };
@@ -282,6 +309,7 @@ export function CustomerFormModal({
                 remark: customer.remark ?? undefined,
                 source: customer.source as CustomerSource,
                 referrerId: customer.referrer?.id ?? null,
+                agentId: customer.agent?.id ?? null,
               }
             : { source: 'organic', tags: [], ownerId: profile?.id }
         }
@@ -338,6 +366,19 @@ export function CustomerFormModal({
                   : undefined
               }
             />
+          </Form.Item>
+        )}
+        {showAgent && (
+          <Form.Item
+            name="agentId"
+            label="绑定代理"
+            extra={
+              agentLocked
+                ? '已绑定代理，改绑或解绑需要「编辑代理」权限'
+                : '客户之后的所有订单都算这个代理的业绩和佣金'
+            }
+          >
+            <AgentSelect disabled={agentLocked} placeholder="选择带来这位客户的代理" />
           </Form.Item>
         )}
         <Form.Item name="tags" label="标签">
