@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router';
 import {
+  Alert,
   App,
   Button,
   Card,
   Descriptions,
   Form,
+  Input,
   InputNumber,
   Select,
   Space,
@@ -13,7 +15,14 @@ import {
   Typography,
 } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { PAYMENT_METHODS, TICKET_TYPES, TICKET_TYPE_LABELS, type PaymentMethod } from '@crm/shared';
+import {
+  ONLINE_PAY_CHANNELS,
+  PAYMENT_METHODS,
+  PAY_LINK_MINUTES,
+  TICKET_TYPES,
+  TICKET_TYPE_LABELS,
+  type PaymentMethod,
+} from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { useBusinessSettings } from '../../api/queries';
 
@@ -55,6 +64,7 @@ export function SettingsPage() {
   const queryClient = useQueryClient();
   const settings = useBusinessSettings();
   const [form] = Form.useForm<SettingsForm>();
+  const payChannel = Form.useWatch('onlinePayChannel', form);
 
   useEffect(() => {
     if (settings.data) {
@@ -339,6 +349,49 @@ export function SettingsPage() {
           >
             <InputNumber min={0} max={90} style={{ width: 200 }} />
           </Form.Item>
+          <Typography.Title level={5} style={{ marginTop: 8 }}>
+            在线收款
+          </Typography.Title>
+          <Form.Item
+            name="onlinePayChannel"
+            label="收款通道"
+            rules={[{ required: true }]}
+            extra="开启后，订单详情里可以给客户发收款链接（带二维码），客户付款后系统自动确认收款、派开通任务"
+          >
+            <Select options={[...ONLINE_PAY_CHANNELS]} style={{ width: 260 }} />
+          </Form.Item>
+          {payChannel === 'mock' && (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="模拟通道只用来测试流程"
+              description="客户打开链接点「模拟付款成功」就算付了款，不会真的扣钱。正式收款前要接入真实的支付通道（支付宝 / 微信支付等，需要你们的商户号），在那之前不要把模拟链接发给真实客户。"
+            />
+          )}
+          <Form.Item
+            name="payLinkMinutes"
+            label="链接有效期（分钟）"
+            rules={[{ required: true }]}
+            extra="超过时间客户就付不了，要重新生成。30 分钟到 1 天比较合适"
+          >
+            <InputNumber
+              min={PAY_LINK_MINUTES.min}
+              max={PAY_LINK_MINUTES.max}
+              precision={0}
+              style={{ width: 200 }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="payShopName"
+            label="付款页显示的店铺名称"
+            extra="客户打开付款页时最上面显示的名字；空着就只显示「订单付款」"
+          >
+            <Input maxLength={30} showCount placeholder="例如：小林代充" style={{ width: 320 }} />
+          </Form.Item>
+          <Typography.Title level={5} style={{ marginTop: 8 }}>
+            消息
+          </Typography.Title>
           <Form.Item
             name="dailyDigestHour"
             label="每日早报时间（点）"

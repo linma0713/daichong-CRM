@@ -2092,6 +2092,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/orders/{id}/payment-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 给订单生成在线收款链接（之前没付的链接作废） */
+        post: operations["PaymentLinks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment-links/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 收款链接状态（等客户付款时轮询） */
+        get: operations["PaymentLinks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment-links/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 关闭收款链接（客户就不能再用它付款） */
+        post: operations["PaymentLinks_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pay/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 客户付款页：订单金额和链接状态（不需要登录） */
+        get: operations["PublicPay_info"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pay/{token}/mock-pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 模拟通道：模拟付款成功（只在业务设置选了模拟通道时可用） */
+        post: operations["PublicPay_mockPay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pay/notify/{channel}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 支付平台到账回调（平台调用，验签后自动确认收款） */
+        post: operations["PublicPay_notify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2099,7 +2201,7 @@ export interface components {
         NotificationDto: {
             id: string;
             /** @enum {string} */
-            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest";
+            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "payment.anomaly" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest";
             title: string;
             body: string | null;
             link: string | null;
@@ -2128,7 +2230,7 @@ export interface components {
             kind: string;
             /** @description 机器人 key 的头尾几位 */
             webhookHint: string;
-            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest")[];
+            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "payment.anomaly" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest")[];
             enabled: boolean;
             /** Format: date-time */
             lastSentAt: string | null;
@@ -2148,13 +2250,13 @@ export interface components {
              * @example https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxx
              */
             webhook: string;
-            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest")[];
+            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "payment.anomaly" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest")[];
         };
         UpdateNotifyChannelDto: {
             name?: string;
             /** @description 换一个机器人地址；不改就不传 */
             webhook?: string;
-            events?: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest")[];
+            events?: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "payment.anomaly" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest")[];
             enabled?: boolean;
         };
         TestResultDto: {
@@ -2166,7 +2268,7 @@ export interface components {
             channelId: string;
             channelName: string;
             /** @enum {string} */
-            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest";
+            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "payment.anomaly" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest";
             content: string;
             /** @enum {string} */
             status: "PENDING" | "SENT" | "FAILED";
@@ -2573,6 +2675,22 @@ export interface components {
              * @example 5000
              */
             referralRewardCents: number;
+            /**
+             * @description 在线收款通道：off 不开启；mock 模拟通道（只用于测试，拿到链接的人都能点「付款成功」）
+             * @example off
+             * @enum {string}
+             */
+            onlinePayChannel: "off" | "mock";
+            /**
+             * @description 收款链接多少分钟内有效
+             * @example 30
+             */
+            payLinkMinutes: number;
+            /**
+             * @description 客户付款页上显示的店铺名称；空着只显示「订单付款」
+             * @example
+             */
+            payShopName: string;
         };
         UpdateSettingsDto: {
             exchangeRate?: number;
@@ -2590,6 +2708,10 @@ export interface components {
             vipThresholdCents?: number;
             recallWindowDays?: number;
             referralRewardCents?: number;
+            /** @enum {string} */
+            onlinePayChannel?: "off" | "mock";
+            payLinkMinutes?: number;
+            payShopName?: string;
         };
         PlanDto: {
             id: string;
@@ -2983,11 +3105,43 @@ export interface components {
             /** @enum {string} */
             method: "wechat" | "alipay" | "usdt" | "bank" | "other" | "agent";
             reference: string | null;
+            /** @description 在线收款的通道（mock 等）；手工确认的收款为空 */
+            channel: string | null;
             /** Format: date-time */
             receivedAt: string;
             /** @description 代理代收的款：在哪张佣金对账单里抵扣（还没出单为空） */
             statement: components["schemas"]["RefDto"] | null;
             confirmedBy: components["schemas"]["UserBriefDto"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @enum {string} */
+        PaymentLinkStatus: "PENDING" | "PAID" | "EXPIRED" | "CLOSED";
+        PaymentLinkDto: {
+            id: string;
+            /** @example P00012 */
+            code: string;
+            /**
+             * @description 收款通道
+             * @example mock
+             */
+            channel: string;
+            amountCents: number;
+            status: components["schemas"]["PaymentLinkStatus"];
+            /**
+             * @description 付款页路径
+             * @example /pay/xxxx
+             */
+            payPath: string;
+            /** @description 完整的付款链接；没设置 APP_PUBLIC_URL 时为空，前端用当前访问地址拼 */
+            payUrl: string | null;
+            /** Format: date-time */
+            expiresAt: string;
+            paidAt: string | null;
+            closedAt: string | null;
+            /** @description 到账了但没法自动记收款的原因（要人工核对退款） */
+            anomaly: string | null;
+            createdBy: components["schemas"]["UserBriefDto"];
             /** Format: date-time */
             createdAt: string;
         };
@@ -3166,6 +3320,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             payments: components["schemas"]["PaymentDto"][];
+            /** @description 在线收款链接，新的在前 */
+            paymentLinks: components["schemas"]["PaymentLinkDto"][];
             tasks: components["schemas"]["TaskBriefDto"][];
             refunds: components["schemas"]["OrderRefundDto"][];
             /** @description 还可以申请退款的金额（分）= 已收 − 已退 − 审批中 */
@@ -4893,6 +5049,29 @@ export interface components {
             items: components["schemas"]["OrderDto"][];
             total: number;
             truncated: boolean;
+        };
+        CreatePaymentLinkDto: {
+            /** @description 收款金额（分），不填就是订单还差的金额 */
+            amountCents?: number;
+        };
+        PublicPayInfoDto: {
+            /** @description 店铺名称（业务设置里填），没填为空字符串 */
+            shopName: string;
+            /** @example D00012 */
+            orderCode: string;
+            /** @example Max 季付（代充） */
+            productName: string;
+            amountCents: number;
+            status: components["schemas"]["PaymentLinkStatus"];
+            /** @example mock */
+            channel: string;
+            /** @description 模拟通道：页面上显示「模拟付款成功」按钮 */
+            mock: boolean;
+            /** @description 真实通道的付款地址（跳转过去付款）；模拟通道为空 */
+            payUrl: string | null;
+            /** Format: date-time */
+            expiresAt: string;
+            paidAt: string | null;
         };
     };
     responses: never;
@@ -8431,6 +8610,134 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OrderExportDto"];
                 };
+            };
+        };
+    };
+    PaymentLinks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePaymentLinkDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentLinkDto"];
+                };
+            };
+        };
+    };
+    PaymentLinks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentLinkDto"];
+                };
+            };
+        };
+    };
+    PaymentLinks_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentLinkDto"];
+                };
+            };
+        };
+    };
+    PublicPay_info: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPayInfoDto"];
+                };
+            };
+        };
+    };
+    PublicPay_mockPay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPayInfoDto"];
+                };
+            };
+        };
+    };
+    PublicPay_notify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

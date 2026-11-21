@@ -85,7 +85,7 @@ describe('M4 消息与自动化', () => {
     prisma = new PrismaClient();
     await prisma.$executeRawUnsafe(`
       TRUNCATE TABLE "AuditLog", "Session", "UserRole", "User", "Role", "Team", "Customer",
-        "FollowUp", "Plan", "Product", "Order", "Payment", "ClaudeAccount", "Subscription",
+        "FollowUp", "Plan", "Product", "Order", "Payment", "PaymentLink", "PaymentCallback", "ClaudeAccount", "Subscription",
         "FulfillmentTask", "Setting", "PaymentResource", "ResourceTransaction", "CostEntry",
         "Ticket", "TicketEvent", "Refund", "Agent", "Commission", "CommissionStatement",
         "Notification", "NotifyChannel", "OutboundMessage"

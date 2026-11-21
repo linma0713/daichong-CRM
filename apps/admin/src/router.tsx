@@ -43,9 +43,12 @@ import { MobileCustomerDetailPage, MobileCustomersPage } from './mobile/Customer
 import { MobileRenewalsPage } from './mobile/RenewalsPage';
 import { MobileMessagesPage } from './mobile/MessagesPage';
 import { MobileMePage } from './mobile/MePage';
+import { PayPage } from './pages/pay/PayPage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  // 客户付款页：不用登录，只凭链接里的随机串
+  { path: '/pay/:token', element: <PayPage /> },
   {
     path: '/change-password',
     element: (

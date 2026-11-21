@@ -80,6 +80,7 @@ const URGENT: NotifyEvent[] = [
   'task.failed',
   'ticket.escalated',
   'refund.requested',
+  'payment.anomaly',
   'inventory.low',
 ];
 

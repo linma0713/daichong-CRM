@@ -100,7 +100,7 @@ describe('M3 佣金对账单与代理代收', () => {
     prisma = new PrismaClient();
     await prisma.$executeRawUnsafe(`
       TRUNCATE TABLE "AuditLog", "Session", "UserRole", "User", "Role", "Team", "Customer",
-        "FollowUp", "Plan", "Product", "Order", "Payment", "ClaudeAccount", "Subscription",
+        "FollowUp", "Plan", "Product", "Order", "Payment", "PaymentLink", "PaymentCallback", "ClaudeAccount", "Subscription",
         "FulfillmentTask", "Setting", "PaymentResource", "ResourceTransaction", "CostEntry",
         "Ticket", "TicketEvent", "Refund", "Agent", "Commission", "CommissionStatement"
         RESTART IDENTITY CASCADE`);
