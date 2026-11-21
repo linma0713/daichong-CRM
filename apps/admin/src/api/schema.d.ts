@@ -2194,6 +2194,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 上线检查：密钥、对外地址、两步验证、收款通道、自动备份 */
+        get: operations["Readiness_check"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5072,6 +5089,26 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             paidAt: string | null;
+        };
+        /**
+         * @description ok 已就绪 / info 提示 / warn 建议处理 / danger 上线前必须处理
+         * @enum {string}
+         */
+        ReadinessStatus: "ok" | "info" | "warn" | "danger";
+        ReadinessItemDto: {
+            /** @example account_key */
+            key: string;
+            /** @description ok 已就绪 / info 提示 / warn 建议处理 / danger 上线前必须处理 */
+            status: components["schemas"]["ReadinessStatus"];
+            /** @example 账号密码加密密钥 */
+            title: string;
+            /** @description 现在的情况和怎么改 */
+            detail: string;
+        };
+        ReadinessDto: {
+            items: components["schemas"]["ReadinessItemDto"][];
+            /** Format: date-time */
+            checkedAt: string;
         };
     };
     responses: never;
@@ -8738,6 +8775,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    Readiness_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessDto"];
+                };
             };
         };
     };

@@ -21,7 +21,8 @@
     "prisma:seed": "node --env-file-if-exists=../../.env -r ts-node/register/transpile-only prisma/seed.ts",
     "openapi:export": "ts-node --transpile-only scripts/export-openapi.ts",
     "db": "node --env-file-if-exists=../../.env node_modules/prisma/build/index.js",
-    "prisma:seed:prod": "node dist/prisma/seed.js"
+    "prisma:seed:prod": "node dist/prisma/seed.js",
+    "secret:rotate": "node --env-file-if-exists=../../.env dist/src/cli/rotate-secret-key.js"
   },
   "dependencies": {
     "@crm/shared": "workspace:*",

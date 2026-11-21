@@ -12,6 +12,7 @@ import { RolesPage } from './pages/system/RolesPage';
 import { TeamsPage } from './pages/system/TeamsPage';
 import { AuditLogsPage } from './pages/system/AuditLogsPage';
 import { NotifyChannelsPage } from './pages/system/NotifyChannelsPage';
+import { ReadinessPage } from './pages/system/ReadinessPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { CustomersPage } from './pages/customers/CustomersPage';
 import { ScriptsPage } from './pages/customers/ScriptsPage';
@@ -335,6 +336,14 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission permission="settings:write">
             <NotifyChannelsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'system/readiness',
+        element: (
+          <RequirePermission permission="settings:write">
+            <ReadinessPage />
           </RequirePermission>
         ),
       },

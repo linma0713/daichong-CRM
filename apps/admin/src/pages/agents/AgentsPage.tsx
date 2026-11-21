@@ -180,7 +180,7 @@ export function AgentsPage() {
       }
     >
       <Typography.Paragraph type="secondary">
-        代理最多两级：直推代理拿主佣金，他的上级拿管理佣金。客户第一次下单时绑定代理，之后的续费、再买都算这个代理的。
+        代理最多两级：直推代理拿主佣金，直推代理的上级拿管理佣金。客户第一次下单时绑定代理，之后的续费、再买都算这个代理的。
         比例留空就按商品单独设置的，商品也没设置就按业务设置的默认比例
         {defaults &&
           `（首单 ${formatRate(defaults.first)}、续费 ${formatRate(defaults.renewal)}、上级 ${formatRate(defaults.parent)}）`}

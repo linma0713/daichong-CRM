@@ -7003,6 +7003,33 @@
           "在线收款"
         ]
       }
+    },
+    "/api/system/readiness": {
+      "get": {
+        "operationId": "Readiness_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "上线检查：密钥、对外地址、两步验证、收款通道、自动备份",
+        "tags": [
+          "业务设置"
+        ]
+      }
     }
   },
   "info": {
@@ -16701,6 +16728,66 @@
           "payUrl",
           "expiresAt",
           "paidAt"
+        ]
+      },
+      "ReadinessStatus": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "info",
+          "warn",
+          "danger"
+        ],
+        "description": "ok 已就绪 / info 提示 / warn 建议处理 / danger 上线前必须处理"
+      },
+      "ReadinessItemDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "example": "account_key"
+          },
+          "status": {
+            "description": "ok 已就绪 / info 提示 / warn 建议处理 / danger 上线前必须处理",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReadinessStatus"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "example": "账号密码加密密钥"
+          },
+          "detail": {
+            "type": "string",
+            "description": "现在的情况和怎么改"
+          }
+        },
+        "required": [
+          "key",
+          "status",
+          "title",
+          "detail"
+        ]
+      },
+      "ReadinessDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadinessItemDto"
+            }
+          },
+          "checkedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "checkedAt"
         ]
       }
     }

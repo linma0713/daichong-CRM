@@ -1,5 +1,6 @@
 import { plainToInstance, Type } from 'class-transformer';
 import {
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -50,6 +51,27 @@ export class EnvVars {
   @IsOptional()
   @IsString()
   UPLOAD_DIR?: string;
+
+  /**
+   * 前面有几层反向代理（用来取员工 / 客户的真实 IP，登录限流和操作日志都靠它）。
+   * 本地 docker compose 只有 nginx 一层，填 1；上云加了 Caddy 再多一层，填 2
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(5)
+  TRUST_PROXY: number = 1;
+
+  /** 接口文档 /api/docs：on 打开（默认）；off 关闭，上云后建议关 */
+  @IsOptional()
+  @IsIn(['on', 'off'], { message: 'API_DOCS 只能是 on 或 off' })
+  API_DOCS: 'on' | 'off' = 'on';
+
+  /** 自动备份目录（上云部署时挂进来，只读），「上线检查」用它看最近一次备份的时间 */
+  @IsOptional()
+  @IsString()
+  BACKUP_DIR?: string;
 
   /** 只在本地联调时使用：把企业微信接口指向模拟服务 */
   @IsOptional()

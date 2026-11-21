@@ -10,3 +10,6 @@ coverage/
 .vscode/*
 !.vscode/extensions.json
 apps/api/uploads/
+
+# 备份文件（scripts/backup.sh 和服务器上的自动备份）
+backups/

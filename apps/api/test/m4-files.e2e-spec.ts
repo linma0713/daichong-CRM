@@ -8,6 +8,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
 import { runSeed } from '../prisma/seed';
+import { eventually } from './test-db';
 
 const PASSWORD = 'Crm2026test';
 type Who = 'admin' | 'sales' | 'sales2' | 'zhang' | 'aftersales' | 'finance';
@@ -212,9 +213,13 @@ describe('M4 附件与导入导出', () => {
       expect(existsSync(path)).toBe(false);
       await as('sales').get(`/attachments/${ids.att1}/file`).expect(404);
       await as('admin').delete(`/attachments/${other.body.id}`).expect(200);
-      const logs = await prisma.auditLog.findMany({
-        where: { action: { in: ['attachment.upload', 'attachment.delete'] } },
-      });
+      const logs = await eventually(
+        () =>
+          prisma.auditLog.findMany({
+            where: { action: { in: ['attachment.upload', 'attachment.delete'] } },
+          }),
+        (rows) => rows.filter((l) => l.action === 'attachment.delete').length >= 2,
+      );
       expect(logs.filter((l) => l.action === 'attachment.delete')).toHaveLength(2);
       expect(logs.length).toBeGreaterThan(2);
     });

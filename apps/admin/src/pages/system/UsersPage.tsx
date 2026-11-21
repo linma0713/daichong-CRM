@@ -381,7 +381,7 @@ function UserSecurityModal({
               </Typography.Text>
               <Popconfirm
                 title="重置这个员工的两步验证？"
-                description="员工手机丢了、换了才需要重置。重置后下次登录只要密码；岗位要求的话会让他重新设置。"
+                description="员工手机丢了、换了才需要重置。重置后下次登录只要密码；岗位要求的话，登录后会提示重新设置。"
                 okText="重置"
                 okButtonProps={{ danger: true }}
                 onConfirm={() => resetTotp.mutateAsync()}

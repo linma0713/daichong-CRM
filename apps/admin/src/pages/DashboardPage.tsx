@@ -15,7 +15,11 @@ const ROADMAP = [
   },
   { title: 'M2 经营闭环', description: '付款资源与成品号库存、单笔毛利、售后与质保、数据看板' },
   { title: 'M3 代理', description: '代理档案、两级佣金、冻结期与月度对账、代理代收抵扣' },
-  { title: 'M4 多端与上云', description: '员工手机端（小程序 / App）、云端部署与备份' },
+  {
+    title: 'M4 多端与上云',
+    description:
+      '消息与自动提醒、分层召回、渠道与营销、附件与导入、两步验证、员工手机版、在线收款、云端部署与自动备份',
+  },
 ];
 
 function greeting(): string {
@@ -302,7 +306,7 @@ export function DashboardPage() {
       )}
 
       <Card title="开发进度" size="small">
-        <Steps direction="vertical" size="small" current={3} items={ROADMAP} />
+        <Steps direction="vertical" size="small" current={ROADMAP.length} items={ROADMAP} />
       </Card>
     </Space>
   );

@@ -1,11 +1,16 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 
 /** 应用级配置，正式启动和测试共用，保证两边行为一致 */
 export function configureApp(app: INestApplication): void {
   app.setGlobalPrefix('api');
-  (app as NestExpressApplication).set('trust proxy', 1);
+  // 前面有几层反向代理就信任几层 X-Forwarded-For，取到真实的客户端 IP
+  (app as NestExpressApplication).set(
+    'trust proxy',
+    Number(app.get(ConfigService).get('TRUST_PROXY') ?? 1),
+  );
   // 默认 100kb 不够批量导入 500 行客户用
   (app as NestExpressApplication).useBodyParser('json', { limit: '2mb' });
   app.useGlobalPipes(

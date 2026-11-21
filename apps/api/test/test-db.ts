@@ -14,3 +14,20 @@ export function useTestDatabase(): string {
   process.env.DATABASE_URL = url;
   return url;
 }
+
+/**
+ * 反复查询直到满足条件（最多 2 秒）。操作日志是在响应发出之后才写的，
+ * 紧接着查日志可能还没写完，用这个等一下。
+ */
+export async function eventually<T>(
+  query: () => Promise<T>,
+  done: (value: T) => boolean,
+  timeoutMs = 2000,
+): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const value = await query();
+    if (done(value) || Date.now() > deadline) return value;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}

@@ -9,3 +9,6 @@
 !.env.example
 docker-compose*.yml
 apps/api/uploads
+backups
+deploy
+docs
