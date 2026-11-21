@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import {
   Button,
   Card,
@@ -38,6 +38,7 @@ const METHOD_LABELS = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.
 export function AgentDetailPage() {
   const { id = '' } = useParams();
   const { can } = useAuth();
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const settings = useBusinessSettings();
   const defaults = settings.data?.commissionRatesBp;
@@ -112,6 +113,17 @@ export function AgentDetailPage() {
         </Space>
       ),
     },
+    {
+      title: '佣金',
+      key: 'commission',
+      align: 'right',
+      render: (_, o) =>
+        o.status === 'COMPLETED' ? (
+          <Money cents={o.commissionCents} strong />
+        ) : (
+          <Typography.Text type="secondary">完成后计提</Typography.Text>
+        ),
+    },
     { title: '状态', key: 'status', render: (_, o) => <OrderStatusTag status={o.status} /> },
   ];
 
@@ -145,20 +157,37 @@ export function AgentDetailPage() {
             <Tag>{a.parent ? '二级代理' : '一级代理'}</Tag>
           </Space>
         }
-        extra={can('agent:write') && <Button onClick={() => setEditing(true)}>编辑</Button>}
+        extra={
+          <Space>
+            <Button onClick={() => navigate(`/commissions?tab=list&agentId=${a.id}`)}>
+              佣金明细
+            </Button>
+            {can('agent:write') && <Button onClick={() => setEditing(true)}>编辑</Button>}
+          </Space>
+        }
       >
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={12} md={6}>
+          <Col xs={12} md={4}>
             <Statistic title="绑定客户" value={a.customerCount} suffix="位" />
           </Col>
-          <Col xs={12} md={6}>
+          <Col xs={12} md={4}>
             <Statistic title="成交订单" value={a.orderCount} suffix="单" />
           </Col>
-          <Col xs={12} md={6}>
+          <Col xs={12} md={4}>
             <Statistic title="业绩（实收 − 退款）" value={formatCents(a.salesCents)} />
           </Col>
-          <Col xs={12} md={6}>
-            <Statistic title="下级代理" value={a.childCount} suffix="个" />
+          <Col xs={12} md={4}>
+            <Statistic title="佣金冻结中" value={formatCents(a.frozenCents)} />
+          </Col>
+          <Col xs={12} md={4}>
+            <Statistic
+              title="佣金可结算"
+              value={formatCents(a.releasableCents)}
+              valueStyle={a.releasableCents < 0 ? { color: '#cf1322' } : undefined}
+            />
+          </Col>
+          <Col xs={12} md={4}>
+            <Statistic title="佣金已发放" value={formatCents(a.paidCents)} />
           </Col>
         </Row>
         <Descriptions column={{ xs: 1, md: 3 }} size="small">

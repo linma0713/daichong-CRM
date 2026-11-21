@@ -302,3 +302,46 @@ export function resolveCommissionRates(input: {
 export function formatRate(bp: number): string {
   return `${Number((bp / 100).toFixed(2))}%`;
 }
+
+export type CommissionStatus = 'FROZEN' | 'RELEASABLE' | 'SETTLED' | 'PAID' | 'VOID';
+export const COMMISSION_STATUSES: CommissionStatus[] = [
+  'FROZEN',
+  'RELEASABLE',
+  'SETTLED',
+  'PAID',
+  'VOID',
+];
+export const COMMISSION_STATUS_LABELS: Record<CommissionStatus, string> = {
+  FROZEN: '冻结中',
+  RELEASABLE: '可结算',
+  SETTLED: '已对账',
+  PAID: '已发放',
+  VOID: '已作废',
+};
+
+export type CommissionRole = 'DIRECT' | 'PARENT';
+export const COMMISSION_ROLE_LABELS: Record<CommissionRole, string> = {
+  DIRECT: '直推佣金',
+  PARENT: '管理佣金',
+};
+
+export type CommissionKind = 'ACCRUAL' | 'CLAWBACK';
+export const COMMISSION_KIND_LABELS: Record<CommissionKind, string> = {
+  ACCRUAL: '计提',
+  CLAWBACK: '退款扣回',
+};
+
+/** 佣金金额（分）= 基数 × 比例，四舍五入到分 */
+export function commissionOf(baseCents: number, rateBp: number): number {
+  if (baseCents <= 0 || rateBp <= 0) return 0;
+  return Math.round((baseCents * rateBp) / 10000);
+}
+
+/** 把金额平均拆成 n 份（整数分），除不尽的零头放在最后一份 */
+export function splitCents(total: number, n: number): number[] {
+  const parts = Math.max(1, Math.floor(n));
+  const each = Math.floor(total / parts);
+  return Array.from({ length: parts }, (_, i) =>
+    i === parts - 1 ? total - each * (parts - 1) : each,
+  );
+}

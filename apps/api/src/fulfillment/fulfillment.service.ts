@@ -9,6 +9,7 @@ import {
 import { ALL_PERMISSIONS } from '@crm/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings';
+import { CommissionEngine } from '../commissions/engine';
 import { addHours, addMonths, maxDate } from '../common/dates';
 
 export type Tx = Prisma.TransactionClient;
@@ -24,6 +25,7 @@ export class FulfillmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: SettingsService,
+    private readonly commissions: CommissionEngine,
   ) {}
 
   /**
@@ -168,6 +170,7 @@ export class FulfillmentService {
         periodEndAt: newEnd,
       },
     });
+    await this.commissions.accrue(tx, order.id, now);
     return updated;
   }
 }

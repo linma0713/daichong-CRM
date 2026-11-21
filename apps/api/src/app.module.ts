@@ -27,6 +27,7 @@ import { AftersalesModule } from './aftersales/aftersales';
 import { FinanceModule } from './finance/finance';
 import { AnalyticsModule } from './analytics/analytics';
 import { AgentsModule } from './agents/agents';
+import { CommissionsModule } from './commissions/commissions';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { AgentsModule } from './agents/agents';
     FinanceModule,
     AnalyticsModule,
     AgentsModule,
+    CommissionsModule,
   ],
   providers: [
     // 顺序就是执行顺序：限流 → 登录 → 权限

@@ -73,6 +73,7 @@ import { PageQueryDto, skipTake } from '../common/pagination';
 import { visibleCustomers } from '../customers/customers';
 import { RefDto, TaskBriefDto, toCustomerBrief, visibleOrders } from '../orders/orders';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
+import { CommissionEngine } from '../commissions/engine';
 import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service';
 import { LedgerModule, LedgerService } from '../inventory/ledger';
 import { SettingsModule, SettingsService } from '../settings/settings';
@@ -304,6 +305,8 @@ export class RefundDto {
   @ApiProperty({ type: String, nullable: true }) reference: string | null;
   @ApiProperty({ type: String, nullable: true }) paidAt: Date | null;
   @ApiProperty({ type: String, nullable: true }) rejectReason: string | null;
+  @ApiProperty({ description: '这笔退款扣减的代理佣金（分），出账时计算' })
+  commissionReducedCents: number;
   @ApiProperty() createdAt: Date;
 }
 
@@ -501,6 +504,7 @@ function toRefundDto(r: RefundRow): RefundDto {
     reference: r.reference,
     paidAt: r.paidAt,
     rejectReason: r.rejectReason,
+    commissionReducedCents: r.commissionReducedCents,
     createdAt: r.createdAt,
   };
 }
@@ -957,6 +961,7 @@ export class RefundsService {
     private readonly prisma: PrismaService,
     private readonly settings: SettingsService,
     private readonly fulfillment: FulfillmentService,
+    private readonly commissions: CommissionEngine,
   ) {}
 
   async list(q: RefundQueryDto, user: AuthUser): Promise<RefundListDto> {
@@ -1083,6 +1088,8 @@ export class RefundsService {
       const code = displayNo('K', refund.no);
       let terminated = '';
       if (refund.terminate) terminated = await this.terminate(tx, order, code, now);
+      // 代理佣金按退款占比扣减：冻结中 / 可结算的直接扣，已发放的记扣回
+      await this.commissions.reduceForRefund(tx, order.id, id, now);
       if (refund.ticketId) {
         await recordTicketEvent(tx, {
           ticketId: refund.ticketId,

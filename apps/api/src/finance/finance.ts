@@ -210,6 +210,7 @@ export class FinanceService {
           refundedCents: true,
           feeCents: true,
           costCents: true,
+          commissionCents: true,
           productId: true,
           planName: true,
           termMonths: true,

@@ -51,6 +51,7 @@ import {
 import { badRequest, notFound } from '../common/errors';
 import { PageQueryDto, skipTake } from '../common/pagination';
 import { productName } from '../catalog/catalog';
+import { summarize } from '../commissions/commissions';
 
 /** 能看代理和佣金的权限：任意一个即可 */
 export const AGENT_VIEW_PERMISSIONS = ['agent:read', 'agent:write', 'commission:settle'] as const;
@@ -187,6 +188,10 @@ export class AgentDto {
   @ApiProperty({ description: '绑定的客户数' }) customerCount: number;
   @ApiProperty({ description: '已收款的订单数（不含已取消）' }) orderCount: number;
   @ApiProperty({ description: '业绩（分）= 这些订单的已收 − 已退款' }) salesCents: number;
+  @ApiProperty({ description: '佣金冻结中（分）' }) frozenCents: number;
+  @ApiProperty({ description: '佣金可结算（分），已扣掉待扣回' }) releasableCents: number;
+  @ApiProperty({ description: '佣金已对账待打款（分）' }) settledCents: number;
+  @ApiProperty({ description: '佣金已发放（分）' }) paidCents: number;
   @ApiProperty() createdAt: Date;
 }
 
@@ -222,6 +227,8 @@ export class AgentOrderDto {
   @ApiProperty({ type: AgentBriefDto, description: '直推代理' }) agent: AgentBriefDto;
   @ApiProperty({ description: '这个代理在这笔订单里的佣金比例（万分比）' }) rateBp: number;
   @ApiProperty({ description: '佣金基数（分）' }) baseCents: number;
+  @ApiProperty({ description: '这个代理在这笔订单上的佣金（分，不含已作废）；还没完成的订单为 0' })
+  commissionCents: number;
   @ApiProperty() createdAt: Date;
 }
 
@@ -313,6 +320,12 @@ export class AgentsService {
         take: 100,
       }),
     ]);
+    const perOrder = await this.prisma.commission.groupBy({
+      by: ['orderId'],
+      where: { agentId: id, orderId: { in: orders.map((o) => o.id) }, status: { not: 'VOID' } },
+      _sum: { amountCents: true },
+    });
+    const commissionByOrder = new Map(perOrder.map((p) => [p.orderId, p._sum.amountCents ?? 0]));
     return {
       ...dto,
       children: await this.withStats(children),
@@ -347,6 +360,7 @@ export class AgentsService {
           agent: toAgentBrief(o.agent!),
           rateBp: direct ? o.agentRateBp : o.parentRateBp,
           baseCents: o.commissionBaseCents,
+          commissionCents: commissionByOrder.get(o.id) ?? 0,
           createdAt: o.createdAt,
         };
       }),
@@ -416,8 +430,20 @@ export class AgentsService {
         })
       : [];
     const byId = new Map(stats.map((s) => [s.agentId, s]));
+    const commissions = ids.length
+      ? await this.prisma.commission.groupBy({
+          by: ['agentId', 'status', 'kind'],
+          where: { agentId: { in: ids }, status: { not: 'VOID' } },
+          _sum: { amountCents: true },
+        })
+      : [];
     return rows.map((a) => {
       const s = byId.get(a.id);
+      const c = summarize(
+        commissions
+          .filter((g) => g.agentId === a.id)
+          .map((g) => ({ status: g.status, kind: g.kind, amountCents: g._sum.amountCents ?? 0 })),
+      );
       return {
         id: a.id,
         code: displayNo('A', a.no),
@@ -436,6 +462,10 @@ export class AgentsService {
         customerCount: a._count.customers,
         orderCount: s?._count._all ?? 0,
         salesCents: (s?._sum.paidCents ?? 0) - (s?._sum.refundedCents ?? 0),
+        frozenCents: c.frozenCents,
+        releasableCents: c.releasableCents,
+        settledCents: c.settledCents,
+        paidCents: c.paidCents,
         createdAt: a.createdAt,
       };
     });
