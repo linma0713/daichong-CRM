@@ -26,6 +26,20 @@ export function beijingToday(now = Date.now()): dayjs.Dayjs {
   return dayjs(new Date(now + 8 * 3600 * 1000).toISOString().slice(0, 10));
 }
 
+/** 日期区间的快捷选项（财务对账、渠道回报共用） */
+export function rangePresets(): { label: string; value: [dayjs.Dayjs, dayjs.Dayjs] }[] {
+  const today = beijingToday();
+  const lastMonth = today.subtract(1, 'month');
+  return [
+    { label: '今天', value: [today, today] },
+    { label: '昨天', value: [today.subtract(1, 'day'), today.subtract(1, 'day')] },
+    { label: '本周', value: [today.startOf('week'), today] },
+    { label: '本月', value: [today.startOf('month'), today] },
+    { label: '上月', value: [lastMonth.startOf('month'), lastMonth.endOf('month').startOf('day')] },
+    { label: '近 30 天', value: [today.subtract(29, 'day'), today] },
+  ];
+}
+
 /** 万分比 ⇄ 百分比（界面上按 % 填写佣金比例）；null 表示「不单独设置」 */
 export function bpToPercent(bp: number | null | undefined): number | null {
   return bp === null || bp === undefined ? null : bp / 100;

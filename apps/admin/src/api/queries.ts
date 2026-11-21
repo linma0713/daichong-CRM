@@ -80,3 +80,12 @@ export function useAgentOptions(enabled = true) {
     enabled,
   });
 }
+
+/** 渠道列表（录客户时选、客户列表筛选），所有员工可看 */
+export function useChannels() {
+  return useQuery({
+    queryKey: ['channels'],
+    queryFn: () => unwrap(api.GET('/api/channels')),
+    staleTime: 60_000,
+  });
+}

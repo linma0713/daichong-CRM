@@ -50,7 +50,7 @@ export function RateText({ bp, fallbackBp }: { bp: number | null; fallbackBp?: n
 
 export function AgentRates({ agent, defaults }: { agent: Agent; defaults?: Defaults }) {
   return (
-    <Space direction="vertical" size={0} style={{ fontSize: 12 }}>
+    <Space direction="vertical" size={0} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
       <span>
         首单 <RateText bp={agent.firstRateBp} fallbackBp={defaults?.first} />
       </span>
@@ -86,7 +86,9 @@ export function AgentsPage() {
       render: (_, a) => (
         <Space direction="vertical" size={0}>
           <Link to={`/agents/${a.id}`}>
-            <Typography.Text strong>{a.name}</Typography.Text>
+            <Typography.Text strong style={{ whiteSpace: 'nowrap' }}>
+              {a.name}
+            </Typography.Text>
           </Link>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             {a.code}
@@ -100,14 +102,14 @@ export function AgentsPage() {
       render: (_, a) =>
         a.parent ? (
           <Space direction="vertical" size={0}>
-            <span>二级代理</span>
-            <span style={{ fontSize: 12 }}>
+            <span style={{ whiteSpace: 'nowrap' }}>二级代理</span>
+            <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
               上级 <AgentLink agent={a.parent} />
             </span>
           </Space>
         ) : (
           <Space direction="vertical" size={0}>
-            <span>一级代理</span>
+            <span style={{ whiteSpace: 'nowrap' }}>一级代理</span>
             {a.childCount > 0 && (
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 下级 {a.childCount} 个
@@ -120,7 +122,7 @@ export function AgentsPage() {
       title: '联系方式',
       key: 'contact',
       render: (_, a) => (
-        <Space direction="vertical" size={0} style={{ fontSize: 12 }}>
+        <Space direction="vertical" size={0} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
           {a.wechat && <span>微信：{a.wechat}</span>}
           {a.phone && <span>手机：{a.phone}</span>}
           {!a.wechat && !a.phone && '—'}
@@ -132,8 +134,16 @@ export function AgentsPage() {
       key: 'rates',
       render: (_, a) => <AgentRates agent={a} defaults={defaults} />,
     },
-    { title: '客户', key: 'customers', render: (_, a) => `${a.customerCount} 位` },
-    { title: '成交订单', key: 'orders', render: (_, a) => `${a.orderCount} 单` },
+    {
+      title: '客户',
+      key: 'customers',
+      render: (_, a) => <span style={{ whiteSpace: 'nowrap' }}>{a.customerCount} 位</span>,
+    },
+    {
+      title: '成交订单',
+      key: 'orders',
+      render: (_, a) => <span style={{ whiteSpace: 'nowrap' }}>{a.orderCount} 单</span>,
+    },
     {
       title: '业绩',
       key: 'sales',
@@ -143,7 +153,7 @@ export function AgentsPage() {
       title: '佣金',
       key: 'commission',
       render: (_, a) => (
-        <Space direction="vertical" size={0} style={{ fontSize: 12 }}>
+        <Space direction="vertical" size={0} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
           <span>
             可结算{' '}
             <Typography.Text strong type={a.releasableCents < 0 ? 'danger' : undefined}>

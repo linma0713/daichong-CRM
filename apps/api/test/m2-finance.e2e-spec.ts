@@ -217,6 +217,8 @@ describe('M2 财务对账与数据看板', () => {
         commissionCents: 0,
         profitCents: 133000 - 1000 - 198 - cost,
         resourceSpendCents: 720000,
+        marketingCents: 0,
+        operatingProfitCents: 133000 - 1000 - 198 - cost,
       });
       expect(res.body.days).toHaveLength(1);
       expect(res.body.days[0]).toMatchObject({

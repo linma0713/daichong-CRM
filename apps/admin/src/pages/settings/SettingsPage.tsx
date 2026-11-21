@@ -21,10 +21,15 @@ type Settings = Schemas['BusinessSettingsDto'];
 /** 标签模式的下拉框只接受字符串，提交时再转成数字；手续费在界面上按百分比填 */
 type SettingsForm = Omit<
   Settings,
-  'reminderDays' | 'paymentFeeBp' | 'commissionRatesBp' | 'vipThresholdCents'
+  | 'reminderDays'
+  | 'paymentFeeBp'
+  | 'commissionRatesBp'
+  | 'vipThresholdCents'
+  | 'referralRewardCents'
 > & {
   reminderDays: string[];
   vipYuan: number;
+  rewardYuan: number;
   feePercent: Record<PaymentMethod, number>;
   commissionPercent: { first: number; renewal: number; parent: number };
 };
@@ -53,10 +58,12 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (settings.data) {
-      const { paymentFeeBp, commissionRatesBp, vipThresholdCents, ...rest } = settings.data;
+      const { paymentFeeBp, commissionRatesBp, vipThresholdCents, referralRewardCents, ...rest } =
+        settings.data;
       form.setFieldsValue({
         ...rest,
         vipYuan: vipThresholdCents / 100,
+        rewardYuan: referralRewardCents / 100,
         reminderDays: settings.data.reminderDays.map(String),
         feePercent: bpToPercent(paymentFeeBp),
         commissionPercent: {
@@ -74,13 +81,14 @@ export function SettingsPage() {
       if (days.some((d) => !Number.isInteger(d) || d < 0 || d > 60)) {
         return Promise.reject(new Error('提醒天数要填 0–60 之间的整数'));
       }
-      const { feePercent, commissionPercent, vipYuan, ...rest } = v;
+      const { feePercent, commissionPercent, vipYuan, rewardYuan, ...rest } = v;
       const toBp = (p: number) => Math.round((p ?? 0) * 100);
       return unwrap(
         api.PATCH('/api/settings', {
           body: {
             ...rest,
             vipThresholdCents: Math.round((vipYuan ?? 0) * 100),
+            referralRewardCents: Math.round((rewardYuan ?? 0) * 100),
             reminderDays: days,
             paymentFeeBp: percentToBp(feePercent),
             commissionRatesBp: {
@@ -275,6 +283,17 @@ export function SettingsPage() {
             extra="客户没有服务中的订阅后，这么多天内算「沉睡」（进召回名单），超过算「流失」"
           >
             <InputNumber min={1} max={365} style={{ width: 200 }} />
+          </Form.Item>
+          <Typography.Title level={5} style={{ marginTop: 8 }}>
+            转介绍奖励
+          </Typography.Title>
+          <Form.Item
+            name="rewardYuan"
+            label="每推荐成交一位新客户奖励（元）"
+            rules={[{ required: true }]}
+            extra="老客户推荐的新客户第一单收齐款后，自动给推荐人生成一条「待发放」奖励，在「渠道与营销」里发放。填 0 表示不发奖励"
+          >
+            <InputNumber min={0} max={100000} precision={2} prefix="¥" style={{ width: 200 }} />
           </Form.Item>
           <Typography.Title level={5} style={{ marginTop: 8 }}>
             代理佣金

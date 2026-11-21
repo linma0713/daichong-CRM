@@ -8,6 +8,7 @@ import {
   RECEIPT_METHODS,
   displayNo,
   formatCents,
+  REWARD_DISCOUNT,
   type CostKind,
 } from '@crm/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -80,6 +81,19 @@ export class FinanceTotalsDto extends FinanceAmountsDto {
     description: '付款资源入库支出（买卡、充值的实际花费）。只对能看全部数据的人返回',
   })
   resourceSpendCents: number | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      '营销支出（分）= 投放成本（按花费日期）+ 现金发放的转介绍奖励（抵扣续费的已体现在订单优惠里，不重复算）。只对能看全部数据的人返回',
+  })
+  marketingCents: number | null;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '经营利润 = 毛利 − 营销支出。只对能看全部数据的人返回',
+  })
+  operatingProfitCents: number | null;
 }
 
 export class FinanceDayDto extends FinanceAmountsDto {
@@ -127,14 +141,17 @@ export class FinanceReportDto {
 }
 
 export class JournalEntryDto {
-  @ApiProperty({ enum: ['payment', 'refund', 'cost', 'commission'] })
-  kind: 'payment' | 'refund' | 'cost' | 'commission';
+  @ApiProperty({ enum: ['payment', 'refund', 'cost', 'commission', 'marketing'] })
+  kind: 'payment' | 'refund' | 'cost' | 'commission' | 'marketing';
   @ApiProperty() id: string;
   @ApiProperty() at: Date;
   @ApiProperty({ type: String, nullable: true }) orderId: string | null;
   @ApiProperty({ type: String, nullable: true, example: 'D00012' }) orderCode: string | null;
   @ApiProperty({ type: CustomerBriefDto, nullable: true }) customer: CustomerBriefDto | null;
-  @ApiProperty({ description: '收款 / 退款方式、成本类型，或「代理佣金」' }) category: string;
+  @ApiProperty({
+    description: '收款 / 退款方式、成本类型，或「代理佣金」「投放成本」「转介绍奖励」',
+  })
+  category: string;
   @ApiProperty({ description: '金额（分），收款为正，退款、成本和代理佣金为负' })
   amountCents: number;
   @ApiProperty({ description: '手续费（分），仅收款' }) feeCents: number;
@@ -206,7 +223,7 @@ export class FinanceService {
 
   async report(user: AuthUser, q: DateRangeQueryDto): Promise<FinanceReportDto> {
     const r = parseRange(q);
-    const [payments, refunds, costs, topUps, orders, commissions] = await Promise.all([
+    const [payments, refunds, costs, topUps, orders, commissions, marketing] = await Promise.all([
       this.prisma.payment.findMany({
         where: { receivedAt: this.inRange(r), order: visibleOrders(user) },
         select: { amountCents: true, feeCents: true, method: true, receivedAt: true },
@@ -247,11 +264,14 @@ export class FinanceService {
         where: this.paidCommissionWhere(user, r),
         select: { amountCents: true, statement: { select: { paidAt: true } } },
       }),
+      seesAll(user) ? this.marketingSpend(r) : null,
     ]);
 
     const totals: FinanceTotalsDto = {
       ...emptyAmounts(),
       resourceSpendCents: topUps ? (topUps._sum.cnyCents ?? 0) : null,
+      marketingCents: marketing,
+      operatingProfitCents: null,
     };
     const days = new Map<string, FinanceDayDto>(
       r.days.map((date) => [date, { date, ...emptyAmounts() }]),
@@ -310,6 +330,9 @@ export class FinanceService {
       }
     }
     settle(totals);
+    if (totals.marketingCents !== null) {
+      totals.operatingProfitCents = totals.profitCents - totals.marketingCents;
+    }
     for (const d of days.values()) settle(d);
     for (const m of methods.values()) m.netCents = m.receivedCents - m.feeCents - m.refundedCents;
 
@@ -367,12 +390,27 @@ export class FinanceService {
     };
   }
 
-  /** 收支明细：收款、退款出账、成本、代理佣金打款，按时间排 */
+  /** 营销支出：投放成本 + 现金发放的转介绍奖励 */
+  private async marketingSpend(r: LocalRange): Promise<number> {
+    const [costs, rewards] = await Promise.all([
+      this.prisma.channelCost.aggregate({
+        where: { spentOn: this.inRange(r) },
+        _sum: { amountCents: true },
+      }),
+      this.prisma.referralReward.aggregate({
+        where: { status: 'PAID', paidAt: this.inRange(r), method: { not: REWARD_DISCOUNT } },
+        _sum: { amountCents: true },
+      }),
+    ]);
+    return (costs._sum.amountCents ?? 0) + (rewards._sum.amountCents ?? 0);
+  }
+
+  /** 收支明细：收款、退款出账、成本、代理佣金打款、营销支出，按时间排 */
   async journal(user: AuthUser, q: DateRangeQueryDto): Promise<JournalDto> {
     const r = parseRange(q);
     const orderSelect = { id: true, no: true, customer: { select: customerBriefSelect } };
     const take = JOURNAL_LIMIT + 1;
-    const [payments, refunds, costs, commissions] = await Promise.all([
+    const [payments, refunds, costs, commissions, channelCosts, rewards] = await Promise.all([
       this.prisma.payment.findMany({
         where: { receivedAt: this.inRange(r), order: visibleOrders(user) },
         include: { order: { select: orderSelect }, confirmedBy: { select: { displayName: true } } },
@@ -409,6 +447,28 @@ export class FinanceService {
           },
         },
       }),
+      seesAll(user)
+        ? this.prisma.channelCost.findMany({
+            where: { spentOn: this.inRange(r) },
+            include: {
+              channel: { select: { name: true } },
+              createdBy: { select: { displayName: true } },
+            },
+            orderBy: { spentOn: 'asc' },
+            take,
+          })
+        : [],
+      seesAll(user)
+        ? this.prisma.referralReward.findMany({
+            where: { status: 'PAID', paidAt: this.inRange(r), method: { not: REWARD_DISCOUNT } },
+            include: {
+              referrer: { select: customerBriefSelect },
+              paidBy: { select: { displayName: true } },
+            },
+            orderBy: { paidAt: 'asc' },
+            take,
+          })
+        : [],
     ]);
     // 佣金按对账单合成一条
     const statements = new Map<
@@ -482,10 +542,42 @@ export class FinanceService {
           .join(' · '),
         userName: s.paidBy?.displayName ?? null,
       })),
+      ...channelCosts.map((c): JournalEntryDto => ({
+        kind: 'marketing',
+        id: c.id,
+        at: c.spentOn,
+        orderId: null,
+        orderCode: null,
+        customer: null,
+        category: '投放成本',
+        amountCents: -c.amountCents,
+        feeCents: 0,
+        reference: [c.channel.name, c.note].filter(Boolean).join(' · '),
+        userName: c.createdBy.displayName,
+      })),
+      ...rewards.map((w): JournalEntryDto => ({
+        kind: 'marketing',
+        id: w.id,
+        at: w.paidAt!,
+        orderId: null,
+        orderCode: null,
+        customer: toCustomerBrief(w.referrer),
+        category: '转介绍奖励',
+        amountCents: -w.amountCents,
+        feeCents: 0,
+        reference: [
+          displayNo('Y', w.no),
+          w.method ? (METHOD_LABELS[w.method] ?? w.method) : null,
+          w.reference,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        userName: w.paidBy?.displayName ?? null,
+      })),
     ].sort((a, b) => a.at.getTime() - b.at.getTime());
     const truncated =
       items.length > JOURNAL_LIMIT ||
-      [payments, refunds, costs].some((list) => list.length > JOURNAL_LIMIT);
+      [payments, refunds, costs, channelCosts, rewards].some((list) => list.length > JOURNAL_LIMIT);
     return { items: items.slice(0, JOURNAL_LIMIT), truncated };
   }
 }

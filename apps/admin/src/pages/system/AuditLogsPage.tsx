@@ -93,6 +93,13 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'statement.confirm', label: '确认佣金对账单' },
   { value: 'statement.pay', label: '登记佣金打款' },
   { value: 'statement.cancel', label: '作废佣金对账单' },
+  { value: 'channel.create', label: '新增渠道' },
+  { value: 'channel.update', label: '修改渠道' },
+  { value: 'channel.delete', label: '删除渠道' },
+  { value: 'channel.cost.create', label: '登记投放成本' },
+  { value: 'channel.cost.delete', label: '删除投放成本' },
+  { value: 'referral.pay', label: '发放转介绍奖励' },
+  { value: 'referral.cancel', label: '作废转介绍奖励' },
   { value: 'settings.update', label: '修改业务设置' },
   { value: 'job.sweep', label: '手动运行到期巡检' },
   { value: 'job.notify-scan', label: '手动运行消息巡检' },
@@ -115,6 +122,7 @@ const DANGER_ACTIONS = new Set([
   'subscription.update',
   'refund.approve',
   'statement.pay',
+  'referral.pay',
 ]);
 
 export function AuditLogsPage() {

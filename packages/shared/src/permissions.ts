@@ -105,6 +105,17 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     ],
   },
   {
+    key: 'marketing',
+    name: '渠道与营销',
+    available: true,
+    permissions: [
+      {
+        code: 'marketing:write',
+        name: '管理渠道、登记投放成本、发放转介绍奖励（看渠道回报要「查看经营数据看板」）',
+      },
+    ],
+  },
+  {
     key: 'agent',
     name: '代理与佣金',
     available: true,

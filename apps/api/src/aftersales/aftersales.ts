@@ -80,6 +80,7 @@ import { SettingsModule, SettingsService } from '../settings/settings';
 import { recordTicketEvent, resolveTicketBySystem } from './ticket-events';
 import { NotifyService } from '../notify/notify';
 import { CustomerStatsService } from '../customers/stats';
+import { ReferralService } from '../marketing/referral';
 
 /** 通知里引用用户写的长文字时截短 */
 const brief = (text: string, max = 80) => (text.length > max ? `${text.slice(0, max)}…` : text);
@@ -1006,6 +1007,7 @@ export class RefundsService {
     private readonly commissions: CommissionEngine,
     private readonly notify: NotifyService,
     private readonly stats: CustomerStatsService,
+    private readonly referrals: ReferralService,
   ) {}
 
   async list(q: RefundQueryDto, user: AuthUser): Promise<RefundListDto> {
@@ -1160,6 +1162,7 @@ export class RefundsService {
       });
       // 代理佣金按退款占比扣减：冻结中 / 可结算的直接扣，已发放的记扣回
       await this.commissions.reduceForRefund(tx, order.id, id, now);
+      await this.referrals.onOrderRefunded(tx, order.id);
       await this.stats.refresh(tx, [order.customerId]);
       if (refund.ticketId) {
         await recordTicketEvent(tx, {

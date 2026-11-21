@@ -32,6 +32,7 @@ import { AgentsPage } from './pages/agents/AgentsPage';
 import { AgentDetailPage } from './pages/agents/AgentDetailPage';
 import { CommissionsPage } from './pages/commissions/CommissionsPage';
 import { StatementDetailPage } from './pages/commissions/StatementDetailPage';
+import { MarketingPage } from './pages/marketing/MarketingPage';
 import { AGENT_VIEW_PERMISSIONS } from './components/business';
 
 const router = createBrowserRouter([
@@ -178,6 +179,14 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission anyOf={[...AGENT_VIEW_PERMISSIONS, 'finance:read']}>
             <StatementDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'marketing',
+        element: (
+          <RequirePermission anyOf={['marketing:write', 'report:read', 'finance:read']}>
+            <MarketingPage />
           </RequirePermission>
         ),
       },

@@ -69,6 +69,7 @@ import {
   agentBriefSelect,
   customerBriefSelect,
   toAgentBrief,
+  toCustomerBrief,
   userBriefSelect,
 } from '../common/briefs';
 import { scopeWhere } from '../common/data-scope';
@@ -83,6 +84,7 @@ import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service'
 import { SettingsModule, SettingsService } from '../settings/settings';
 import { NotifyService } from '../notify/notify';
 import { CustomerStatsService } from '../customers/stats';
+import { ReferralService } from '../marketing/referral';
 
 const ORDER_KINDS: OrderKind[] = ['NEW', 'RENEWAL'];
 
@@ -390,21 +392,8 @@ const orderInclude = {
 } satisfies Prisma.OrderInclude;
 type OrderRow = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
 
-export function toCustomerBrief(c: {
-  id: string;
-  no: number;
-  name: string;
-  wechat: string | null;
-  telegram: string | null;
-}): CustomerBriefDto {
-  return {
-    id: c.id,
-    code: displayNo('C', c.no),
-    name: c.name,
-    wechat: c.wechat,
-    telegram: c.telegram,
-  };
-}
+/** 各模块原来从这里引用，保留导出 */
+export { toCustomerBrief };
 
 /** 毛利 = 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金 */
 export function orderMargin(o: {
@@ -481,6 +470,7 @@ export class OrdersService {
     private readonly settings: SettingsService,
     private readonly notify: NotifyService,
     private readonly stats: CustomerStatsService,
+    private readonly referrals: ReferralService,
   ) {}
 
   async list(q: OrderQueryDto, user: AuthUser): Promise<OrderListDto> {
@@ -911,6 +901,7 @@ export class OrdersService {
       data: { status: 'FULFILLING', paidAt: new Date() },
     });
     await this.fulfillment.onOrderPaid(tx, order);
+    await this.referrals.onOrderPaid(tx, order);
   }
 
   /**

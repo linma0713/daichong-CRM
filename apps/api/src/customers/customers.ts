@@ -97,6 +97,11 @@ export class CustomerQueryDto extends PageQueryDto {
   @IsString()
   agentId?: string;
 
+  @ApiPropertyOptional({ description: '获客渠道；none = 没标渠道的' })
+  @IsOptional()
+  @IsString()
+  channelId?: string;
+
   @ApiPropertyOptional({ enum: CUSTOMER_STAGES, enumName: 'CustomerStage' })
   @IsOptional()
   @IsIn(CUSTOMER_STAGES)
@@ -175,6 +180,12 @@ class CustomerFields {
   @IsString()
   agentId?: string | null;
 
+  @ApiPropertyOptional({ type: String, nullable: true, description: '获客渠道' })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  channelId?: string | null;
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
@@ -248,6 +259,18 @@ export class LostReasonDto {
   note?: string;
 }
 
+export class ChannelBriefDto {
+  @ApiProperty() id: string;
+  @ApiProperty() name: string;
+}
+
+export class ReferralSummaryDto {
+  @ApiProperty({ description: '推荐来的客户数' }) referred: number;
+  @ApiProperty({ description: '其中已成交的' }) converted: number;
+  @ApiProperty({ description: '转介绍奖励待发放（分）' }) pendingCents: number;
+  @ApiProperty({ description: '转介绍奖励已发放（分）' }) paidCents: number;
+}
+
 export class CustomerRefDto {
   @ApiProperty() id: string;
   @ApiProperty() code: string;
@@ -271,6 +294,8 @@ export class CustomerDto {
   agent: AgentBriefDto | null;
   @ApiProperty({ type: String, nullable: true, description: '绑定代理的时间' })
   agentBoundAt: Date | null;
+  @ApiProperty({ type: ChannelBriefDto, nullable: true, description: '获客渠道' })
+  channel: ChannelBriefDto | null;
   @ApiProperty({ description: '服务中的订阅数' }) activeSubscriptionCount: number;
   @ApiProperty({ type: String, nullable: true, description: '最近一个到期时间' })
   nextExpiryAt: Date | null;
@@ -329,6 +354,8 @@ export class CustomerSegmentsDto {
 }
 
 export class CustomerDetailDto extends CustomerDto {
+  @ApiProperty({ type: ReferralSummaryDto, description: '作为推荐人的情况' })
+  referrals: ReferralSummaryDto;
   @ApiProperty({ type: [FollowUpDto], description: '最近 50 条跟进记录' })
   followUps: FollowUpDto[];
 }
@@ -339,6 +366,7 @@ const customerInclude = {
   owner: { select: userBriefSelect },
   referrer: { select: { id: true, no: true, name: true } },
   agent: { select: agentBriefSelect },
+  channel: { select: { id: true, name: true } },
 } satisfies Prisma.CustomerInclude;
 type CustomerRow = Prisma.CustomerGetPayload<{ include: typeof customerInclude }>;
 
@@ -403,6 +431,7 @@ export class CustomersService {
       source: q.source,
       ownerId: q.ownerId,
       agentId: q.agentId,
+      channelId: q.channelId === 'none' ? null : q.channelId,
       stage: q.stage,
       lostReason: q.lostReason,
       netPaidCents: q.vip ? { gte: Math.max(1, vipThresholdCents) } : undefined,
@@ -490,14 +519,33 @@ export class CustomersService {
   async get(id: string, user: AuthUser): Promise<CustomerDetailDto> {
     const row = await this.findVisible(id, user);
     const [dto] = await this.withSubscriptionStats([row]);
-    const followUps = await this.prisma.followUp.findMany({
-      where: { customerId: id },
-      include: { user: { select: userBriefSelect } },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
+    const [followUps, referred, converted, rewards] = await Promise.all([
+      this.prisma.followUp.findMany({
+        where: { customerId: id },
+        include: { user: { select: userBriefSelect } },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.customer.count({ where: { referrerId: id, deletedAt: null } }),
+      this.prisma.customer.count({
+        where: { referrerId: id, deletedAt: null, firstPaidAt: { not: null } },
+      }),
+      this.prisma.referralReward.groupBy({
+        by: ['status'],
+        where: { referrerId: id, status: { in: ['PENDING', 'PAID'] } },
+        _sum: { amountCents: true },
+      }),
+    ]);
+    const rewardSum = (status: string) =>
+      rewards.find((r) => r.status === status)?._sum.amountCents ?? 0;
     return {
       ...dto,
+      referrals: {
+        referred,
+        converted,
+        pendingCents: rewardSum('PENDING'),
+        paidCents: rewardSum('PAID'),
+      },
       followUps: followUps.map((f) => ({
         id: f.id,
         kind: f.kind,
@@ -517,6 +565,7 @@ export class CustomersService {
     await this.assertNoDuplicate(data);
     await this.assertReferrer(data.referrerId, undefined, user);
     if (agentId) await this.assertAgent(agentId);
+    if (data.channelId) await this.assertChannel(data.channelId);
     const row = await this.prisma.customer.create({
       data: {
         name: dto.name.trim(),
@@ -538,6 +587,9 @@ export class CustomersService {
     const { agentId, ...data } = this.normalize(dto);
     await this.assertNoDuplicate(data, id);
     await this.assertReferrer(data.referrerId, id, user);
+    if (data.channelId && data.channelId !== current.channelId) {
+      await this.assertChannel(data.channelId);
+    }
     const agentChanged = agentId !== undefined && agentId !== current.agentId;
     if (agentChanged) {
       // 第一次绑定客服就能做；已经绑了代理再改绑 / 解绑，会影响代理的业绩归属，要「编辑代理」权限
@@ -635,6 +687,7 @@ export class CustomersService {
       phone: clean(dto.phone),
       source: dto.source,
       referrerId: dto.referrerId,
+      channelId: dto.channelId === undefined ? undefined : dto.channelId || null,
       agentId: dto.agentId === undefined ? undefined : dto.agentId || null,
       tags: dto.tags ? [...new Set(dto.tags.map((t) => t.trim()).filter(Boolean))] : undefined,
       remark: clean(dto.remark),
@@ -677,6 +730,13 @@ export class CustomersService {
       where: { id: referrerId, ...visibleCustomers(user) },
     });
     if (!ref) throw badRequest('推荐人不存在');
+  }
+
+  /** 新选的渠道必须存在且没停用 */
+  private async assertChannel(channelId: string): Promise<void> {
+    const c = await this.prisma.channel.findUnique({ where: { id: channelId } });
+    if (!c) throw badRequest('渠道不存在');
+    if (!c.enabled) throw badRequest('渠道已停用');
   }
 
   /** 新绑定的代理必须存在且在合作中 */
@@ -726,6 +786,7 @@ export class CustomersService {
         : null,
       agent: r.agent ? toAgentBrief(r.agent) : null,
       agentBoundAt: r.agentBoundAt,
+      channel: r.channel,
       activeSubscriptionCount: byId.get(r.id)?._count._all ?? 0,
       nextExpiryAt: byId.get(r.id)?._min.endAt ?? null,
       stage: r.stage as CustomerStage,

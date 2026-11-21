@@ -72,3 +72,19 @@ export const agentBriefSelect = { id: true, no: true, name: true } as const;
 export function toAgentBrief(a: { id: string; no: number; name: string }): AgentBriefDto {
   return { id: a.id, code: displayNo('A', a.no), name: a.name };
 }
+
+export function toCustomerBrief(c: {
+  id: string;
+  no: number;
+  name: string;
+  wechat: string | null;
+  telegram: string | null;
+}): CustomerBriefDto {
+  return {
+    id: c.id,
+    code: displayNo('C', c.no),
+    name: c.name,
+    wechat: c.wechat,
+    telegram: c.telegram,
+  };
+}

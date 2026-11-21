@@ -33,12 +33,13 @@ import {
   type LostReason,
 } from '@crm/shared';
 import { api, unwrap, type QueryOf, type Schemas } from '../../api/client';
-import { useStaffOptions } from '../../api/queries';
+import { useChannels, useStaffOptions } from '../../api/queries';
 import { useAuth } from '../../auth/AuthProvider';
 import {
   AGENT_VIEW_PERMISSIONS,
   AgentLink,
   AgentSelect,
+  ChannelSelect,
   CustomerSelect,
   CustomerStageTag,
   Money,
@@ -70,6 +71,7 @@ interface Filters {
   source?: CustomerSource;
   ownerId?: string;
   agentId?: string;
+  channelId?: string;
   lostReason?: LostReason;
   uncontacted?: boolean;
   sort?: Sort;
@@ -98,12 +100,15 @@ export function CustomersPage() {
   const [filters, setFilters] = useState<Filters>(() => ({
     page: 1,
     pageSize: 20,
+    // 渠道台账点客户数带 ?channelId= 进来
+    channelId: params.get('channelId') ?? undefined,
     ...viewDefaults(initialView),
   }));
   const [creating, setCreating] = useState(false);
   const [recalling, setRecalling] = useState<Customer | null>(null);
   const [losing, setLosing] = useState<Customer | null>(null);
   const staff = useStaffOptions();
+  const hasChannels = (useChannels().data?.length ?? 0) > 0;
   const query: CustomerQuery = {
     ...filters,
     stage: view !== 'all' && view !== 'vip' ? view : undefined,
@@ -200,7 +205,12 @@ export function CustomersPage() {
             key: 'source',
             render: (_: unknown, c: Customer) => (
               <Space direction="vertical" size={0}>
-                <span>{SOURCE_LABELS[c.source] ?? c.source}</span>
+                <span style={{ whiteSpace: 'nowrap' }}>{SOURCE_LABELS[c.source] ?? c.source}</span>
+                {c.channel && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                    渠道：{c.channel.name}
+                  </Typography.Text>
+                )}
                 {c.referrer && (
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                     推荐人：{c.referrer.name}
@@ -360,6 +370,18 @@ export function CustomersPage() {
               onChange={(source?: CustomerSource) => setFilters((f) => ({ ...f, page: 1, source }))}
             />
           )}
+          {!recall && hasChannels && (
+            <ChannelSelect
+              placeholder="渠道"
+              allowDisabled
+              withNone
+              style={{ width: 160 }}
+              value={filters.channelId}
+              onChange={(channelId) =>
+                setFilters((f) => ({ ...f, page: 1, channelId: channelId ?? undefined }))
+              }
+            />
+          )}
           {recall && (
             <Select
               placeholder="流失原因"
@@ -462,6 +484,7 @@ interface CustomerForm {
   source: CustomerSource;
   referrerId?: string | null;
   agentId?: string | null;
+  channelId?: string | null;
   tags: string[];
   remark?: string;
   ownerId?: string;
@@ -486,6 +509,11 @@ export function CustomerFormModal({
   // 代理字段：来源选「代理」或者已经绑定了代理时显示；已绑定后改绑要「编辑代理」权限
   const showAgent = source === 'agent' || !!customer?.agent;
   const agentLocked = !!customer?.agent && !can('agent:write');
+  // 渠道：推荐和代理来的客户不用标；已经标了的照样显示
+  const channels = useChannels();
+  const showChannel =
+    (source !== 'referral' && source !== 'agent' && (channels.data?.length ?? 0) > 0) ||
+    !!customer?.channel;
   // 指定其他负责人需要「全部数据」或同组范围
   const ownerOptions = (staff.data ?? [])
     .filter(
@@ -507,6 +535,7 @@ export function CustomerFormModal({
         source: v.source,
         referrerId: v.source === 'referral' ? (v.referrerId ?? null) : null,
         agentId: showAgent && !agentLocked ? (v.agentId ?? null) : undefined,
+        channelId: showChannel ? (v.channelId ?? null) : undefined,
         tags: v.tags,
         remark: v.remark || null,
       };
@@ -547,6 +576,7 @@ export function CustomerFormModal({
                 source: customer.source as CustomerSource,
                 referrerId: customer.referrer?.id ?? null,
                 agentId: customer.agent?.id ?? null,
+                channelId: customer.channel?.id ?? null,
               }
             : { source: 'organic', tags: [], ownerId: profile?.id }
         }
@@ -603,6 +633,15 @@ export function CustomerFormModal({
                   : undefined
               }
             />
+          </Form.Item>
+        )}
+        {showChannel && (
+          <Form.Item
+            name="channelId"
+            label="渠道"
+            extra="具体是哪个账号 / 群 / 投放计划带来的，用来算渠道回报"
+          >
+            <ChannelSelect />
           </Form.Item>
         )}
         {showAgent && (

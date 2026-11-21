@@ -10,7 +10,13 @@ import {
 import { Type } from 'class-transformer';
 import { IsIn, IsOptional } from 'class-validator';
 import type { Prisma } from '@prisma/client';
-import { CUSTOMER_SOURCES, TICKET_TYPES, type TicketType } from '@crm/shared';
+import {
+  CUSTOMER_SOURCES,
+  CUSTOMER_STAGES,
+  TICKET_TYPES,
+  displayNo,
+  type TicketType,
+} from '@crm/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser, RequirePermissions } from '../auth/decorators';
 import type { AuthUser } from '../common/auth-user';
@@ -18,6 +24,7 @@ import { CustomerBriefDto, customerBriefSelect } from '../common/briefs';
 import { addDays, localDateKey, startOfLocalDay } from '../common/dates';
 import { scopeWhere } from '../common/data-scope';
 import { canSeeCost, orderMargin, toCustomerBrief } from '../orders/orders';
+import { LostReasonCountDto, StageCountDto, visibleCustomers } from '../customers/customers';
 
 const WINDOWS = [7, 30, 90] as const;
 
@@ -156,6 +163,25 @@ export class LtvStatsDto {
   top: LtvCustomerDto[];
 }
 
+export class AgentPerfDto {
+  @ApiProperty() agentId: string;
+  @ApiProperty({ example: 'A00001' }) code: string;
+  @ApiProperty() name: string;
+  @ApiProperty({ description: '区间内新绑定的客户数' }) newCustomers: number;
+  @ApiProperty({ description: '区间内收齐款的订单数' }) paidOrders: number;
+  @ApiProperty({ description: '其中客户首单' }) firstOrders: number;
+  @ApiProperty({ description: '这些订单的实收 − 已退（分）' }) salesCents: number;
+  @ApiProperty({ description: '这些订单上的代理佣金（分，含上级管理佣金）' })
+  commissionCents: number;
+}
+
+/** 客户分层快照（现在的状态，不受统计区间影响） */
+export class SegmentSnapshotDto {
+  @ApiProperty({ type: [StageCountDto] }) stages: StageCountDto[];
+  @ApiProperty({ type: [LostReasonCountDto], description: '沉睡 + 流失客户的流失原因' })
+  lostReasons: LostReasonCountDto[];
+}
+
 export class AnalyticsDto {
   @ApiProperty() from: string;
   @ApiProperty() to: string;
@@ -166,6 +192,8 @@ export class AnalyticsDto {
   @ApiProperty({ type: AftersalesRateDto }) aftersales: AftersalesRateDto;
   @ApiProperty({ type: StaffPerfDto }) staff: StaffPerfDto;
   @ApiProperty({ type: LtvStatsDto }) ltv: LtvStatsDto;
+  @ApiProperty({ type: [AgentPerfDto], description: '代理业绩（区间内）' }) agents: AgentPerfDto[];
+  @ApiProperty({ type: SegmentSnapshotDto }) segments: SegmentSnapshotDto;
 }
 
 const SOURCE_LABELS: Record<string, string> = Object.fromEntries(
@@ -238,6 +266,8 @@ export class AnalyticsService {
           feeCents: true,
           costCents: true,
           commissionCents: true,
+          firstOrder: true,
+          agent: { select: { id: true, no: true, name: true } },
         },
       }),
       this.prisma.customer.findMany({
@@ -474,6 +504,46 @@ export class AnalyticsService {
     }
     const all = [...customers.values()];
 
+    // —— 代理业绩（区间内） ——
+    const agents = new Map<string, AgentPerfDto>();
+    const agentRow = (a: { id: string; no: number; name: string }) =>
+      tally(agents, a.id, () => ({
+        agentId: a.id,
+        code: displayNo('A', a.no),
+        name: a.name,
+        newCustomers: 0,
+        paidOrders: 0,
+        firstOrders: 0,
+        salesCents: 0,
+        commissionCents: 0,
+      }));
+    for (const o of paidOrders) {
+      if (!o.agent) continue;
+      const row = agentRow(o.agent);
+      row.paidOrders += 1;
+      if (o.firstOrder) row.firstOrders += 1;
+      row.salesCents += o.paidCents - o.refundedCents;
+      row.commissionCents += o.commissionCents;
+    }
+    const [bound, stageGroups, lostGroups] = await Promise.all([
+      this.prisma.customer.findMany({
+        where: { AND: [scope], deletedAt: null, agentBoundAt: range, agentId: { not: null } },
+        select: { agent: { select: { id: true, no: true, name: true } } },
+      }),
+      this.prisma.customer.groupBy({
+        by: ['stage'],
+        where: visibleCustomers(user),
+        _count: { _all: true },
+      }),
+      this.prisma.customer.groupBy({
+        by: ['lostReason'],
+        where: { ...visibleCustomers(user), stage: { in: ['DORMANT', 'CHURNED'] } },
+        _count: { _all: true },
+      }),
+    ]);
+    for (const c of bound) if (c.agent) agentRow(c.agent).newCustomers += 1;
+    const stageCount = new Map(stageGroups.map((g) => [g.stage, g._count._all]));
+
     return {
       from: localDateKey(start),
       to: localDateKey(now),
@@ -561,6 +631,15 @@ export class AnalyticsService {
           ];
         }),
       },
+      agents: [...agents.values()].sort(
+        (a, b) => b.salesCents - a.salesCents || b.newCustomers - a.newCustomers,
+      ),
+      segments: {
+        stages: CUSTOMER_STAGES.map((stage) => ({ stage, count: stageCount.get(stage) ?? 0 })),
+        lostReasons: lostGroups
+          .map((g) => ({ reason: g.lostReason, count: g._count._all }))
+          .sort((a, b) => b.count - a.count),
+      },
     };
   }
 }
@@ -574,7 +653,7 @@ export class AnalyticsController {
   @Get()
   @RequirePermissions('report:read')
   @ApiOperation({
-    summary: '经营数据：趋势、续费率、开通时效、售后率、员工业绩、客户价值',
+    summary: '经营数据：趋势、续费率、开通时效、售后率、员工业绩、客户价值、代理业绩、客户分层',
   })
   @ApiOkResponse({ type: AnalyticsDto })
   overview(@CurrentUser() user: AuthUser, @Query() q: AnalyticsQueryDto): Promise<AnalyticsDto> {
