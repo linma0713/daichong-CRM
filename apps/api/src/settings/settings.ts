@@ -161,6 +161,15 @@ export class BusinessSettingsDto {
   @Min(1)
   @Max(365)
   recallWindowDays: number = 30;
+
+  @ApiProperty({
+    description: '转介绍奖励（分）：老客户推荐的新客户第一次收齐款时奖励推荐人；0 = 不发',
+    example: 5000,
+  })
+  @IsInt()
+  @Min(0)
+  @Max(10_000_000)
+  referralRewardCents: number = 0;
 }
 
 export class UpdateSettingsDto {
@@ -260,6 +269,13 @@ export class UpdateSettingsDto {
   @Min(1)
   @Max(365)
   recallWindowDays?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10_000_000)
+  referralRewardCents?: number;
 }
 
 type SettingKey = keyof BusinessSettingsDto;
@@ -278,6 +294,7 @@ const KEYS: SettingKey[] = [
   'dailyDigestHour',
   'vipThresholdCents',
   'recallWindowDays',
+  'referralRewardCents',
 ];
 /** 存成对象的设置项：读取时和默认值合并，新增字段有默认值 */
 const OBJECT_DEFAULTS: Partial<Record<SettingKey, () => object>> = {

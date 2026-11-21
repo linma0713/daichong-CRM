@@ -45,3 +45,8 @@ body {
   padding: 12px;
   background: #fafafa;
 }
+
+/* 表头不折行（中文短标题被挤成两行很难看；表格本身有横向滚动） */
+.ant-table-thead > tr > th {
+  white-space: nowrap;
+}

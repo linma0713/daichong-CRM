@@ -254,7 +254,7 @@ export function formatCents(cents: number, currency: '¥' | '$' = '¥'): string 
  * R00012（付款资源）、G00012（售后工单）、K00012（退款）、A00012（代理）、J00012（佣金对账单）
  */
 export function displayNo(
-  prefix: 'C' | 'D' | 'S' | 'T' | 'R' | 'G' | 'K' | 'A' | 'J',
+  prefix: 'C' | 'D' | 'S' | 'T' | 'R' | 'G' | 'K' | 'A' | 'J' | 'Y',
   no: number,
 ): string {
   return `${prefix}${String(no).padStart(5, '0')}`;

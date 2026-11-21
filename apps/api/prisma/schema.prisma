@@ -69,6 +69,8 @@ model User {
   paidStatements      CommissionStatement[] @relation("StatementPaidBy")
   createdStatements   CommissionStatement[] @relation("StatementCreatedBy")
   notifications       Notification[]
+  channelCosts        ChannelCost[]
+  paidRewards         ReferralReward[]      @relation("RewardPaidBy")
   scripts             ScriptTemplate[]      @relation("ScriptCreator")
   /// 在班：自动派单优先派给在班的充值员；没人在班时照旧派给所有充值员
   onDuty              Boolean               @default(false)
@@ -151,66 +153,74 @@ model AuditLog {
 
 /// 客户：终端用户。由负责客服跟进，ownerId / teamId 决定谁能看到
 model Customer {
-  id             String            @id @default(cuid())
+  id              String            @id @default(cuid())
   /// 客户编号，界面显示为 C00001
-  no             Int               @unique @default(autoincrement())
+  no              Int               @unique @default(autoincrement())
   /// 称呼
-  name           String
-  wechat         String?
-  telegram       String?
-  email          String?
-  phone          String?
+  name            String
+  wechat          String?
+  telegram        String?
+  email           String?
+  phone           String?
   /// 来源：organic 自然流量 / referral 老客推荐 / agent 代理 / ads 投放 / other 其他
-  source         String            @default("organic")
+  source          String            @default("organic")
   /// 推荐人（老客户）
-  referrerId     String?
-  referrer       Customer?         @relation("CustomerReferral", fields: [referrerId], references: [id], onDelete: SetNull)
-  referrals      Customer[]        @relation("CustomerReferral")
+  referrerId      String?
+  referrer        Customer?         @relation("CustomerReferral", fields: [referrerId], references: [id], onDelete: SetNull)
+  referrals       Customer[]        @relation("CustomerReferral")
   /// 绑定的代理：客户首单（或建档时）绑定，以后的订单都算这个代理的
-  agentId        String?
-  agent          Agent?            @relation(fields: [agentId], references: [id])
-  agentBoundAt   DateTime?
-  tags           String[]
-  remark         String?
-  ownerId        String
-  owner          User              @relation("CustomerOwner", fields: [ownerId], references: [id])
+  agentId         String?
+  agent           Agent?            @relation(fields: [agentId], references: [id])
+  agentBoundAt    DateTime?
+  /// 获客渠道（具体到账号 / 群 / 投放计划），用来算渠道回报
+  channelId       String?
+  channel         Channel?          @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  tags            String[]
+  remark          String?
+  ownerId         String
+  owner           User              @relation("CustomerOwner", fields: [ownerId], references: [id])
   /// 负责人所在小组，用于「本小组数据」范围；换负责人时同步
-  teamId         String?
-  orders         Order[]
-  subscriptions  Subscription[]
-  accounts       ClaudeAccount[]
-  tasks          FulfillmentTask[]
-  followUps      FollowUp[]
-  tickets        Ticket[]
-  refunds        Refund[]
+  teamId          String?
+  orders          Order[]
+  subscriptions   Subscription[]
+  accounts        ClaudeAccount[]
+  tasks           FulfillmentTask[]
+  followUps       FollowUp[]
+  tickets         Ticket[]
+  refunds         Refund[]
+  /// 作为推荐人拿到的转介绍奖励
+  referralRewards ReferralReward[]  @relation("RewardReferrer")
+  /// 作为被推荐的新客户触发的奖励（每位新客户最多一条）
+  referredReward  ReferralReward?   @relation("RewardReferee")
   // ── 分层与价值（系统按订单和订阅自动算，见 CustomerStatsService） ──
   /// LEAD 潜在 / NEW 新客 / ACTIVE 活跃 / DORMANT 沉睡 / CHURNED 流失
-  stage          String            @default("LEAD")
-  stageChangedAt DateTime?
+  stage           String            @default("LEAD")
+  stageChangedAt  DateTime?
   /// 第一次 / 最近一次收齐款的时间
-  firstPaidAt    DateTime?
-  lastPaidAt     DateTime?
+  firstPaidAt     DateTime?
+  lastPaidAt      DateTime?
   /// 收齐款的订单数
-  paidOrderCount Int               @default(0)
+  paidOrderCount  Int               @default(0)
   /// 累计实付（分）= 各订单已收 − 已退
-  netPaidCents   Int               @default(0)
+  netPaidCents    Int               @default(0)
   /// 所有订阅里最晚的服务结束时间（手动终止的按终止时间）
-  serviceEndAt   DateTime?
+  serviceEndAt    DateTime?
   /// 最近一次跟进（含续费提醒、召回）的时间
-  lastContactAt  DateTime?
+  lastContactAt   DateTime?
   /// 流失原因（见 LOST_REASONS）；记录之后客户又付款会自动清掉
-  lostReason     String?
-  lostNote       String?
-  lostReasonAt   DateTime?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  deletedAt      DateTime?
+  lostReason      String?
+  lostNote        String?
+  lostReasonAt    DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
 
   @@index([ownerId])
   @@index([teamId])
   @@index([createdAt])
   @@index([agentId])
   @@index([stage, serviceEndAt])
+  @@index([channelId])
   @@index([netPaidCents])
 }
 
@@ -361,6 +371,7 @@ model Order {
   /// 这笔订单的佣金合计（分）= 各条佣金当前金额（不含已作废），计入每单毛利
   commissionCents     Int               @default(0)
   commissions         Commission[]
+  referralRewards     ReferralReward[]
   paidAt              DateTime?
   completedAt         DateTime?
   cancelledAt         DateTime?
@@ -1042,4 +1053,65 @@ model ScriptTemplate {
   updatedAt   DateTime  @updatedAt
 
   @@index([category, sortOrder])
+}
+
+/// 获客渠道：某个平台上的具体账号、群或投放计划（例如「小红书-主号」「抖音-11 月投流」）
+model Channel {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  /// 平台，见 CHANNEL_PLATFORMS
+  platform  String        @default("other")
+  note      String?
+  /// 停用后录客户时不再可选，历史数据保留
+  enabled   Boolean       @default(true)
+  customers Customer[]
+  costs     ChannelCost[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+/// 投放成本：在某个渠道花的钱（投流、买推广、博主合作等），按花费日期记
+model ChannelCost {
+  id          String   @id @default(cuid())
+  channelId   String
+  channel     Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  /// 花费日期（北京时间当天 0 点）
+  spentOn     DateTime
+  amountCents Int
+  note        String?
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([channelId, spentOn])
+  @@index([spentOn])
+}
+
+/// 转介绍奖励：老客户推荐的新客户第一次收齐款时生成，财务发放
+model ReferralReward {
+  id           String    @id @default(cuid())
+  /// 奖励编号，界面显示为 Y00001
+  no           Int       @unique @default(autoincrement())
+  referrerId   String
+  referrer     Customer  @relation("RewardReferrer", fields: [referrerId], references: [id])
+  refereeId    String    @unique
+  referee      Customer  @relation("RewardReferee", fields: [refereeId], references: [id])
+  /// 触发奖励的订单（新客户的首单）
+  orderId      String
+  order        Order     @relation(fields: [orderId], references: [id])
+  amountCents  Int
+  /// PENDING 待发放 / PAID 已发放 / CANCELLED 已作废
+  status       String    @default("PENDING")
+  /// 发放方式：收款方式之一，或 discount 抵扣续费
+  method       String?
+  reference    String?
+  paidAt       DateTime?
+  paidById     String?
+  paidBy       User?     @relation("RewardPaidBy", fields: [paidById], references: [id])
+  cancelReason String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([referrerId])
 }

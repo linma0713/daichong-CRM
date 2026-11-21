@@ -1496,7 +1496,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 经营数据：趋势、续费率、开通时效、售后率、员工业绩、客户价值 */
+        /** 经营数据：趋势、续费率、开通时效、售后率、员工业绩、客户价值、代理业绩、客户分层 */
         get: operations["Analytics_overview"];
         put?: never;
         post?: never;
@@ -1612,6 +1612,145 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 渠道列表（所有员工可查看，录客户时选） */
+        get: operations["Channels_list"];
+        put?: never;
+        /** 新增渠道 */
+        post: operations["Channels_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/channels/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 删除渠道（只能删没用过的） */
+        delete: operations["Channels_remove"];
+        options?: never;
+        head?: never;
+        /** 修改 / 停用渠道 */
+        patch: operations["Channels_update"];
+        trace?: never;
+    };
+    "/api/channel-costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 投放成本明细（最多 500 条） */
+        get: operations["ChannelCosts_list"];
+        put?: never;
+        /** 登记投放成本 */
+        post: operations["ChannelCosts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/channel-costs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 删除投放成本（录错了） */
+        delete: operations["ChannelCosts_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/marketing/channel-roi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 渠道回报与成交漏斗（按建档日期统计） */
+        get: operations["Marketing_roi"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/referral-rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 转介绍奖励列表 */
+        get: operations["ReferralRewards_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/referral-rewards/{id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 登记发放（转账或抵扣续费） */
+        post: operations["ReferralRewards_pay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/referral-rewards/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 作废奖励 */
+        post: operations["ReferralRewards_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1619,7 +1758,7 @@ export interface components {
         NotificationDto: {
             id: string;
             /** @enum {string} */
-            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest";
+            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest";
             title: string;
             body: string | null;
             link: string | null;
@@ -1648,7 +1787,7 @@ export interface components {
             kind: string;
             /** @description 机器人 key 的头尾几位 */
             webhookHint: string;
-            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest")[];
+            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest")[];
             enabled: boolean;
             /** Format: date-time */
             lastSentAt: string | null;
@@ -1668,13 +1807,13 @@ export interface components {
              * @example https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxx
              */
             webhook: string;
-            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest")[];
+            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest")[];
         };
         UpdateNotifyChannelDto: {
             name?: string;
             /** @description 换一个机器人地址；不改就不传 */
             webhook?: string;
-            events?: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest")[];
+            events?: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest")[];
             enabled?: boolean;
         };
         TestResultDto: {
@@ -1686,7 +1825,7 @@ export interface components {
             channelId: string;
             channelName: string;
             /** @enum {string} */
-            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest";
+            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest";
             content: string;
             /** @enum {string} */
             status: "PENDING" | "SENT" | "FAILED";
@@ -1998,6 +2137,11 @@ export interface components {
              * @example 30
              */
             recallWindowDays: number;
+            /**
+             * @description 转介绍奖励（分）：老客户推荐的新客户第一次收齐款时奖励推荐人；0 = 不发
+             * @example 5000
+             */
+            referralRewardCents: number;
         };
         UpdateSettingsDto: {
             exchangeRate?: number;
@@ -2014,6 +2158,7 @@ export interface components {
             dailyDigestHour?: number;
             vipThresholdCents?: number;
             recallWindowDays?: number;
+            referralRewardCents?: number;
         };
         PlanDto: {
             id: string;
@@ -2122,6 +2267,10 @@ export interface components {
             code: string;
             name: string;
         };
+        ChannelBriefDto: {
+            id: string;
+            name: string;
+        };
         CustomerDto: {
             id: string;
             /** @example C00012 */
@@ -2141,6 +2290,8 @@ export interface components {
             agent: components["schemas"]["AgentBriefDto"] | null;
             /** @description 绑定代理的时间 */
             agentBoundAt: string | null;
+            /** @description 获客渠道 */
+            channel: components["schemas"]["ChannelBriefDto"] | null;
             /** @description 服务中的订阅数 */
             activeSubscriptionCount: number;
             /** @description 最近一个到期时间 */
@@ -2192,6 +2343,16 @@ export interface components {
             /** @description 沉睡 + 流失客户的流失原因分布 */
             lostReasons: components["schemas"]["LostReasonCountDto"][];
         };
+        ReferralSummaryDto: {
+            /** @description 推荐来的客户数 */
+            referred: number;
+            /** @description 其中已成交的 */
+            converted: number;
+            /** @description 转介绍奖励待发放（分） */
+            pendingCents: number;
+            /** @description 转介绍奖励已发放（分） */
+            paidCents: number;
+        };
         FollowUpDto: {
             id: string;
             /** @enum {string} */
@@ -2221,6 +2382,8 @@ export interface components {
             agent: components["schemas"]["AgentBriefDto"] | null;
             /** @description 绑定代理的时间 */
             agentBoundAt: string | null;
+            /** @description 获客渠道 */
+            channel: components["schemas"]["ChannelBriefDto"] | null;
             /** @description 服务中的订阅数 */
             activeSubscriptionCount: number;
             /** @description 最近一个到期时间 */
@@ -2245,6 +2408,8 @@ export interface components {
             lostReasonAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            /** @description 作为推荐人的情况 */
+            referrals: components["schemas"]["ReferralSummaryDto"];
             /** @description 最近 50 条跟进记录 */
             followUps: components["schemas"]["FollowUpDto"][];
         };
@@ -2259,6 +2424,8 @@ export interface components {
             referrerId?: string | null;
             /** @description 绑定的代理：客户之后的订单都算这个代理的。改绑 / 解绑需要「编辑代理」权限 */
             agentId?: string | null;
+            /** @description 获客渠道 */
+            channelId?: string | null;
             tags?: string[];
             remark?: string | null;
             /** @example 王先生 */
@@ -2277,6 +2444,8 @@ export interface components {
             referrerId?: string | null;
             /** @description 绑定的代理：客户之后的订单都算这个代理的。改绑 / 解绑需要「编辑代理」权限 */
             agentId?: string | null;
+            /** @description 获客渠道 */
+            channelId?: string | null;
             tags?: string[];
             remark?: string | null;
             name?: string;
@@ -3609,6 +3778,10 @@ export interface components {
             profitCents: number;
             /** @description 付款资源入库支出（买卡、充值的实际花费）。只对能看全部数据的人返回 */
             resourceSpendCents: number | null;
+            /** @description 营销支出（分）= 投放成本（按花费日期）+ 现金发放的转介绍奖励（抵扣续费的已体现在订单优惠里，不重复算）。只对能看全部数据的人返回 */
+            marketingCents: number | null;
+            /** @description 经营利润 = 毛利 − 营销支出。只对能看全部数据的人返回 */
+            operatingProfitCents: number | null;
         };
         FinanceDayDto: {
             /** @description 收款（分） */
@@ -3676,7 +3849,7 @@ export interface components {
         };
         JournalEntryDto: {
             /** @enum {string} */
-            kind: "payment" | "refund" | "cost" | "commission";
+            kind: "payment" | "refund" | "cost" | "commission" | "marketing";
             id: string;
             /** Format: date-time */
             at: string;
@@ -3684,7 +3857,7 @@ export interface components {
             /** @example D00012 */
             orderCode: string | null;
             customer: components["schemas"]["CustomerBriefDto"] | null;
-            /** @description 收款 / 退款方式、成本类型，或「代理佣金」 */
+            /** @description 收款 / 退款方式、成本类型，或「代理佣金」「投放成本」「转介绍奖励」 */
             category: string;
             /** @description 金额（分），收款为正，退款、成本和代理佣金为负 */
             amountCents: number;
@@ -3849,6 +4022,27 @@ export interface components {
             /** @description 净收入最高的 10 个客户 */
             top: components["schemas"]["LtvCustomerDto"][];
         };
+        AgentPerfDto: {
+            agentId: string;
+            /** @example A00001 */
+            code: string;
+            name: string;
+            /** @description 区间内新绑定的客户数 */
+            newCustomers: number;
+            /** @description 区间内收齐款的订单数 */
+            paidOrders: number;
+            /** @description 其中客户首单 */
+            firstOrders: number;
+            /** @description 这些订单的实收 − 已退（分） */
+            salesCents: number;
+            /** @description 这些订单上的代理佣金（分，含上级管理佣金） */
+            commissionCents: number;
+        };
+        SegmentSnapshotDto: {
+            stages: components["schemas"]["StageCountDto"][];
+            /** @description 沉睡 + 流失客户的流失原因 */
+            lostReasons: components["schemas"]["LostReasonCountDto"][];
+        };
         AnalyticsDto: {
             from: string;
             to: string;
@@ -3859,6 +4053,9 @@ export interface components {
             aftersales: components["schemas"]["AftersalesRateDto"];
             staff: components["schemas"]["StaffPerfDto"];
             ltv: components["schemas"]["LtvStatsDto"];
+            /** @description 代理业绩（区间内） */
+            agents: components["schemas"]["AgentPerfDto"][];
+            segments: components["schemas"]["SegmentSnapshotDto"];
         };
         /** @enum {string} */
         AgentStatus: "ACTIVE" | "DISABLED";
@@ -4055,6 +4252,148 @@ export interface components {
             title?: string;
             content?: string;
             sortOrder?: number;
+        };
+        ChannelDto: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            platform: "xiaohongshu" | "douyin" | "xianyu" | "zhihu" | "bilibili" | "wechat" | "telegram" | "search" | "other";
+            note: string | null;
+            enabled: boolean;
+            /** @description 标了这个渠道的客户数 */
+            customerCount: number;
+            /** @description 累计投放成本（分） */
+            costCents: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateChannelDto: {
+            /** @example 小红书-主号 */
+            name: string;
+            /** @enum {string} */
+            platform: "xiaohongshu" | "douyin" | "xianyu" | "zhihu" | "bilibili" | "wechat" | "telegram" | "search" | "other";
+            note?: string;
+        };
+        UpdateChannelDto: {
+            name?: string;
+            /** @enum {string} */
+            platform?: "xiaohongshu" | "douyin" | "xianyu" | "zhihu" | "bilibili" | "wechat" | "telegram" | "search" | "other";
+            note?: string | null;
+            enabled?: boolean;
+        };
+        ChannelCostDto: {
+            id: string;
+            channelId: string;
+            channelName: string;
+            /** @example 2026-11-20 */
+            spentOn: string;
+            amountCents: number;
+            note: string | null;
+            createdBy: components["schemas"]["UserBriefDto"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ChannelCostListDto: {
+            items: components["schemas"]["ChannelCostDto"][];
+            totalCents: number;
+        };
+        CreateChannelCostDto: {
+            channelId: string;
+            /**
+             * @description 花费日期（北京时间）
+             * @example 2026-11-20
+             */
+            spentOn: string;
+            /**
+             * @description 金额（分）
+             * @example 50000
+             */
+            amountCents: number;
+            /** @example 薯条加热 3 天 */
+            note?: string;
+        };
+        FunnelRowDto: {
+            /** @description 渠道 ID / 来源值；未标渠道为 none */
+            key: string;
+            label: string;
+            /** @description 平台（只有渠道行有） */
+            platform: string | null;
+            /** @description 区间内新建档的客户数 */
+            leads: number;
+            /** @description 其中已成交（收齐过款）的 */
+            converted: number;
+            /** @description 其中复购（收齐款的订单 ≥ 2）的 */
+            repeat: number;
+            /** @description 其中现在还在服务中的（新客 / 活跃） */
+            active: number;
+            /** @description 成交率 */
+            conversionRate: number | null;
+            /** @description 复购率（复购 ÷ 成交） */
+            repeatRate: number | null;
+            /** @description 这些客户到目前的累计实付（分） */
+            revenueCents: number;
+            /** @description 区间内的投放成本（分），只有渠道行有 */
+            costCents: number;
+            /** @description 获客成本 = 投放成本 ÷ 成交数 */
+            cacCents: number | null;
+            /** @description 投资回报率 = (收入 − 成本) ÷ 成本 */
+            roi: number | null;
+        };
+        ChannelRoiDto: {
+            from: string;
+            to: string;
+            /** @description 合计 */
+            total: components["schemas"]["FunnelRowDto"];
+            /** @description 按渠道（含「未标渠道」） */
+            byChannel: components["schemas"]["FunnelRowDto"][];
+            /** @description 按客户来源 */
+            bySource: components["schemas"]["FunnelRowDto"][];
+            /** @description 只统计了自己范围内的客户（投放成本是全部的） */
+            partialScope: boolean;
+        };
+        ReferralRewardDto: {
+            id: string;
+            /** @example Y00001 */
+            code: string;
+            /** @description 推荐人（拿奖励的老客户） */
+            referrer: components["schemas"]["CustomerBriefDto"];
+            /** @description 被推荐的新客户 */
+            referee: components["schemas"]["CustomerBriefDto"];
+            orderId: string;
+            orderCode: string;
+            amountCents: number;
+            /** @enum {string} */
+            status: "PENDING" | "PAID" | "CANCELLED";
+            method: string | null;
+            reference: string | null;
+            paidAt: string | null;
+            paidBy: components["schemas"]["UserBriefDto"] | null;
+            cancelReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RewardListDto: {
+            items: components["schemas"]["ReferralRewardDto"][];
+            total: number;
+            /** @description 待发放合计（分） */
+            pendingCents: number;
+            /** @description 待发放条数 */
+            pendingCount: number;
+        };
+        PayRewardDto: {
+            /**
+             * @description 发放方式：收款方式之一，或 discount 抵扣续费（下次下单时填优惠）
+             * @enum {string}
+             */
+            method: "wechat" | "alipay" | "usdt" | "bank" | "other" | "discount";
+            /** @description 转账单号 / 备注 */
+            reference?: string;
+            /** @description 发放时间，不填为现在 */
+            paidAt?: string;
+        };
+        CancelRewardDto: {
+            /** @example 推荐人自己说不用了 */
+            reason: string;
         };
     };
     responses: never;
@@ -5006,6 +5345,8 @@ export interface operations {
                 tag?: string;
                 /** @description 绑定的代理 */
                 agentId?: string;
+                /** @description 获客渠道；none = 没标渠道的 */
+                channelId?: string;
                 stage?: components["schemas"]["CustomerStage"];
                 /** @description 只看 VIP（累计实付达到业务设置里的门槛） */
                 vip?: boolean;
@@ -6859,6 +7200,260 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Channels_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelDto"][];
+                };
+            };
+        };
+    };
+    Channels_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateChannelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelDto"];
+                };
+            };
+        };
+    };
+    Channels_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Channels_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateChannelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelDto"];
+                };
+            };
+        };
+    };
+    ChannelCosts_list: {
+        parameters: {
+            query?: {
+                channelId?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelCostListDto"];
+                };
+            };
+        };
+    };
+    ChannelCosts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateChannelCostDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelCostDto"];
+                };
+            };
+        };
+    };
+    ChannelCosts_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Marketing_roi: {
+        parameters: {
+            query: {
+                /** @description 开始日期（北京时间，含当天） */
+                from: string;
+                /** @description 结束日期（北京时间，含当天） */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelRoiDto"];
+                };
+            };
+        };
+    };
+    ReferralRewards_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                status?: "PENDING" | "PAID" | "CANCELLED";
+                /** @description 推荐人 */
+                referrerId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RewardListDto"];
+                };
+            };
+        };
+    };
+    ReferralRewards_pay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayRewardDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralRewardDto"];
+                };
+            };
+        };
+    };
+    ReferralRewards_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelRewardDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralRewardDto"];
                 };
             };
         };

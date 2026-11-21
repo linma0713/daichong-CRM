@@ -7,7 +7,7 @@ export interface NotifyEventDef {
   label: string;
   /** 站内消息发给谁，显示在设置页帮助员工理解 */
   audience: string;
-  group: '履约' | '售后' | '库存' | '代理' | '收款' | '汇总';
+  group: '履约' | '售后' | '库存' | '代理' | '收款' | '营销' | '汇总';
 }
 
 export type NotifyEvent =
@@ -23,6 +23,7 @@ export type NotifyEvent =
   | 'refund.decided'
   | 'inventory.low'
   | 'statement.generated'
+  | 'referral.created'
   | 'daily.digest';
 
 export const NOTIFY_EVENTS: NotifyEventDef[] = [
@@ -77,6 +78,12 @@ export const NOTIFY_EVENTS: NotifyEventDef[] = [
     label: '生成了佣金对账单',
     audience: '有佣金结算权限的员工',
     group: '代理',
+  },
+  {
+    value: 'referral.created',
+    label: '转介绍奖励待发放',
+    audience: '有渠道与营销权限的员工',
+    group: '营销',
   },
   {
     value: 'daily.digest',

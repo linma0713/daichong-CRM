@@ -20,6 +20,7 @@ import {
   TASK_TYPE_LABELS,
   TICKET_STATUS_LABELS,
   TICKET_TYPE_LABELS,
+  channelPlatformLabel,
   formatCents,
   type AccountStockStatus,
   type AgentStatus,
@@ -37,7 +38,7 @@ import {
   type TicketType,
 } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../api/client';
-import { useAgentOptions } from '../api/queries';
+import { useAgentOptions, useChannels } from '../api/queries';
 import { useAuth } from '../auth/AuthProvider';
 
 /** 业务页面共用的小组件：状态标签、金额、客户链接、查看密码等 */
@@ -427,6 +428,52 @@ export function AgentSelect({
       style={style}
       onChange={(v?: string) => onChange?.(v ?? null)}
       notFoundContent={agents.isLoading ? '加载中…' : '没有代理，先在「代理」页新增'}
+    />
+  );
+}
+
+/** 选渠道：停用的渠道不能新选，已经选了的照样显示 */
+export function ChannelSelect({
+  value,
+  onChange,
+  placeholder = '客户从哪个渠道来的',
+  allowDisabled,
+  withNone,
+  style,
+  id,
+}: {
+  value?: string | null;
+  onChange?: (id: string | null) => void;
+  placeholder?: string;
+  /** 筛选时用：停用的渠道也能选 */
+  allowDisabled?: boolean;
+  /** 筛选时用：加一项「未标渠道」 */
+  withNone?: boolean;
+  style?: CSSProperties;
+  id?: string;
+}) {
+  const channels = useChannels();
+  const options = [
+    ...(withNone ? [{ value: 'none', label: '未标渠道', disabled: false }] : []),
+    ...(channels.data ?? []).map((c) => ({
+      value: c.id,
+      label: `${c.name} · ${channelPlatformLabel(c.platform)}${c.enabled ? '' : ' · 已停用'}`,
+      disabled: !allowDisabled && !c.enabled && c.id !== value,
+    })),
+  ];
+  return (
+    <Select
+      id={id}
+      showSearch
+      allowClear
+      value={value ?? undefined}
+      placeholder={placeholder}
+      optionFilterProp="label"
+      loading={channels.isLoading}
+      options={options}
+      style={style}
+      onChange={(v?: string) => onChange?.(v ?? null)}
+      notFoundContent={channels.isLoading ? '加载中…' : '还没有渠道，在「渠道与营销」里新增'}
     />
   );
 }

@@ -31,6 +31,7 @@ import { CommissionsModule } from './commissions/statements';
 import { NotifyModule } from './notify/notify';
 import { CustomerStatsModule } from './customers/stats';
 import { ScriptsModule } from './scripts/scripts';
+import { MarketingModule } from './marketing/marketing';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { ScriptsModule } from './scripts/scripts';
     AgentsModule,
     CommissionsModule,
     ScriptsModule,
+    MarketingModule,
   ],
   providers: [
     // 顺序就是执行顺序：限流 → 登录 → 权限

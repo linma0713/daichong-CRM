@@ -1692,6 +1692,15 @@
             }
           },
           {
+            "name": "channelId",
+            "required": false,
+            "in": "query",
+            "description": "获客渠道；none = 没标渠道的",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "stage",
             "required": false,
             "in": "query",
@@ -4929,7 +4938,7 @@
             "bearer": []
           }
         ],
-        "summary": "经营数据：趋势、续费率、开通时效、售后率、员工业绩、客户价值",
+        "summary": "经营数据：趋势、续费率、开通时效、售后率、员工业绩、客户价值、代理业绩、客户分层",
         "tags": [
           "数据看板"
         ]
@@ -5361,6 +5370,487 @@
           "话术库"
         ]
       }
+    },
+    "/api/channels": {
+      "get": {
+        "operationId": "Channels_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChannelDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "渠道列表（所有员工可查看，录客户时选）",
+        "tags": [
+          "渠道与营销"
+        ]
+      },
+      "post": {
+        "operationId": "Channels_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChannelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "新增渠道",
+        "tags": [
+          "渠道与营销"
+        ]
+      }
+    },
+    "/api/channels/{id}": {
+      "patch": {
+        "operationId": "Channels_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateChannelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改 / 停用渠道",
+        "tags": [
+          "渠道与营销"
+        ]
+      },
+      "delete": {
+        "operationId": "Channels_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "删除渠道（只能删没用过的）",
+        "tags": [
+          "渠道与营销"
+        ]
+      }
+    },
+    "/api/channel-costs": {
+      "get": {
+        "operationId": "ChannelCosts_list",
+        "parameters": [
+          {
+            "name": "channelId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-30",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelCostListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "投放成本明细（最多 500 条）",
+        "tags": [
+          "渠道与营销"
+        ]
+      },
+      "post": {
+        "operationId": "ChannelCosts_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChannelCostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelCostDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "登记投放成本",
+        "tags": [
+          "渠道与营销"
+        ]
+      }
+    },
+    "/api/channel-costs/{id}": {
+      "delete": {
+        "operationId": "ChannelCosts_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "删除投放成本（录错了）",
+        "tags": [
+          "渠道与营销"
+        ]
+      }
+    },
+    "/api/marketing/channel-roi": {
+      "get": {
+        "operationId": "Marketing_roi",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "开始日期（北京时间，含当天）",
+            "schema": {
+              "example": "2026-11-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "结束日期（北京时间，含当天）",
+            "schema": {
+              "example": "2026-11-30",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelRoiDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "渠道回报与成交漏斗（按建档日期统计）",
+        "tags": [
+          "渠道与营销"
+        ]
+      }
+    },
+    "/api/referral-rewards": {
+      "get": {
+        "operationId": "ReferralRewards_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "PAID",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "referrerId",
+            "required": false,
+            "in": "query",
+            "description": "推荐人",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "转介绍奖励列表",
+        "tags": [
+          "渠道与营销"
+        ]
+      }
+    },
+    "/api/referral-rewards/{id}/pay": {
+      "post": {
+        "operationId": "ReferralRewards_pay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayRewardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralRewardDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "登记发放（转账或抵扣续费）",
+        "tags": [
+          "渠道与营销"
+        ]
+      }
+    },
+    "/api/referral-rewards/{id}/cancel": {
+      "post": {
+        "operationId": "ReferralRewards_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRewardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralRewardDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "作废奖励",
+        "tags": [
+          "渠道与营销"
+        ]
+      }
     }
   },
   "info": {
@@ -5401,6 +5891,7 @@
               "refund.decided",
               "inventory.low",
               "statement.generated",
+              "referral.created",
               "daily.digest"
             ]
           },
@@ -5515,6 +6006,7 @@
                 "refund.decided",
                 "inventory.low",
                 "statement.generated",
+                "referral.created",
                 "daily.digest"
               ]
             }
@@ -5587,6 +6079,7 @@
                 "refund.decided",
                 "inventory.low",
                 "statement.generated",
+                "referral.created",
                 "daily.digest"
               ]
             }
@@ -5625,6 +6118,7 @@
                 "refund.decided",
                 "inventory.low",
                 "statement.generated",
+                "referral.created",
                 "daily.digest"
               ]
             }
@@ -5677,6 +6171,7 @@
               "refund.decided",
               "inventory.low",
               "statement.generated",
+              "referral.created",
               "daily.digest"
             ]
           },
@@ -6617,6 +7112,11 @@
             "type": "number",
             "description": "服务结束后多少天内算「沉睡」（召回期），超过算「流失」",
             "example": 30
+          },
+          "referralRewardCents": {
+            "type": "number",
+            "description": "转介绍奖励（分）：老客户推荐的新客户第一次收齐款时奖励推荐人；0 = 不发",
+            "example": 5000
           }
         },
         "required": [
@@ -6633,7 +7133,8 @@
           "commissionIncludeWarranty",
           "dailyDigestHour",
           "vipThresholdCents",
-          "recallWindowDays"
+          "recallWindowDays",
+          "referralRewardCents"
         ]
       },
       "UpdateSettingsDto": {
@@ -6682,6 +7183,9 @@
             "type": "number"
           },
           "recallWindowDays": {
+            "type": "number"
+          },
+          "referralRewardCents": {
             "type": "number"
           }
         }
@@ -7002,6 +7506,21 @@
           "name"
         ]
       },
+      "ChannelBriefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
       "CustomerDto": {
         "type": "object",
         "properties": {
@@ -7077,6 +7596,16 @@
             "type": "string",
             "nullable": true,
             "description": "绑定代理的时间"
+          },
+          "channel": {
+            "nullable": true,
+            "description": "获客渠道",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChannelBriefDto"
+              }
+            ]
           },
           "activeSubscriptionCount": {
             "type": "number",
@@ -7169,6 +7698,7 @@
           "referrer",
           "agent",
           "agentBoundAt",
+          "channel",
           "activeSubscriptionCount",
           "nextExpiryAt",
           "stage",
@@ -7283,6 +7813,33 @@
           "recallWindowDays",
           "dormantUncontacted",
           "lostReasons"
+        ]
+      },
+      "ReferralSummaryDto": {
+        "type": "object",
+        "properties": {
+          "referred": {
+            "type": "number",
+            "description": "推荐来的客户数"
+          },
+          "converted": {
+            "type": "number",
+            "description": "其中已成交的"
+          },
+          "pendingCents": {
+            "type": "number",
+            "description": "转介绍奖励待发放（分）"
+          },
+          "paidCents": {
+            "type": "number",
+            "description": "转介绍奖励已发放（分）"
+          }
+        },
+        "required": [
+          "referred",
+          "converted",
+          "pendingCents",
+          "paidCents"
         ]
       },
       "FollowUpDto": {
@@ -7400,6 +7957,16 @@
             "nullable": true,
             "description": "绑定代理的时间"
           },
+          "channel": {
+            "nullable": true,
+            "description": "获客渠道",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChannelBriefDto"
+              }
+            ]
+          },
           "activeSubscriptionCount": {
             "type": "number",
             "description": "服务中的订阅数"
@@ -7475,6 +8042,14 @@
             "format": "date-time",
             "type": "string"
           },
+          "referrals": {
+            "description": "作为推荐人的情况",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferralSummaryDto"
+              }
+            ]
+          },
           "followUps": {
             "description": "最近 50 条跟进记录",
             "type": "array",
@@ -7498,6 +8073,7 @@
           "referrer",
           "agent",
           "agentBoundAt",
+          "channel",
           "activeSubscriptionCount",
           "nextExpiryAt",
           "stage",
@@ -7513,6 +8089,7 @@
           "lostNote",
           "lostReasonAt",
           "createdAt",
+          "referrals",
           "followUps"
         ]
       },
@@ -7554,6 +8131,11 @@
             "type": "string",
             "nullable": true,
             "description": "绑定的代理：客户之后的订单都算这个代理的。改绑 / 解绑需要「编辑代理」权限"
+          },
+          "channelId": {
+            "type": "string",
+            "nullable": true,
+            "description": "获客渠道"
           },
           "tags": {
             "type": "array",
@@ -7616,6 +8198,11 @@
             "type": "string",
             "nullable": true,
             "description": "绑定的代理：客户之后的订单都算这个代理的。改绑 / 解绑需要「编辑代理」权限"
+          },
+          "channelId": {
+            "type": "string",
+            "nullable": true,
+            "description": "获客渠道"
           },
           "tags": {
             "type": "array",
@@ -12183,6 +12770,16 @@
             "type": "number",
             "nullable": true,
             "description": "付款资源入库支出（买卡、充值的实际花费）。只对能看全部数据的人返回"
+          },
+          "marketingCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "营销支出（分）= 投放成本（按花费日期）+ 现金发放的转介绍奖励（抵扣续费的已体现在订单优惠里，不重复算）。只对能看全部数据的人返回"
+          },
+          "operatingProfitCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "经营利润 = 毛利 − 营销支出。只对能看全部数据的人返回"
           }
         },
         "required": [
@@ -12195,7 +12792,9 @@
           "costCents",
           "commissionCents",
           "profitCents",
-          "resourceSpendCents"
+          "resourceSpendCents",
+          "marketingCents",
+          "operatingProfitCents"
         ]
       },
       "FinanceDayDto": {
@@ -12417,7 +13016,8 @@
               "payment",
               "refund",
               "cost",
-              "commission"
+              "commission",
+              "marketing"
             ]
           },
           "id": {
@@ -12447,7 +13047,7 @@
           },
           "category": {
             "type": "string",
-            "description": "收款 / 退款方式、成本类型，或「代理佣金」"
+            "description": "收款 / 退款方式、成本类型，或「代理佣金」「投放成本」「转介绍奖励」"
           },
           "amountCents": {
             "type": "number",
@@ -12978,6 +13578,73 @@
           "top"
         ]
       },
+      "AgentPerfDto": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "A00001"
+          },
+          "name": {
+            "type": "string"
+          },
+          "newCustomers": {
+            "type": "number",
+            "description": "区间内新绑定的客户数"
+          },
+          "paidOrders": {
+            "type": "number",
+            "description": "区间内收齐款的订单数"
+          },
+          "firstOrders": {
+            "type": "number",
+            "description": "其中客户首单"
+          },
+          "salesCents": {
+            "type": "number",
+            "description": "这些订单的实收 − 已退（分）"
+          },
+          "commissionCents": {
+            "type": "number",
+            "description": "这些订单上的代理佣金（分，含上级管理佣金）"
+          }
+        },
+        "required": [
+          "agentId",
+          "code",
+          "name",
+          "newCustomers",
+          "paidOrders",
+          "firstOrders",
+          "salesCents",
+          "commissionCents"
+        ]
+      },
+      "SegmentSnapshotDto": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageCountDto"
+            }
+          },
+          "lostReasons": {
+            "description": "沉睡 + 流失客户的流失原因",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LostReasonCountDto"
+            }
+          }
+        },
+        "required": [
+          "stages",
+          "lostReasons"
+        ]
+      },
       "AnalyticsDto": {
         "type": "object",
         "properties": {
@@ -13010,6 +13677,16 @@
           },
           "ltv": {
             "$ref": "#/components/schemas/LtvStatsDto"
+          },
+          "agents": {
+            "description": "代理业绩（区间内）",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentPerfDto"
+            }
+          },
+          "segments": {
+            "$ref": "#/components/schemas/SegmentSnapshotDto"
           }
         },
         "required": [
@@ -13021,7 +13698,9 @@
           "activation",
           "aftersales",
           "staff",
-          "ltv"
+          "ltv",
+          "agents",
+          "segments"
         ]
       },
       "AgentStatus": {
@@ -13714,6 +14393,485 @@
             "type": "number"
           }
         }
+      },
+      "ChannelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "xiaohongshu",
+              "douyin",
+              "xianyu",
+              "zhihu",
+              "bilibili",
+              "wechat",
+              "telegram",
+              "search",
+              "other"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "customerCount": {
+            "type": "number",
+            "description": "标了这个渠道的客户数"
+          },
+          "costCents": {
+            "type": "number",
+            "description": "累计投放成本（分）"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "platform",
+          "note",
+          "enabled",
+          "customerCount",
+          "costCents",
+          "createdAt"
+        ]
+      },
+      "CreateChannelDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "小红书-主号"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "xiaohongshu",
+              "douyin",
+              "xianyu",
+              "zhihu",
+              "bilibili",
+              "wechat",
+              "telegram",
+              "search",
+              "other"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "platform"
+        ]
+      },
+      "UpdateChannelDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "xiaohongshu",
+              "douyin",
+              "xianyu",
+              "zhihu",
+              "bilibili",
+              "wechat",
+              "telegram",
+              "search",
+              "other"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ChannelCostDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "channelName": {
+            "type": "string"
+          },
+          "spentOn": {
+            "type": "string",
+            "example": "2026-11-20"
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "channelId",
+          "channelName",
+          "spentOn",
+          "amountCents",
+          "note",
+          "createdBy",
+          "createdAt"
+        ]
+      },
+      "ChannelCostListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelCostDto"
+            }
+          },
+          "totalCents": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "totalCents"
+        ]
+      },
+      "CreateChannelCostDto": {
+        "type": "object",
+        "properties": {
+          "channelId": {
+            "type": "string"
+          },
+          "spentOn": {
+            "type": "string",
+            "example": "2026-11-20",
+            "description": "花费日期（北京时间）"
+          },
+          "amountCents": {
+            "type": "number",
+            "description": "金额（分）",
+            "example": 50000
+          },
+          "note": {
+            "type": "string",
+            "example": "薯条加热 3 天"
+          }
+        },
+        "required": [
+          "channelId",
+          "spentOn",
+          "amountCents"
+        ]
+      },
+      "FunnelRowDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "渠道 ID / 来源值；未标渠道为 none"
+          },
+          "label": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "nullable": true,
+            "description": "平台（只有渠道行有）"
+          },
+          "leads": {
+            "type": "number",
+            "description": "区间内新建档的客户数"
+          },
+          "converted": {
+            "type": "number",
+            "description": "其中已成交（收齐过款）的"
+          },
+          "repeat": {
+            "type": "number",
+            "description": "其中复购（收齐款的订单 ≥ 2）的"
+          },
+          "active": {
+            "type": "number",
+            "description": "其中现在还在服务中的（新客 / 活跃）"
+          },
+          "conversionRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "成交率"
+          },
+          "repeatRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "复购率（复购 ÷ 成交）"
+          },
+          "revenueCents": {
+            "type": "number",
+            "description": "这些客户到目前的累计实付（分）"
+          },
+          "costCents": {
+            "type": "number",
+            "description": "区间内的投放成本（分），只有渠道行有"
+          },
+          "cacCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "获客成本 = 投放成本 ÷ 成交数"
+          },
+          "roi": {
+            "type": "number",
+            "nullable": true,
+            "description": "投资回报率 = (收入 − 成本) ÷ 成本"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "platform",
+          "leads",
+          "converted",
+          "repeat",
+          "active",
+          "conversionRate",
+          "repeatRate",
+          "revenueCents",
+          "costCents",
+          "cacCents",
+          "roi"
+        ]
+      },
+      "ChannelRoiDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "total": {
+            "description": "合计",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FunnelRowDto"
+              }
+            ]
+          },
+          "byChannel": {
+            "description": "按渠道（含「未标渠道」）",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FunnelRowDto"
+            }
+          },
+          "bySource": {
+            "description": "按客户来源",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FunnelRowDto"
+            }
+          },
+          "partialScope": {
+            "type": "boolean",
+            "description": "只统计了自己范围内的客户（投放成本是全部的）"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "total",
+          "byChannel",
+          "bySource",
+          "partialScope"
+        ]
+      },
+      "ReferralRewardDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "Y00001"
+          },
+          "referrer": {
+            "description": "推荐人（拿奖励的老客户）",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerBriefDto"
+              }
+            ]
+          },
+          "referee": {
+            "description": "被推荐的新客户",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerBriefDto"
+              }
+            ]
+          },
+          "orderId": {
+            "type": "string"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PAID",
+              "CANCELLED"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "cancelReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "referrer",
+          "referee",
+          "orderId",
+          "orderCode",
+          "amountCents",
+          "status",
+          "method",
+          "reference",
+          "paidAt",
+          "paidBy",
+          "cancelReason",
+          "createdAt"
+        ]
+      },
+      "RewardListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferralRewardDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "pendingCents": {
+            "type": "number",
+            "description": "待发放合计（分）"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "待发放条数"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "pendingCents",
+          "pendingCount"
+        ]
+      },
+      "PayRewardDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "wechat",
+              "alipay",
+              "usdt",
+              "bank",
+              "other",
+              "discount"
+            ],
+            "description": "发放方式：收款方式之一，或 discount 抵扣续费（下次下单时填优惠）"
+          },
+          "reference": {
+            "type": "string",
+            "description": "转账单号 / 备注"
+          },
+          "paidAt": {
+            "type": "string",
+            "description": "发放时间，不填为现在"
+          }
+        },
+        "required": [
+          "method"
+        ]
+      },
+      "CancelRewardDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "推荐人自己说不用了"
+          }
+        },
+        "required": [
+          "reason"
+        ]
       }
     }
   }

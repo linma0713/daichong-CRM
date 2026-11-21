@@ -84,13 +84,14 @@ export const BUILT_IN_ROLES: BuiltInRole[] = [
   {
     code: 'finance',
     name: '财务',
-    description: '对账、退款出账、代理佣金结算',
+    description: '对账、退款出账、代理佣金结算、投放成本和转介绍奖励',
     permissions: [
       'finance:read',
       'order:read',
       'refund:approve',
       'commission:settle',
       'agent:write',
+      'marketing:write',
     ],
     dataScope: 'ALL',
   },

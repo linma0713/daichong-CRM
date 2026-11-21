@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import {
   App,
   Button,
@@ -18,7 +18,13 @@ import {
   Typography,
 } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CUSTOMER_SOURCES, FOLLOW_UP_KINDS, lostReasonLabel, type FollowUpKind } from '@crm/shared';
+import {
+  CUSTOMER_SOURCES,
+  FOLLOW_UP_KINDS,
+  formatCents,
+  lostReasonLabel,
+  type FollowUpKind,
+} from '@crm/shared';
 import { api, unwrap } from '../../api/client';
 import { useStaffOptions } from '../../api/queries';
 import { useAuth } from '../../auth/AuthProvider';
@@ -103,6 +109,7 @@ export function CustomerDetailPage() {
   if (!customer.data) return <Result status="404" title="客户不存在或你没有权限查看" />;
   const c = customer.data;
   const canWrite = can('customer:write');
+  const canSeeRewards = can('marketing:write') || can('finance:read');
   const subsByCode = new Map((subs.data?.items ?? []).map((s) => [s.id, s.code]));
   const lapsed = c.stage === 'DORMANT' || c.stage === 'CHURNED';
 
@@ -175,6 +182,11 @@ export function CustomerDetailPage() {
                 推荐人 {c.referrer.name}
               </Typography.Link>
             )}
+            {c.channel && (
+              <Typography.Text type="secondary" style={{ marginLeft: 8 }}>
+                渠道 {c.channel.name}
+              </Typography.Text>
+            )}
           </Descriptions.Item>
           {c.agent && (
             <Descriptions.Item label="代理">
@@ -205,6 +217,25 @@ export function CustomerDetailPage() {
             {c.activeSubscriptionCount > 0 ? '服务中' : formatTime(c.serviceEndAt)}
           </Descriptions.Item>
           <Descriptions.Item label="上次联系">{formatTime(c.lastContactAt)}</Descriptions.Item>
+          {c.referrals.referred > 0 && (
+            <Descriptions.Item label="推荐新客">
+              <span>
+                推荐 {c.referrals.referred} 位，成交 {c.referrals.converted} 位
+              </span>
+              {(c.referrals.pendingCents > 0 || c.referrals.paidCents > 0) && (
+                <Typography.Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                  奖励
+                  {c.referrals.pendingCents > 0 && ` 待发 ${formatCents(c.referrals.pendingCents)}`}
+                  {c.referrals.paidCents > 0 && ` 已发 ${formatCents(c.referrals.paidCents)}`}
+                </Typography.Text>
+              )}
+              {canSeeRewards && c.referrals.converted > 0 && (
+                <Link to={`/marketing?tab=rewards&referrerId=${c.id}`} style={{ marginLeft: 8 }}>
+                  奖励记录
+                </Link>
+              )}
+            </Descriptions.Item>
+          )}
           {c.lostReason && (
             <Descriptions.Item label="流失原因">
               <Typography.Text type="danger">{lostReasonLabel(c.lostReason)}</Typography.Text>

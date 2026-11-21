@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import {
   Card,
   Col,
@@ -14,7 +15,14 @@ import {
   type TableColumnsType,
 } from 'antd';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { TICKET_TYPE_LABELS, formatCents, type TicketType } from '@crm/shared';
+import {
+  CUSTOMER_STAGE_LABELS,
+  TICKET_TYPE_LABELS,
+  formatCents,
+  lostReasonLabel,
+  type CustomerStage,
+  type TicketType,
+} from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { CustomerLink } from '../../components/business';
 import { BarList, ColumnChart, LineChart, MeterList } from '../../components/charts';
@@ -205,6 +213,14 @@ export function AnalyticsPage() {
             </Row>
 
             <StaffCard staff={d.staff} />
+            <Row gutter={[16, 16]}>
+              <Col xs={24} lg={14}>
+                <AgentCard agents={d.agents} />
+              </Col>
+              <Col xs={24} lg={10}>
+                <SegmentCard segments={d.segments} />
+              </Col>
+            </Row>
             <LtvCard ltv={d.ltv} />
           </Space>
         </div>
@@ -337,6 +353,72 @@ function StaffCard({ staff }: { staff: Data['staff'] }) {
           { key: 'aftersales', label: '售后', children: table(aftersales, staff.aftersales) },
         ]}
       />
+    </Card>
+  );
+}
+
+function AgentCard({ agents }: { agents: Data['agents'] }) {
+  const columns: TableColumnsType<Schemas['AgentPerfDto']> = [
+    {
+      title: '代理',
+      key: 'name',
+      render: (_, a) => (
+        <Link to={`/agents/${a.agentId}`} style={{ whiteSpace: 'nowrap' }}>
+          {a.name}（{a.code}）
+        </Link>
+      ),
+    },
+    { title: '新绑定客户', dataIndex: 'newCustomers', key: 'c', align: 'right' },
+    { title: '收齐款订单', dataIndex: 'paidOrders', key: 'o', align: 'right' },
+    { title: '其中首单', dataIndex: 'firstOrders', key: 'f', align: 'right' },
+    { title: '实收', key: 's', align: 'right', render: (_, a) => formatCents(a.salesCents) },
+    { title: '佣金', key: 'm', align: 'right', render: (_, a) => formatCents(a.commissionCents) },
+  ];
+  return (
+    <Card size="small" title="代理业绩" style={{ height: '100%' }}>
+      <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+        区间内新绑定的客户、收齐款的订单；实收已扣掉退款，佣金含上级管理佣金。
+      </Typography.Paragraph>
+      <Table
+        rowKey="agentId"
+        size="small"
+        columns={columns}
+        dataSource={agents}
+        pagination={false}
+        scroll={{ x: 560 }}
+        locale={{ emptyText: '区间内没有代理业绩' }}
+      />
+    </Card>
+  );
+}
+
+function SegmentCard({ segments }: { segments: Data['segments'] }) {
+  const lost = segments.lostReasons.reduce((n, r) => n + r.count, 0);
+  return (
+    <Card size="small" title="客户分层（当前）" style={{ height: '100%' }}>
+      <BarList
+        format={(v) => `${v} 位`}
+        rows={segments.stages.map((s) => ({
+          key: s.stage,
+          label: CUSTOMER_STAGE_LABELS[s.stage as CustomerStage] ?? s.stage,
+          value: s.count,
+        }))}
+      />
+      {lost > 0 && (
+        <>
+          <Typography.Text strong style={{ display: 'block', margin: '16px 0 8px' }}>
+            沉睡和流失客户的原因
+          </Typography.Text>
+          <BarList
+            format={(v) => `${v} 位`}
+            rows={segments.lostReasons.map((r) => ({
+              key: r.reason ?? 'none',
+              label: r.reason ? lostReasonLabel(r.reason) : '还没记原因',
+              value: r.count,
+            }))}
+          />
+        </>
+      )}
     </Card>
   );
 }

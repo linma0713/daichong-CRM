@@ -23,7 +23,7 @@ import { formatCents } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { CustomerLink } from '../../components/business';
 import { downloadCsv, yuan } from '../../components/csv';
-import { beijingToday, formatTime } from '../../components/format';
+import { beijingToday, formatTime, rangePresets as presets } from '../../components/format';
 
 type Report = Schemas['FinanceReportDto'];
 type Day = Schemas['FinanceDayDto'];
@@ -33,24 +33,12 @@ type Entry = Schemas['JournalEntryDto'];
 type Range = [Dayjs, Dayjs];
 
 const KEY = 'YYYY-MM-DD';
-function presets(): { label: string; value: Range }[] {
-  const today = beijingToday();
-  const lastMonth = today.subtract(1, 'month');
-  return [
-    { label: '今天', value: [today, today] },
-    { label: '昨天', value: [today.subtract(1, 'day'), today.subtract(1, 'day')] },
-    { label: '本周', value: [today.startOf('week'), today] },
-    { label: '本月', value: [today.startOf('month'), today] },
-    { label: '上月', value: [lastMonth.startOf('month'), lastMonth.endOf('month').startOf('day')] },
-    { label: '近 30 天', value: [today.subtract(29, 'day'), today] },
-  ];
-}
-
 const KIND_META: Record<Entry['kind'], { label: string; color: string }> = {
   payment: { label: '收款', color: 'green' },
   refund: { label: '退款', color: 'red' },
   cost: { label: '成本', color: 'orange' },
   commission: { label: '代理佣金', color: 'purple' },
+  marketing: { label: '营销', color: 'magenta' },
 };
 
 const money = (cents: number, opts: { danger?: boolean; strong?: boolean } = {}) => (
@@ -226,6 +214,12 @@ export function FinancePage() {
       render: (_, e) =>
         e.kind === 'commission' ? (
           <Link to={`/commissions/statements/${e.id}`}>对账单</Link>
+        ) : e.kind === 'marketing' ? (
+          <Link
+            to={e.category === '投放成本' ? '/marketing?tab=channels' : '/marketing?tab=rewards'}
+          >
+            {e.category === '投放成本' ? '渠道台账' : '奖励记录'}
+          </Link>
         ) : e.orderId ? (
           <Link to={`/orders/${e.orderId}`}>{e.orderCode}</Link>
         ) : (
@@ -376,6 +370,25 @@ export function FinancePage() {
               />
             </Col>
           </Row>
+          {t && t.marketingCents !== null && t.operatingProfitCents !== null && (
+            <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+              <Col xs={12} md={6}>
+                <StatTile
+                  title="营销支出"
+                  cents={t.marketingCents}
+                  hint="投放成本 + 现金发放的转介绍奖励"
+                />
+              </Col>
+              <Col xs={12} md={6}>
+                <StatTile
+                  title="经营利润"
+                  cents={t.operatingProfitCents}
+                  danger
+                  hint="毛利 − 营销支出"
+                />
+              </Col>
+            </Row>
+          )}
           {t?.resourceSpendCents !== null && t?.resourceSpendCents !== undefined && (
             <Alert
               type="info"
@@ -472,6 +485,7 @@ export function FinancePage() {
                         { value: 'refund', label: '退款' },
                         { value: 'cost', label: '成本' },
                         { value: 'commission', label: '代理佣金' },
+                        { value: 'marketing', label: '营销' },
                       ]}
                     />
                     <Button
