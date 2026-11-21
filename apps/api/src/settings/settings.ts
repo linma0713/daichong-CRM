@@ -6,13 +6,17 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
+  IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
+import { ONLINE_PAY_CHANNEL_VALUES, PAY_LINK_MINUTES, type OnlinePayChannel } from '@crm/shared';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CustomerStatsService } from '../customers/stats';
@@ -170,6 +174,26 @@ export class BusinessSettingsDto {
   @Min(0)
   @Max(10_000_000)
   referralRewardCents: number = 0;
+
+  @ApiProperty({
+    enum: ONLINE_PAY_CHANNEL_VALUES,
+    description:
+      '在线收款通道：off 不开启；mock 模拟通道（只用于测试，拿到链接的人都能点「付款成功」）',
+    example: 'off',
+  })
+  @IsIn(ONLINE_PAY_CHANNEL_VALUES)
+  onlinePayChannel: OnlinePayChannel = 'off';
+
+  @ApiProperty({ description: '收款链接多少分钟内有效', example: PAY_LINK_MINUTES.default })
+  @IsInt()
+  @Min(PAY_LINK_MINUTES.min)
+  @Max(PAY_LINK_MINUTES.max)
+  payLinkMinutes: number = PAY_LINK_MINUTES.default;
+
+  @ApiProperty({ description: '客户付款页上显示的店铺名称；空着只显示「订单付款」', example: '' })
+  @IsString()
+  @MaxLength(30)
+  payShopName: string = '';
 }
 
 export class UpdateSettingsDto {
@@ -276,6 +300,24 @@ export class UpdateSettingsDto {
   @Min(0)
   @Max(10_000_000)
   referralRewardCents?: number;
+
+  @ApiProperty({ required: false, enum: ONLINE_PAY_CHANNEL_VALUES })
+  @IsOptional()
+  @IsIn(ONLINE_PAY_CHANNEL_VALUES)
+  onlinePayChannel?: OnlinePayChannel;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(PAY_LINK_MINUTES.min)
+  @Max(PAY_LINK_MINUTES.max)
+  payLinkMinutes?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  payShopName?: string;
 }
 
 type SettingKey = keyof BusinessSettingsDto;
@@ -295,6 +337,9 @@ const KEYS: SettingKey[] = [
   'vipThresholdCents',
   'recallWindowDays',
   'referralRewardCents',
+  'onlinePayChannel',
+  'payLinkMinutes',
+  'payShopName',
 ];
 /** 存成对象的设置项：读取时和默认值合并，新增字段有默认值 */
 const OBJECT_DEFAULTS: Partial<Record<SettingKey, () => object>> = {
@@ -334,9 +379,11 @@ export class SettingsService {
       const json = (
         key === 'reminderDays'
           ? [...new Set(value as number[])].sort((a, b) => b - a)
-          : OBJECT_DEFAULTS[key]
-            ? { ...(value as object) }
-            : value
+          : key === 'payShopName'
+            ? (value as string).trim()
+            : OBJECT_DEFAULTS[key]
+              ? { ...(value as object) }
+              : value
       ) as Prisma.InputJsonValue;
       ops.push(
         this.prisma.setting.upsert({

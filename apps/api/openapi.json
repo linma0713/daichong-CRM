@@ -6799,6 +6799,210 @@
           "导出"
         ]
       }
+    },
+    "/api/orders/{id}/payment-links": {
+      "post": {
+        "operationId": "PaymentLinks_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentLinkDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "给订单生成在线收款链接（之前没付的链接作废）",
+        "tags": [
+          "在线收款"
+        ]
+      }
+    },
+    "/api/payment-links/{id}": {
+      "get": {
+        "operationId": "PaymentLinks_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "收款链接状态（等客户付款时轮询）",
+        "tags": [
+          "在线收款"
+        ]
+      }
+    },
+    "/api/payment-links/{id}/close": {
+      "post": {
+        "operationId": "PaymentLinks_close",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "关闭收款链接（客户就不能再用它付款）",
+        "tags": [
+          "在线收款"
+        ]
+      }
+    },
+    "/api/pay/{token}": {
+      "get": {
+        "operationId": "PublicPay_info",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPayInfoDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "客户付款页：订单金额和链接状态（不需要登录）",
+        "tags": [
+          "在线收款"
+        ]
+      }
+    },
+    "/api/pay/{token}/mock-pay": {
+      "post": {
+        "operationId": "PublicPay_mockPay",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPayInfoDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "模拟通道：模拟付款成功（只在业务设置选了模拟通道时可用）",
+        "tags": [
+          "在线收款"
+        ]
+      }
+    },
+    "/api/pay/notify/{channel}": {
+      "post": {
+        "operationId": "PublicPay_notify",
+        "parameters": [
+          {
+            "name": "channel",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "支付平台到账回调（平台调用，验签后自动确认收款）",
+        "tags": [
+          "在线收款"
+        ]
+      }
     }
   },
   "info": {
@@ -6833,6 +7037,7 @@
               "task.failed",
               "task.done",
               "payment.received",
+              "payment.anomaly",
               "ticket.created",
               "ticket.escalated",
               "refund.requested",
@@ -6950,6 +7155,7 @@
                 "task.failed",
                 "task.done",
                 "payment.received",
+                "payment.anomaly",
                 "ticket.created",
                 "ticket.escalated",
                 "refund.requested",
@@ -7025,6 +7231,7 @@
                 "task.failed",
                 "task.done",
                 "payment.received",
+                "payment.anomaly",
                 "ticket.created",
                 "ticket.escalated",
                 "refund.requested",
@@ -7066,6 +7273,7 @@
                 "task.failed",
                 "task.done",
                 "payment.received",
+                "payment.anomaly",
                 "ticket.created",
                 "ticket.escalated",
                 "refund.requested",
@@ -7121,6 +7329,7 @@
               "task.failed",
               "task.done",
               "payment.received",
+              "payment.anomaly",
               "ticket.created",
               "ticket.escalated",
               "refund.requested",
@@ -8310,6 +8519,25 @@
             "type": "number",
             "description": "转介绍奖励（分）：老客户推荐的新客户第一次收齐款时奖励推荐人；0 = 不发",
             "example": 5000
+          },
+          "onlinePayChannel": {
+            "type": "string",
+            "enum": [
+              "off",
+              "mock"
+            ],
+            "description": "在线收款通道：off 不开启；mock 模拟通道（只用于测试，拿到链接的人都能点「付款成功」）",
+            "example": "off"
+          },
+          "payLinkMinutes": {
+            "type": "number",
+            "description": "收款链接多少分钟内有效",
+            "example": 30
+          },
+          "payShopName": {
+            "type": "string",
+            "description": "客户付款页上显示的店铺名称；空着只显示「订单付款」",
+            "example": ""
           }
         },
         "required": [
@@ -8327,7 +8555,10 @@
           "dailyDigestHour",
           "vipThresholdCents",
           "recallWindowDays",
-          "referralRewardCents"
+          "referralRewardCents",
+          "onlinePayChannel",
+          "payLinkMinutes",
+          "payShopName"
         ]
       },
       "UpdateSettingsDto": {
@@ -8380,6 +8611,19 @@
           },
           "referralRewardCents": {
             "type": "number"
+          },
+          "onlinePayChannel": {
+            "type": "string",
+            "enum": [
+              "off",
+              "mock"
+            ]
+          },
+          "payLinkMinutes": {
+            "type": "number"
+          },
+          "payShopName": {
+            "type": "string"
           }
         }
       },
@@ -9788,6 +10032,11 @@
             "type": "string",
             "nullable": true
           },
+          "channel": {
+            "type": "string",
+            "nullable": true,
+            "description": "在线收款的通道（mock 等）；手工确认的收款为空"
+          },
           "receivedAt": {
             "format": "date-time",
             "type": "string"
@@ -9816,9 +10065,95 @@
           "feeCents",
           "method",
           "reference",
+          "channel",
           "receivedAt",
           "statement",
           "confirmedBy",
+          "createdAt"
+        ]
+      },
+      "PaymentLinkStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "PAID",
+          "EXPIRED",
+          "CLOSED"
+        ]
+      },
+      "PaymentLinkDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "P00012"
+          },
+          "channel": {
+            "type": "string",
+            "example": "mock",
+            "description": "收款通道"
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentLinkStatus"
+              }
+            ]
+          },
+          "payPath": {
+            "type": "string",
+            "example": "/pay/xxxx",
+            "description": "付款页路径"
+          },
+          "payUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "完整的付款链接；没设置 APP_PUBLIC_URL 时为空，前端用当前访问地址拼"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "closedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "anomaly": {
+            "type": "string",
+            "nullable": true,
+            "description": "到账了但没法自动记收款的原因（要人工核对退款）"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "channel",
+          "amountCents",
+          "status",
+          "payPath",
+          "payUrl",
+          "expiresAt",
+          "paidAt",
+          "closedAt",
+          "anomaly",
+          "createdBy",
           "createdAt"
         ]
       },
@@ -10440,6 +10775,13 @@
               "$ref": "#/components/schemas/PaymentDto"
             }
           },
+          "paymentLinks": {
+            "description": "在线收款链接，新的在前",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentLinkDto"
+            }
+          },
           "tasks": {
             "type": "array",
             "items": {
@@ -10517,6 +10859,7 @@
           "marginCents",
           "createdAt",
           "payments",
+          "paymentLinks",
           "tasks",
           "refunds",
           "refundableCents",
@@ -16289,6 +16632,75 @@
           "items",
           "total",
           "truncated"
+        ]
+      },
+      "CreatePaymentLinkDto": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "number",
+            "description": "收款金额（分），不填就是订单还差的金额"
+          }
+        }
+      },
+      "PublicPayInfoDto": {
+        "type": "object",
+        "properties": {
+          "shopName": {
+            "type": "string",
+            "description": "店铺名称（业务设置里填），没填为空字符串"
+          },
+          "orderCode": {
+            "type": "string",
+            "example": "D00012"
+          },
+          "productName": {
+            "type": "string",
+            "example": "Max 季付（代充）"
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentLinkStatus"
+              }
+            ]
+          },
+          "channel": {
+            "type": "string",
+            "example": "mock"
+          },
+          "mock": {
+            "type": "boolean",
+            "description": "模拟通道：页面上显示「模拟付款成功」按钮"
+          },
+          "payUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "真实通道的付款地址（跳转过去付款）；模拟通道为空"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "shopName",
+          "orderCode",
+          "productName",
+          "amountCents",
+          "status",
+          "channel",
+          "mock",
+          "payUrl",
+          "expiresAt",
+          "paidAt"
         ]
       }
     }

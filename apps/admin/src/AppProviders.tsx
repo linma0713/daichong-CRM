@@ -26,7 +26,9 @@ function shouldNotify(err: unknown): boolean {
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
-    onError: (err) => shouldNotify(err) && notifyError(errorMessage(err)),
+    // meta.silent：页面自己显示错误（例如客户付款页），不再弹提示
+    onError: (err, query) =>
+      !query.meta?.silent && shouldNotify(err) && notifyError(errorMessage(err)),
   }),
   mutationCache: new MutationCache({
     onError: (err, _vars, _ctx, mutation) => {

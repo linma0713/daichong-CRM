@@ -421,3 +421,88 @@ div.m-card {
 .m-tiles-2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+
+/* ───── 客户付款页（/pay/:token）和员工端收款二维码 ───── */
+.pay-page {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+  background: #f5f6f8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pay-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.pay-shop {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.pay-amount-block {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.pay-amount {
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.pay-order {
+  margin-top: 6px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  word-break: break-word;
+}
+.pay-left {
+  margin-bottom: 16px;
+  color: rgba(0, 0, 0, 0.65);
+}
+.pay-left strong {
+  font-variant-numeric: tabular-nums;
+  color: #fa8c16;
+}
+.pay-foot {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.pay-qr {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pay-url {
+  word-break: break-all;
+  background: #fafafa;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+/* 手机上打开电脑版页面：卡片标题和右上角按钮放不下时，按钮换到下一行，不把标题挤没 */
+@media (max-width: 575px) {
+  .ant-card-head-wrapper {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding-block: 8px;
+  }
+  .ant-card-head-title {
+    flex: 1 0 auto;
+    max-width: 100%;
+  }
+  .ant-card-extra {
+    margin-inline-start: 0;
+  }
+}

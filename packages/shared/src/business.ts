@@ -251,10 +251,11 @@ export function formatCents(cents: number, currency: '¥' | '$' = '¥'): string 
 
 /**
  * 编号显示：C00012（客户）、D00012（订单）、S00012（订阅）、T00012（任务）、
- * R00012（付款资源）、G00012（售后工单）、K00012（退款）、A00012（代理）、J00012（佣金对账单）
+ * R00012（付款资源）、G00012（售后工单）、K00012（退款）、A00012（代理）、J00012（佣金对账单）、
+ * Y00012（转介绍奖励）、P00012（在线收款链接）
  */
 export function displayNo(
-  prefix: 'C' | 'D' | 'S' | 'T' | 'R' | 'G' | 'K' | 'A' | 'J' | 'Y',
+  prefix: 'C' | 'D' | 'S' | 'T' | 'R' | 'G' | 'K' | 'A' | 'J' | 'Y' | 'P',
   no: number,
 ): string {
   return `${prefix}${String(no).padStart(5, '0')}`;

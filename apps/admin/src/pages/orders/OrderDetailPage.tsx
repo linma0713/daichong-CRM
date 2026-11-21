@@ -23,6 +23,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { QrcodeOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
@@ -54,6 +55,8 @@ import { RefundRequestModal } from '../aftersales/modals';
 import { CommissionTable } from '../commissions/CommissionTable';
 import { RefundTable } from '../aftersales/TicketDetailPage';
 import { Attachments } from '../../components/attachments';
+import { useBusinessSettings } from '../../api/queries';
+import { OnlinePayTag, PayLinkModal, PayLinksTable } from './payLinks';
 
 export function OrderDetailPage() {
   const { id = '' } = useParams();
@@ -61,7 +64,9 @@ export function OrderDetailPage() {
   const { modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [paying, setPaying] = useState(false);
+  const [payingOnline, setPayingOnline] = useState(false);
   const [refunding, setRefunding] = useState(false);
+  const settings = useBusinessSettings();
   const order = useQuery({
     queryKey: ['order', id],
     queryFn: () => unwrap(api.GET('/api/orders/{id}', { params: { path: { id } } })),
@@ -84,6 +89,12 @@ export function OrderDetailPage() {
   if (!order.data) return <Result status="404" title="订单不存在或你没有权限查看" />;
   const o = order.data;
   const remaining = o.amountCents - o.paidCents;
+  // 开了在线收款、订单待收款、能录单或确认收款的员工可以发收款链接
+  const canPayOnline =
+    o.status === 'PENDING_PAYMENT' &&
+    (can('order:write') || can('payment:confirm')) &&
+    !!settings.data &&
+    settings.data.onlinePayChannel !== 'off';
 
   const askCancel = () => {
     let reason = '';
@@ -136,6 +147,15 @@ export function OrderDetailPage() {
                   客服: o.owner.displayName,
                 }}
               />
+            )}
+            {canPayOnline && (
+              <Button
+                type={can('payment:confirm') ? 'default' : 'primary'}
+                icon={<QrcodeOutlined />}
+                onClick={() => setPayingOnline(true)}
+              >
+                在线收款
+              </Button>
             )}
             {o.status === 'PENDING_PAYMENT' && can('payment:confirm') && (
               <Button type="primary" onClick={() => setPaying(true)}>
@@ -269,6 +289,7 @@ export function OrderDetailPage() {
               render: (_, p) => (
                 <Space direction="vertical" size={0}>
                   <span>{receiptMethodLabel(p.method)}</span>
+                  <OnlinePayTag channel={p.channel} />
                   {p.method === AGENT_COLLECTED && (
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                       {p.statement ? (
@@ -303,6 +324,12 @@ export function OrderDetailPage() {
           ]}
         />
       </Card>
+
+      {o.paymentLinks.length > 0 && (
+        <Card title="收款链接" size="small">
+          <PayLinksTable order={o} onChanged={refresh} />
+        </Card>
+      )}
 
       <Card title="附件" size="small">
         <Attachments
@@ -370,6 +397,15 @@ export function OrderDetailPage() {
         />
       )}
 
+      {/* 付清后订单不再是待收款，弹窗要留着显示结果 */}
+      {(canPayOnline || payingOnline) && (
+        <PayLinkModal
+          order={o}
+          open={payingOnline}
+          onClose={() => setPayingOnline(false)}
+          onChanged={refresh}
+        />
+      )}
       {paying && (
         <PaymentModal
           orderId={o.id}

@@ -30,7 +30,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { Prisma } from '@prisma/client';
+import { Prisma, type Order } from '@prisma/client';
 import {
   COST_KINDS,
   FULFILLMENT_TYPES,
@@ -59,6 +59,7 @@ import {
   type TaskStatus,
   type TaskType,
 } from '@crm/shared';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { Audit, CurrentUser, RequirePermissions } from '../auth/decorators';
 import type { AuthUser } from '../common/auth-user';
@@ -85,6 +86,7 @@ import { SettingsModule, SettingsService } from '../settings/settings';
 import { NotifyService } from '../notify/notify';
 import { CustomerStatsService } from '../customers/stats';
 import { ReferralService } from '../marketing/referral';
+import { PaymentLinkDto, toPaymentLinkDto } from '../payments/links';
 
 const ORDER_KINDS: OrderKind[] = ['NEW', 'RENEWAL'];
 
@@ -285,6 +287,12 @@ export class PaymentDto {
   @ApiProperty({ description: '收款手续费（分）' }) feeCents: number;
   @ApiProperty({ enum: RECEIPT_METHOD_VALUES }) method: string;
   @ApiProperty({ type: String, nullable: true }) reference: string | null;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: '在线收款的通道（mock 等）；手工确认的收款为空',
+  })
+  channel: string | null;
   @ApiProperty() receivedAt: Date;
   @ApiProperty({
     type: RefDto,
@@ -360,6 +368,8 @@ export class OrderRefundDto {
 
 export class OrderDetailDto extends OrderDto {
   @ApiProperty({ type: [PaymentDto] }) payments: PaymentDto[];
+  @ApiProperty({ type: [PaymentLinkDto], description: '在线收款链接，新的在前' })
+  paymentLinks: PaymentLinkDto[];
   @ApiProperty({ type: [TaskBriefDto] }) tasks: TaskBriefDto[];
   @ApiProperty({ type: [OrderRefundDto] }) refunds: OrderRefundDto[];
   @ApiProperty({ description: '还可以申请退款的金额（分）= 已收 − 已退 − 审批中' })
@@ -381,6 +391,25 @@ export class OrderDetailDto extends OrderDto {
 }
 
 // ─────────────── Service ───────────────
+
+export interface RecordPaymentInput {
+  amountCents: number;
+  feeCents: number;
+  method: string;
+  agentId?: string | null;
+  reference: string | null;
+  /** 在线收款：通道和支付平台交易号 */
+  channel?: string | null;
+  externalId?: string | null;
+  receivedAt: Date;
+  confirmedById: string;
+  /** 通知里收款方式那一行，默认用收款方式的中文名 */
+  methodLabel?: string;
+  /** 通知最后一行，例如「确认人：张三」 */
+  byLine: string;
+  /** 不通知这个人（操作人自己） */
+  except?: string | null;
+}
 
 const orderInclude = {
   customer: { select: customerBriefSelect },
@@ -463,7 +492,10 @@ export function visibleOrders(user: AuthUser): Prisma.OrderWhereInput {
 
 @Injectable()
 export class OrdersService {
+  private readonly publicUrl?: string;
+
   constructor(
+    config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly fulfillment: FulfillmentService,
     private readonly secrets: SecretBox,
@@ -471,7 +503,9 @@ export class OrdersService {
     private readonly notify: NotifyService,
     private readonly stats: CustomerStatsService,
     private readonly referrals: ReferralService,
-  ) {}
+  ) {
+    this.publicUrl = config.get<string>('APP_PUBLIC_URL') || undefined;
+  }
 
   async list(q: OrderQueryDto, user: AuthUser): Promise<OrderListDto> {
     const no = parseNo(q.keyword, 'D');
@@ -514,6 +548,10 @@ export class OrdersService {
             statement: { select: { id: true, no: true, status: true } },
           },
           orderBy: { receivedAt: 'asc' },
+        },
+        paymentLinks: {
+          include: { createdBy: { select: userBriefSelect } },
+          orderBy: { createdAt: 'desc' },
         },
         tasks: {
           include: { assignee: { select: userBriefSelect } },
@@ -567,6 +605,7 @@ export class OrdersService {
         feeCents: p.feeCents,
         method: p.method,
         reference: p.reference,
+        channel: p.channel,
         receivedAt: p.receivedAt,
         statement:
           p.statement && p.statement.status !== 'CANCELLED'
@@ -575,6 +614,7 @@ export class OrdersService {
         confirmedBy: p.confirmedBy,
         createdAt: p.createdAt,
       })),
+      paymentLinks: o.paymentLinks.map((l) => toPaymentLinkDto(l, this.publicUrl)),
       tasks: o.tasks.map((t) => ({
         id: t.id,
         code: displayNo('T', t.no),
@@ -764,8 +804,7 @@ export class OrdersService {
       : feeOf(dto.amountCents, paymentFeeBp[dto.method as PaymentMethod] ?? 0);
     await this.prisma.$transaction(async (tx) => {
       // 锁住订单行，避免两个人同时确认收款
-      await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${id} FOR UPDATE`;
-      const order = await tx.order.findFirst({ where: { id, ...visibleOrders(user) } });
+      const order = await this.lockOrder(tx, id, visibleOrders(user));
       if (!order) throw notFound('订单');
       if (order.status !== 'PENDING_PAYMENT') throw badRequest('只有待收款的订单可以确认收款');
       const paid = order.paidCents + dto.amountCents;
@@ -773,56 +812,100 @@ export class OrdersService {
         throw badRequest(`收款超过应收：还差 ${(order.amountCents - order.paidCents) / 100} 元`);
       }
       if (byAgent && !order.agentId) throw badRequest('这单不是代理客户的订单，不能记「代理代收」');
-      await tx.payment.create({
-        data: {
-          orderId: id,
-          amountCents: dto.amountCents,
-          feeCents,
-          method: dto.method,
-          agentId: byAgent ? order.agentId : null,
-          reference: dto.reference?.trim() || null,
-          receivedAt: dto.receivedAt ? new Date(dto.receivedAt) : new Date(),
-          confirmedById: user.id,
-        },
-      });
-      await tx.order.update({
-        where: { id },
-        data: { paidCents: paid, feeCents: { increment: feeCents } },
-      });
-      if (paid === order.amountCents) await this.markPaid(tx, id);
-      const customer = await tx.customer.findUniqueOrThrow({
-        where: { id: order.customerId },
-        select: { no: true, name: true },
-      });
-      await this.notify.emit(tx, {
-        event: 'payment.received',
-        title: `收到付款 ${formatCents(dto.amountCents)} · 订单 ${displayNo('D', order.no)}`,
-        body: [
-          `客户：${customer.name}（${displayNo('C', customer.no)}） · ${order.planName} ${termLabel(order.termMonths)}`,
-          `${receiptMethodLabel(dto.method)}${
-            paid === order.amountCents
-              ? ' · 已收齐，开通任务已生成'
-              : ` · 还差 ${formatCents(order.amountCents - paid)}`
-          }`,
-          `确认人：${user.displayName}`,
-        ].join('\n'),
-        link: `/orders/${id}`,
-        to: [order.ownerId],
+      await this.recordPayment(tx, order, {
+        amountCents: dto.amountCents,
+        feeCents,
+        method: dto.method,
+        agentId: byAgent ? order.agentId : null,
+        reference: dto.reference?.trim() || null,
+        receivedAt: dto.receivedAt ? new Date(dto.receivedAt) : new Date(),
+        confirmedById: user.id,
+        byLine: `确认人：${user.displayName}`,
         except: user.id,
       });
-      await this.stats.refresh(tx, [order.customerId]);
+      // 手工记了收款，之前发出去的收款链接金额就不对了，一起关掉
+      await this.closePendingLinks(tx, id);
     });
     return this.get(id, user);
   }
 
+  /** 锁住订单行再读出来（同一时间只有一个人 / 一个回调能给这单记收款） */
+  async lockOrder(tx: Tx, id: string, scope: Prisma.OrderWhereInput = {}) {
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${id} FOR UPDATE`;
+    return tx.order.findFirst({ where: { id, ...scope } });
+  }
+
+  /**
+   * 记一笔收款：写收款记录、累加已收和手续费，收齐了就转「开通中」并派任务，通知负责客服。
+   * 调用方要先用 lockOrder 锁住订单，并检查过订单状态和金额。
+   */
+  async recordPayment(tx: Tx, order: Order, p: RecordPaymentInput): Promise<string> {
+    const paid = order.paidCents + p.amountCents;
+    const payment = await tx.payment.create({
+      data: {
+        orderId: order.id,
+        amountCents: p.amountCents,
+        feeCents: p.feeCents,
+        method: p.method,
+        agentId: p.agentId ?? null,
+        reference: p.reference,
+        channel: p.channel ?? null,
+        externalId: p.externalId ?? null,
+        receivedAt: p.receivedAt,
+        confirmedById: p.confirmedById,
+      },
+    });
+    await tx.order.update({
+      where: { id: order.id },
+      data: { paidCents: paid, feeCents: { increment: p.feeCents } },
+    });
+    if (paid === order.amountCents) await this.markPaid(tx, order.id);
+    const customer = await tx.customer.findUniqueOrThrow({
+      where: { id: order.customerId },
+      select: { no: true, name: true },
+    });
+    await this.notify.emit(tx, {
+      event: 'payment.received',
+      title: `收到付款 ${formatCents(p.amountCents)} · 订单 ${displayNo('D', order.no)}`,
+      body: [
+        `客户：${customer.name}（${displayNo('C', customer.no)}） · ${order.planName} ${termLabel(order.termMonths)}`,
+        `${p.methodLabel ?? receiptMethodLabel(p.method)}${
+          paid === order.amountCents
+            ? ' · 已收齐，开通任务已生成'
+            : ` · 还差 ${formatCents(order.amountCents - paid)}`
+        }`,
+        p.byLine,
+      ].join('\n'),
+      link: `/orders/${order.id}`,
+      to: [order.ownerId],
+      except: p.except ?? null,
+    });
+    await this.stats.refresh(tx, [order.customerId]);
+    return payment.id;
+  }
+
+  /** 关掉订单上还在等付款的收款链接 */
+  async closePendingLinks(tx: Tx, orderId: string): Promise<void> {
+    await tx.paymentLink.updateMany({
+      where: { orderId, status: 'PENDING' },
+      data: { status: 'CLOSED', closedAt: new Date() },
+    });
+  }
+
   async cancel(id: string, reason: string, user: AuthUser): Promise<OrderDetailDto> {
-    const order = await this.prisma.order.findFirst({ where: { id, ...visibleOrders(user) } });
-    if (!order) throw notFound('订单');
-    if (order.status !== 'PENDING_PAYMENT') throw badRequest('只有待收款的订单可以取消');
-    if (order.paidCents > 0) throw badRequest('订单已经收过款，不能直接取消（退款在售后模块处理）');
-    await this.prisma.order.update({
-      where: { id },
-      data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: reason.trim() },
+    await this.prisma.$transaction(async (tx) => {
+      // 和在线收款回调抢同一行锁：回调先到就记上收款，这里会因为「已经收过款」取消失败
+      const order = await this.lockOrder(tx, id, visibleOrders(user));
+      if (!order) throw notFound('订单');
+      if (order.status !== 'PENDING_PAYMENT') throw badRequest('只有待收款的订单可以取消');
+      if (order.paidCents > 0) {
+        throw badRequest('订单已经收过款，不能直接取消（退款在售后模块处理）');
+      }
+      await tx.order.update({
+        where: { id },
+        data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: reason.trim() },
+      });
+      await this.closePendingLinks(tx, id);
     });
     return this.get(id, user);
   }

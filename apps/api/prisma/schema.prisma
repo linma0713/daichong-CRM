@@ -73,6 +73,7 @@ model User {
   paidRewards         ReferralReward[]      @relation("RewardPaidBy")
   scripts             ScriptTemplate[]      @relation("ScriptCreator")
   attachments         Attachment[]          @relation("AttachmentUploader")
+  paymentLinks        PaymentLink[]         @relation("PaymentLinkCreator")
   /// 在班：自动派单优先派给在班的充值员；没人在班时照旧派给所有充值员
   onDuty              Boolean               @default(false)
   onDutyChangedAt     DateTime?
@@ -363,6 +364,7 @@ model Order {
   createdById         String
   createdBy           User              @relation("OrderCreator", fields: [createdById], references: [id])
   payments            Payment[]
+  paymentLinks        PaymentLink[]
   tasks               FulfillmentTask[]
   costEntries         CostEntry[]
   tickets             Ticket[]
@@ -430,6 +432,8 @@ model Payment {
   /// 代理代收的款在哪张对账单里抵扣
   statementId   String?
   statement     CommissionStatement? @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  /// 在线收款自动确认时：对应的收款链接
+  link          PaymentLink?
   createdAt     DateTime             @default(now())
 
   @@index([orderId])
@@ -1153,4 +1157,54 @@ model Attachment {
   createdAt    DateTime @default(now())
 
   @@index([ownerType, ownerId])
+}
+
+/// 在线收款链接：员工按订单生成，发给客户付款；支付平台回调后自动确认收款
+model PaymentLink {
+  id             String            @id @default(cuid())
+  no             Int               @unique @default(autoincrement())
+  orderId        String
+  order          Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// 收款通道：mock 模拟通道；以后接 alipay、wechatpay 等
+  channel        String
+  amountCents    Int
+  /// PENDING 等待付款 / PAID 已付款 / EXPIRED 已过期 / CLOSED 已关闭
+  status         String            @default("PENDING")
+  /// 付款页地址里的随机串（客户打开 /pay/<token>，不用登录）
+  token          String            @unique
+  /// 支付平台的交易号（回调带回来）
+  channelTradeNo String?           @unique
+  /// 支付平台给的付款地址（模拟通道没有，直接在我们的付款页上付）
+  channelPayUrl  String?
+  expiresAt      DateTime
+  paidAt         DateTime?
+  closedAt       DateTime?
+  /// 到账了但没法自动记收款（订单已取消或已收齐），要人工核对退款
+  anomaly        String?
+  paymentId      String?           @unique
+  payment        Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  createdById    String
+  createdBy      User              @relation("PaymentLinkCreator", fields: [createdById], references: [id])
+  createdAt      DateTime          @default(now())
+  callbacks      PaymentCallback[]
+
+  @@index([orderId])
+  @@index([status, expiresAt])
+}
+
+/// 支付平台回调记录：对不上账、验签失败时排查用
+model PaymentCallback {
+  id        String       @id @default(cuid())
+  channel   String
+  linkId    String?
+  link      PaymentLink? @relation(fields: [linkId], references: [id], onDelete: SetNull)
+  ok        Boolean
+  /// 处理结果说明，例如「验签失败」「金额不一致」
+  result    String
+  payload   Json
+  ip        String?
+  createdAt DateTime     @default(now())
+
+  @@index([createdAt])
+  @@index([linkId])
 }

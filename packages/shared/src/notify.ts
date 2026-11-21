@@ -17,6 +17,7 @@ export type NotifyEvent =
   | 'task.failed'
   | 'task.done'
   | 'payment.received'
+  | 'payment.anomaly'
   | 'ticket.created'
   | 'ticket.escalated'
   | 'refund.requested'
@@ -53,6 +54,12 @@ export const NOTIFY_EVENTS: NotifyEventDef[] = [
     value: 'payment.received',
     label: '收到客户付款',
     audience: '订单的负责客服（别人代确认或在线到账时）',
+    group: '收款',
+  },
+  {
+    value: 'payment.anomaly',
+    label: '在线收款到账但没法自动记账',
+    audience: '订单的负责客服和能看财务的员工（订单已取消或已收齐时到账，要核对退款）',
     group: '收款',
   },
   { value: 'ticket.created', label: '新的售后工单', audience: '负责处理的售后', group: '售后' },
@@ -118,6 +125,7 @@ export const DEFAULT_GROUP_EVENTS: NotifyEvent[] = [
   'task.overdue',
   'ticket.escalated',
   'refund.requested',
+  'payment.anomaly',
   'inventory.low',
   'daily.digest',
 ];
