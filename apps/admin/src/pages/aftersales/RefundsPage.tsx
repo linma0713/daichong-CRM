@@ -82,6 +82,11 @@ export function RefundsPage() {
             订单已收 {formatCents(r.orderPaidCents)}
             {r.orderRefundedCents > 0 && `，已退 ${formatCents(r.orderRefundedCents)}`}
           </Typography.Text>
+          {r.commissionReducedCents > 0 && (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              扣减代理佣金 {formatCents(r.commissionReducedCents)}
+            </Typography.Text>
+          )}
         </Space>
       ),
     },

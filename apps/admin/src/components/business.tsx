@@ -7,6 +7,7 @@ import dayjs from 'dayjs';
 import {
   ACCOUNT_STOCK_STATUS_LABELS,
   AGENT_STATUS_LABELS,
+  COMMISSION_STATUS_LABELS,
   FULFILLMENT_TYPE_LABELS,
   ORDER_KIND_LABELS,
   ORDER_STATUS_LABELS,
@@ -19,6 +20,7 @@ import {
   formatCents,
   type AccountStockStatus,
   type AgentStatus,
+  type CommissionStatus,
   type FulfillmentType,
   type OrderKind,
   type OrderStatus,
@@ -403,5 +405,20 @@ export function AgentSelect({
       onChange={(v?: string) => onChange?.(v ?? null)}
       notFoundContent={agents.isLoading ? '加载中…' : '没有代理，先在「代理」页新增'}
     />
+  );
+}
+
+const COMMISSION_STATUS_COLORS: Record<CommissionStatus, string> = {
+  FROZEN: 'blue',
+  RELEASABLE: 'green',
+  SETTLED: 'purple',
+  PAID: 'default',
+  VOID: 'default',
+};
+export function CommissionStatusTag({ status }: { status: CommissionStatus }) {
+  return (
+    <Tag color={COMMISSION_STATUS_COLORS[status]} style={status === 'VOID' ? { opacity: 0.6 } : {}}>
+      {COMMISSION_STATUS_LABELS[status]}
+    </Tag>
   );
 }

@@ -327,6 +327,9 @@ model Order {
   parentRateBp        Int               @default(0)
   /// 佣金基数（分）= 应收，按设置决定是否扣掉质保费
   commissionBaseCents Int               @default(0)
+  /// 这笔订单的佣金合计（分）= 各条佣金当前金额（不含已作废），计入每单毛利
+  commissionCents     Int               @default(0)
+  commissions         Commission[]
   paidAt              DateTime?
   completedAt         DateTime?
   cancelledAt         DateTime?
@@ -724,36 +727,39 @@ enum RefundStatus {
 
 /// 退款：售后申请，财务审批并登记出账。可以选择退款后终止服务（取消自动续订 / 回收成品号）
 model Refund {
-  id             String        @id @default(cuid())
+  id                     String        @id @default(cuid())
   /// 退款编号，界面显示为 K00001
-  no             Int           @unique @default(autoincrement())
-  orderId        String
-  order          Order         @relation(fields: [orderId], references: [id])
-  customerId     String
-  customer       Customer      @relation(fields: [customerId], references: [id])
-  subscriptionId String?
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  ticketId       String?
-  ticket         Ticket?       @relation(fields: [ticketId], references: [id])
-  amountCents    Int
-  reason         String
+  no                     Int           @unique @default(autoincrement())
+  orderId                String
+  order                  Order         @relation(fields: [orderId], references: [id])
+  customerId             String
+  customer               Customer      @relation(fields: [customerId], references: [id])
+  subscriptionId         String?
+  subscription           Subscription? @relation(fields: [subscriptionId], references: [id])
+  ticketId               String?
+  ticket                 Ticket?       @relation(fields: [ticketId], references: [id])
+  amountCents            Int
+  reason                 String
   /// 退款后终止服务
-  terminate      Boolean       @default(false)
-  status         RefundStatus  @default(PENDING)
-  requestedById  String
-  requestedBy    User          @relation("RefundRequester", fields: [requestedById], references: [id])
-  approvedById   String?
-  approvedBy     User?         @relation("RefundApprover", fields: [approvedById], references: [id])
+  terminate              Boolean       @default(false)
+  status                 RefundStatus  @default(PENDING)
+  requestedById          String
+  requestedBy            User          @relation("RefundRequester", fields: [requestedById], references: [id])
+  approvedById           String?
+  approvedBy             User?         @relation("RefundApprover", fields: [approvedById], references: [id])
   /// 退款方式与单号（同收款方式）
-  method         String?
-  reference      String?
-  paidAt         DateTime?
-  rejectReason   String?
+  method                 String?
+  reference              String?
+  paidAt                 DateTime?
+  rejectReason           String?
+  /// 这笔退款扣减的代理佣金（分）：冻结中 / 可结算的直接扣，已发放的记一条扣回
+  commissionReducedCents Int           @default(0)
+  commissions            Commission[]
   /// 跟随订单负责人，用于数据范围
-  ownerId        String
-  teamId         String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  ownerId                String
+  teamId                 String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
   @@index([status, createdAt])
   @@index([orderId])
@@ -770,17 +776,17 @@ enum AgentStatus {
 
 /// 代理：不登录系统，由员工维护资料、代录订单、月底对账。最多两级
 model Agent {
-  id            String      @id @default(cuid())
+  id            String       @id @default(cuid())
   /// 代理编号，界面显示为 A00001
-  no            Int         @unique @default(autoincrement())
+  no            Int          @unique @default(autoincrement())
   name          String
   wechat        String?
   phone         String?
   /// 上级代理；上级本身不能再有上级
   parentId      String?
-  parent        Agent?      @relation("AgentTree", fields: [parentId], references: [id])
-  children      Agent[]     @relation("AgentTree")
-  status        AgentStatus @default(ACTIVE)
+  parent        Agent?       @relation("AgentTree", fields: [parentId], references: [id])
+  children      Agent[]      @relation("AgentTree")
+  status        AgentStatus  @default(ACTIVE)
   /// 单独设置的佣金比例（万分比），为空按商品或全局默认
   firstRateBp   Int?
   renewalRateBp Int?
@@ -791,10 +797,74 @@ model Agent {
   payoutAccount String?
   remark        String?
   customers     Customer[]
-  orders        Order[]     @relation("OrderAgent")
-  parentOrders  Order[]     @relation("OrderParentAgent")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  orders        Order[]      @relation("OrderAgent")
+  parentOrders  Order[]      @relation("OrderParentAgent")
+  commissions   Commission[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([parentId])
+}
+
+enum CommissionRole {
+  /// 直推代理的主佣金
+  DIRECT
+  /// 上级代理的管理佣金
+  PARENT
+}
+
+enum CommissionKind {
+  /// 订单完成时计提
+  ACCRUAL
+  /// 已发放后又退款，下次对账扣回（金额为负）
+  CLAWBACK
+}
+
+enum CommissionStatus {
+  /// 冻结中：到 releaseAt 才能结算，期间退款直接扣减或作废
+  FROZEN
+  /// 可结算：等月度对账
+  RELEASABLE
+  /// 已对账：进了已确认的对账单，等打款
+  SETTLED
+  /// 已发放
+  PAID
+  /// 已作废：冻结期内全额退款等
+  VOID
+}
+
+/**
+ * 佣金明细：订单完成时按下单快照的比例计提。没加购质保的一条，冻结 N 天；
+ * 加购质保的按服务月拆成多条，逐月释放。退款按退款占比扣减。
+ */
+model Commission {
+  id            String           @id @default(cuid())
+  orderId       String
+  order         Order            @relation(fields: [orderId], references: [id])
+  agentId       String
+  agent         Agent            @relation(fields: [agentId], references: [id])
+  role          CommissionRole
+  kind          CommissionKind   @default(ACCRUAL)
+  /// 第几期（加购质保的按月拆分，从 1 开始）；扣回为 0
+  seq           Int              @default(1)
+  rateBp        Int
+  /// 这一期对应的佣金基数（分）
+  baseCents     Int
+  /// 计提时的金额（分）；扣回为负数
+  originalCents Int
+  /// 当前金额（分）= 计提金额 − 退款扣减
+  amountCents   Int
+  status        CommissionStatus
+  /// 解冻时间：到这个时间变成可结算
+  releaseAt     DateTime
+  releasedAt    DateTime?
+  /// 最近一次因为哪笔退款扣减 / 扣回
+  refundId      String?
+  refund        Refund?          @relation(fields: [refundId], references: [id])
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([agentId, status])
+  @@index([orderId])
+  @@index([status, releaseAt])
 }

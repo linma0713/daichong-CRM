@@ -4084,6 +4084,126 @@
           "代理"
         ]
       }
+    },
+    "/api/commissions": {
+      "get": {
+        "operationId": "Commissions_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CommissionStatus"
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CommissionRole"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CommissionKind"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "订单编号或客户称呼",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "佣金明细",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/commissions/summary": {
+      "get": {
+        "operationId": "Commissions_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AgentCommissionSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "按代理汇总佣金（冻结中、可结算、已对账、已发放）",
+        "tags": [
+          "代理"
+        ]
+      }
     }
   },
   "info": {
@@ -5999,7 +6119,7 @@
           "marginCents": {
             "type": "number",
             "nullable": true,
-            "description": "毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空"
+            "description": "毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金；没有「查看成本」权限时为空"
           },
           "createdAt": {
             "format": "date-time",
@@ -6347,9 +6467,13 @@
             "type": "number",
             "description": "已发生成本（分）"
           },
+          "commissionCents": {
+            "type": "number",
+            "description": "代理佣金（分），订单完成时计提，退款按比例扣减"
+          },
           "marginCents": {
             "type": "number",
-            "description": "毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本"
+            "description": "毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金"
           },
           "marginRate": {
             "type": "number",
@@ -6368,9 +6492,13 @@
             "type": "number",
             "description": "还没发生的上游扣费，按当前汇率和官方月费估算（分）"
           },
+          "estCommissionCents": {
+            "type": "number",
+            "description": "有代理但还没完成的订单：完成后预计要计提的佣金（分）"
+          },
           "estMarginCents": {
             "type": "number",
-            "description": "预计毛利（分）= 毛利 − 预计还要发生的成本"
+            "description": "预计毛利（分）= 毛利 − 预计还要发生的成本 − 预计佣金"
           },
           "costs": {
             "type": "array",
@@ -6384,13 +6512,167 @@
           "refundedCents",
           "feeCents",
           "costCents",
+          "commissionCents",
           "marginCents",
           "marginRate",
           "chargesDone",
           "chargesExpected",
           "estRemainingCostCents",
+          "estCommissionCents",
           "estMarginCents",
           "costs"
+        ]
+      },
+      "CommissionRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code"
+        ]
+      },
+      "CommissionRole": {
+        "type": "string",
+        "enum": [
+          "DIRECT",
+          "PARENT"
+        ]
+      },
+      "CommissionKind": {
+        "type": "string",
+        "enum": [
+          "ACCRUAL",
+          "CLAWBACK"
+        ]
+      },
+      "CommissionStatus": {
+        "type": "string",
+        "enum": [
+          "FROZEN",
+          "RELEASABLE",
+          "SETTLED",
+          "PAID",
+          "VOID"
+        ]
+      },
+      "CommissionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "description": "订单",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommissionRefDto"
+              }
+            ]
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/AgentBriefDto"
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommissionRole"
+              }
+            ]
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommissionKind"
+              }
+            ]
+          },
+          "seq": {
+            "type": "number",
+            "description": "第几期；扣回为 0"
+          },
+          "periods": {
+            "type": "number",
+            "description": "一共几期（加购质保的按服务月数拆分）"
+          },
+          "rateBp": {
+            "type": "number",
+            "description": "佣金比例（万分比）"
+          },
+          "baseCents": {
+            "type": "number",
+            "description": "这一期的佣金基数（分）"
+          },
+          "originalCents": {
+            "type": "number",
+            "description": "计提时的金额（分），扣回为负数"
+          },
+          "amountCents": {
+            "type": "number",
+            "description": "当前金额（分）= 计提金额 − 退款扣减"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommissionStatus"
+              }
+            ]
+          },
+          "releaseAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "解冻时间"
+          },
+          "releasedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "refund": {
+            "nullable": true,
+            "description": "因为哪笔退款扣减 / 扣回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommissionRefDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "order",
+          "customer",
+          "productName",
+          "agent",
+          "role",
+          "kind",
+          "seq",
+          "periods",
+          "rateBp",
+          "baseCents",
+          "originalCents",
+          "amountCents",
+          "status",
+          "releaseAt",
+          "releasedAt",
+          "refund",
+          "createdAt"
         ]
       },
       "OrderDetailDto": {
@@ -6556,7 +6838,7 @@
           "marginCents": {
             "type": "number",
             "nullable": true,
-            "description": "毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空"
+            "description": "毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金；没有「查看成本」权限时为空"
           },
           "createdAt": {
             "format": "date-time",
@@ -6593,6 +6875,14 @@
                 "$ref": "#/components/schemas/OrderProfitDto"
               }
             ]
+          },
+          "commissions": {
+            "nullable": true,
+            "description": "这笔订单的代理佣金；没有佣金查看权限时为空",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommissionDto"
+            }
           }
         },
         "required": [
@@ -6635,7 +6925,8 @@
           "tasks",
           "refunds",
           "refundableCents",
-          "profit"
+          "profit",
+          "commissions"
         ]
       },
       "CreateOrderDto": {
@@ -7701,6 +7992,10 @@
           "closedTickets": {
             "type": "number",
             "description": "自动关闭的售后工单数"
+          },
+          "releasedCommissions": {
+            "type": "number",
+            "description": "到期解冻、变成可结算的佣金条数"
           }
         },
         "required": [
@@ -7710,7 +8005,8 @@
           "internalRenewTasks",
           "cancelAutoRenewTasks",
           "escalatedTickets",
-          "closedTickets"
+          "closedTickets",
+          "releasedCommissions"
         ]
       },
       "TicketSubscriptionDto": {
@@ -8043,6 +8339,10 @@
             "type": "string",
             "nullable": true
           },
+          "commissionReducedCents": {
+            "type": "number",
+            "description": "这笔退款扣减的代理佣金（分），出账时计算"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -8067,6 +8367,7 @@
           "reference",
           "paidAt",
           "rejectReason",
+          "commissionReducedCents",
           "createdAt"
         ]
       },
@@ -10269,6 +10570,22 @@
             "type": "number",
             "description": "业绩（分）= 这些订单的已收 − 已退款"
           },
+          "frozenCents": {
+            "type": "number",
+            "description": "佣金冻结中（分）"
+          },
+          "releasableCents": {
+            "type": "number",
+            "description": "佣金可结算（分），已扣掉待扣回"
+          },
+          "settledCents": {
+            "type": "number",
+            "description": "佣金已对账待打款（分）"
+          },
+          "paidCents": {
+            "type": "number",
+            "description": "佣金已发放（分）"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -10292,6 +10609,10 @@
           "customerCount",
           "orderCount",
           "salesCents",
+          "frozenCents",
+          "releasableCents",
+          "settledCents",
+          "paidCents",
           "createdAt"
         ]
       },
@@ -10441,6 +10762,10 @@
             "type": "number",
             "description": "佣金基数（分）"
           },
+          "commissionCents": {
+            "type": "number",
+            "description": "这个代理在这笔订单上的佣金（分，不含已作废）；还没完成的订单为 0"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -10460,6 +10785,7 @@
           "agent",
           "rateBp",
           "baseCents",
+          "commissionCents",
           "createdAt"
         ]
       },
@@ -10540,6 +10866,22 @@
             "type": "number",
             "description": "业绩（分）= 这些订单的已收 − 已退款"
           },
+          "frozenCents": {
+            "type": "number",
+            "description": "佣金冻结中（分）"
+          },
+          "releasableCents": {
+            "type": "number",
+            "description": "佣金可结算（分），已扣掉待扣回"
+          },
+          "settledCents": {
+            "type": "number",
+            "description": "佣金已对账待打款（分）"
+          },
+          "paidCents": {
+            "type": "number",
+            "description": "佣金已发放（分）"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -10583,6 +10925,10 @@
           "customerCount",
           "orderCount",
           "salesCents",
+          "frozenCents",
+          "releasableCents",
+          "settledCents",
+          "paidCents",
           "createdAt",
           "children",
           "customers",
@@ -10711,6 +11057,65 @@
             ]
           }
         }
+      },
+      "CommissionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommissionDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "sumCents": {
+            "type": "number",
+            "description": "符合条件的佣金金额合计（分，不含已作废）"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "sumCents"
+        ]
+      },
+      "AgentCommissionSummaryDto": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/AgentBriefDto"
+          },
+          "frozenCents": {
+            "type": "number",
+            "description": "冻结中（分）"
+          },
+          "releasableCents": {
+            "type": "number",
+            "description": "可结算（分），已扣掉待扣回"
+          },
+          "clawbackCents": {
+            "type": "number",
+            "description": "其中待扣回（分，负数）"
+          },
+          "settledCents": {
+            "type": "number",
+            "description": "已对账待打款（分）"
+          },
+          "paidCents": {
+            "type": "number",
+            "description": "已发放（分）"
+          }
+        },
+        "required": [
+          "agent",
+          "frozenCents",
+          "releasableCents",
+          "clawbackCents",
+          "settledCents",
+          "paidCents"
+        ]
       }
     }
   }

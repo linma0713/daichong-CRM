@@ -47,6 +47,7 @@ import {
 } from '../../components/business';
 import { formatTime } from '../../components/format';
 import { RefundRequestModal } from '../aftersales/modals';
+import { CommissionTable } from '../commissions/CommissionTable';
 import { RefundTable } from '../aftersales/TicketDetailPage';
 
 const METHOD_LABELS = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.label]));
@@ -297,6 +298,19 @@ export function OrderDetailPage() {
       )}
 
       {o.profit && <ProfitCard profit={o.profit} status={o.status} />}
+      {o.commissions && o.agent && (
+        <Card title="代理佣金" size="small">
+          <CommissionTable
+            data={o.commissions}
+            hideOrder
+            emptyText={
+              o.status === 'CANCELLED'
+                ? '订单已取消，没有佣金'
+                : '订单完成（开通或续费生效）时按下单时的比例计提'
+            }
+          />
+        </Card>
+      )}
 
       {refunding && (
         <RefundRequestModal
@@ -430,6 +444,16 @@ function ProfitCard({
         <Col xs={12} md={4}>
           <Statistic title="已发生成本" value={formatCents(p.costCents)} />
         </Col>
+        {(p.commissionCents !== 0 || p.estCommissionCents > 0) && (
+          <Col xs={12} md={4}>
+            <Statistic
+              title={
+                <Tooltip title="订单完成时按下单时的比例计提，退款按比例扣减">代理佣金</Tooltip>
+              }
+              value={formatCents(p.commissionCents)}
+            />
+          </Col>
+        )}
         <Col xs={12} md={4}>
           <Statistic
             title="毛利"
@@ -443,14 +467,25 @@ function ProfitCard({
             value={p.marginRate === null ? '—' : `${(p.marginRate * 100).toFixed(1)}%`}
           />
         </Col>
-        {pending > 0 && status !== 'CANCELLED' && (
+        {((pending > 0 && status !== 'CANCELLED') || p.estCommissionCents > 0) && (
           <Col xs={12} md={4}>
             <Statistic
               title={
                 <Tooltip
-                  title={`服务期 ${p.chargesExpected} 个月，上游按月扣费，还有 ${pending} 次没发生；按官方月费和当前汇率估算`}
+                  title={[
+                    pending > 0 &&
+                      `服务期 ${p.chargesExpected} 个月，上游按月扣费，还有 ${pending} 次没发生；按官方月费和当前汇率估算`,
+                    p.estCommissionCents > 0 &&
+                      `订单完成后预计计提代理佣金 ${formatCents(p.estCommissionCents)}`,
+                  ]
+                    .filter(Boolean)
+                    .join('；')}
                 >
-                  预计毛利（还要扣 {pending} 次）
+                  预计毛利（
+                  {[pending > 0 && `还要扣 ${pending} 次`, p.estCommissionCents > 0 && '含佣金']
+                    .filter(Boolean)
+                    .join('，')}
+                  ）
                 </Tooltip>
               }
               value={formatCents(p.estMarginCents)}

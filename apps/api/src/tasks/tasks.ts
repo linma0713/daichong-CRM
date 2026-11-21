@@ -69,6 +69,7 @@ import { SecretBox } from '../common/secret-box';
 import { productName } from '../catalog/catalog';
 import { toCustomerBrief } from '../orders/orders';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
+import { CommissionEngine } from '../commissions/engine';
 import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service';
 import { LedgerModule, LedgerService } from '../inventory/ledger';
 
@@ -411,6 +412,7 @@ export class TasksService {
     private readonly fulfillment: FulfillmentService,
     private readonly secrets: SecretBox,
     private readonly ledger: LedgerService,
+    private readonly commissions: CommissionEngine,
   ) {}
 
   async list(q: TaskQueryDto, user: AuthUser): Promise<TaskListDto> {
@@ -740,6 +742,7 @@ export class TasksService {
         periodEndAt: endAt,
       },
     });
+    await this.commissions.accrue(tx, order.id, now);
     return {
       subscriptionId: sub.id,
       charge: {

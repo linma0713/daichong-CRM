@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  commissionOf,
   displayNo,
   feeOf,
   formatCents,
@@ -7,6 +8,7 @@ import {
   parseNo,
   proratedRefund,
   resolveCommissionRates,
+  splitCents,
   termLabel,
 } from './business';
 
@@ -143,5 +145,22 @@ describe('formatRate', () => {
     expect(formatRate(750)).toBe('7.5%');
     expect(formatRate(0)).toBe('0%');
     expect(formatRate(1234)).toBe('12.34%');
+  });
+});
+
+describe('佣金金额', () => {
+  it('按万分比算，四舍五入到分；基数或比例为 0 时没有佣金', () => {
+    expect(commissionOf(100000, 1500)).toBe(15000);
+    expect(commissionOf(33333, 800)).toBe(2667);
+    expect(commissionOf(0, 1500)).toBe(0);
+    expect(commissionOf(100000, 0)).toBe(0);
+  });
+
+  it('拆成多期时零头放最后一期，合计不变', () => {
+    expect(splitCents(10000, 3)).toEqual([3333, 3333, 3334]);
+    expect(splitCents(5, 1)).toEqual([5]);
+    expect(splitCents(100, 0)).toEqual([100]);
+    const parts = splitCents(29999, 12);
+    expect(parts.reduce((a, b) => a + b, 0)).toBe(29999);
   });
 });

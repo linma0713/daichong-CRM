@@ -23,6 +23,7 @@ import {
   AGENT_STATUS_LABELS,
   AGENT_STATUSES,
   PAYMENT_METHODS,
+  formatCents,
   formatRate,
   type AgentStatus,
   type PaymentMethod,
@@ -137,6 +138,22 @@ export function AgentsPage() {
       title: '业绩',
       key: 'sales',
       render: (_, a) => <Money cents={a.salesCents} strong />,
+    },
+    {
+      title: '佣金',
+      key: 'commission',
+      render: (_, a) => (
+        <Space direction="vertical" size={0} style={{ fontSize: 12 }}>
+          <span>
+            可结算{' '}
+            <Typography.Text strong type={a.releasableCents < 0 ? 'danger' : undefined}>
+              {formatCents(a.releasableCents)}
+            </Typography.Text>
+          </span>
+          {a.frozenCents > 0 && <span>冻结中 {formatCents(a.frozenCents)}</span>}
+          {a.paidCents > 0 && <span>已发放 {formatCents(a.paidCents)}</span>}
+        </Space>
+      ),
     },
     { title: '状态', key: 'status', render: (_, a) => <AgentStatusTag status={a.status} /> },
   ];

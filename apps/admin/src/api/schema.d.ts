@@ -1199,6 +1199,40 @@ export interface paths {
         patch: operations["Agents_update"];
         trace?: never;
     };
+    "/api/commissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 佣金明细 */
+        get: operations["Commissions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commissions/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 按代理汇总佣金（冻结中、可结算、已对账、已发放） */
+        get: operations["Commissions_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1785,7 +1819,7 @@ export interface components {
             parentRateBp: number | null;
             /** @description 佣金基数（分）= 应收，按设置决定是否扣掉质保费 */
             commissionBaseCents: number | null;
-            /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
+            /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金；没有「查看成本」权限时为空 */
             marginCents: number | null;
             /** Format: date-time */
             createdAt: string;
@@ -1869,7 +1903,9 @@ export interface components {
             feeCents: number;
             /** @description 已发生成本（分） */
             costCents: number;
-            /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 */
+            /** @description 代理佣金（分），订单完成时计提，退款按比例扣减 */
+            commissionCents: number;
+            /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金 */
             marginCents: number;
             /** @description 毛利率（0–1） */
             marginRate: number | null;
@@ -1879,9 +1915,54 @@ export interface components {
             chargesExpected: number;
             /** @description 还没发生的上游扣费，按当前汇率和官方月费估算（分） */
             estRemainingCostCents: number;
-            /** @description 预计毛利（分）= 毛利 − 预计还要发生的成本 */
+            /** @description 有代理但还没完成的订单：完成后预计要计提的佣金（分） */
+            estCommissionCents: number;
+            /** @description 预计毛利（分）= 毛利 − 预计还要发生的成本 − 预计佣金 */
             estMarginCents: number;
             costs: components["schemas"]["CostEntryDto"][];
+        };
+        CommissionRefDto: {
+            id: string;
+            code: string;
+        };
+        /** @enum {string} */
+        CommissionRole: "DIRECT" | "PARENT";
+        /** @enum {string} */
+        CommissionKind: "ACCRUAL" | "CLAWBACK";
+        /** @enum {string} */
+        CommissionStatus: "FROZEN" | "RELEASABLE" | "SETTLED" | "PAID" | "VOID";
+        CommissionDto: {
+            id: string;
+            /** @description 订单 */
+            order: components["schemas"]["CommissionRefDto"];
+            customer: components["schemas"]["CustomerBriefDto"];
+            productName: string;
+            agent: components["schemas"]["AgentBriefDto"];
+            role: components["schemas"]["CommissionRole"];
+            kind: components["schemas"]["CommissionKind"];
+            /** @description 第几期；扣回为 0 */
+            seq: number;
+            /** @description 一共几期（加购质保的按服务月数拆分） */
+            periods: number;
+            /** @description 佣金比例（万分比） */
+            rateBp: number;
+            /** @description 这一期的佣金基数（分） */
+            baseCents: number;
+            /** @description 计提时的金额（分），扣回为负数 */
+            originalCents: number;
+            /** @description 当前金额（分）= 计提金额 − 退款扣减 */
+            amountCents: number;
+            status: components["schemas"]["CommissionStatus"];
+            /**
+             * Format: date-time
+             * @description 解冻时间
+             */
+            releaseAt: string;
+            releasedAt: string | null;
+            /** @description 因为哪笔退款扣减 / 扣回 */
+            refund: components["schemas"]["CommissionRefDto"] | null;
+            /** Format: date-time */
+            createdAt: string;
         };
         OrderDetailDto: {
             id: string;
@@ -1931,7 +2012,7 @@ export interface components {
             parentRateBp: number | null;
             /** @description 佣金基数（分）= 应收，按设置决定是否扣掉质保费 */
             commissionBaseCents: number | null;
-            /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空 */
+            /** @description 毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金；没有「查看成本」权限时为空 */
             marginCents: number | null;
             /** Format: date-time */
             createdAt: string;
@@ -1942,6 +2023,8 @@ export interface components {
             refundableCents: number;
             /** @description 有「查看成本」权限时返回 */
             profit: components["schemas"]["OrderProfitDto"] | null;
+            /** @description 这笔订单的代理佣金；没有佣金查看权限时为空 */
+            commissions: components["schemas"]["CommissionDto"][] | null;
         };
         CreateOrderDto: {
             customerId: string;
@@ -2260,6 +2343,8 @@ export interface components {
             escalatedTickets: number;
             /** @description 自动关闭的售后工单数 */
             closedTickets: number;
+            /** @description 到期解冻、变成可结算的佣金条数 */
+            releasedCommissions: number;
         };
         TicketSubscriptionDto: {
             id: string;
@@ -2345,6 +2430,8 @@ export interface components {
             reference: string | null;
             paidAt: string | null;
             rejectReason: string | null;
+            /** @description 这笔退款扣减的代理佣金（分），出账时计算 */
+            commissionReducedCents: number;
             /** Format: date-time */
             createdAt: string;
         };
@@ -3016,6 +3103,14 @@ export interface components {
             orderCount: number;
             /** @description 业绩（分）= 这些订单的已收 − 已退款 */
             salesCents: number;
+            /** @description 佣金冻结中（分） */
+            frozenCents: number;
+            /** @description 佣金可结算（分），已扣掉待扣回 */
+            releasableCents: number;
+            /** @description 佣金已对账待打款（分） */
+            settledCents: number;
+            /** @description 佣金已发放（分） */
+            paidCents: number;
             /** Format: date-time */
             createdAt: string;
         };
@@ -3063,6 +3158,8 @@ export interface components {
             rateBp: number;
             /** @description 佣金基数（分） */
             baseCents: number;
+            /** @description 这个代理在这笔订单上的佣金（分，不含已作废）；还没完成的订单为 0 */
+            commissionCents: number;
             /** Format: date-time */
             createdAt: string;
         };
@@ -3089,6 +3186,14 @@ export interface components {
             orderCount: number;
             /** @description 业绩（分）= 这些订单的已收 − 已退款 */
             salesCents: number;
+            /** @description 佣金冻结中（分） */
+            frozenCents: number;
+            /** @description 佣金可结算（分），已扣掉待扣回 */
+            releasableCents: number;
+            /** @description 佣金已对账待打款（分） */
+            settledCents: number;
+            /** @description 佣金已发放（分） */
+            paidCents: number;
             /** Format: date-time */
             createdAt: string;
             children: components["schemas"]["AgentDto"][];
@@ -3134,6 +3239,25 @@ export interface components {
             remark?: string | null;
             name?: string;
             status?: components["schemas"]["AgentStatus"];
+        };
+        CommissionListDto: {
+            items: components["schemas"]["CommissionDto"][];
+            total: number;
+            /** @description 符合条件的佣金金额合计（分，不含已作废） */
+            sumCents: number;
+        };
+        AgentCommissionSummaryDto: {
+            agent: components["schemas"]["AgentBriefDto"];
+            /** @description 冻结中（分） */
+            frozenCents: number;
+            /** @description 可结算（分），已扣掉待扣回 */
+            releasableCents: number;
+            /** @description 其中待扣回（分，负数） */
+            clawbackCents: number;
+            /** @description 已对账待打款（分） */
+            settledCents: number;
+            /** @description 已发放（分） */
+            paidCents: number;
         };
     };
     responses: never;
@@ -5281,6 +5405,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentDetailDto"];
+                };
+            };
+        };
+    };
+    Commissions_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                agentId?: string;
+                status?: components["schemas"]["CommissionStatus"];
+                role?: components["schemas"]["CommissionRole"];
+                kind?: components["schemas"]["CommissionKind"];
+                /** @description 订单编号或客户称呼 */
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommissionListDto"];
+                };
+            };
+        };
+    };
+    Commissions_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentCommissionSummaryDto"][];
                 };
             };
         };

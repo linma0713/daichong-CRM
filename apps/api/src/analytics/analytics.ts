@@ -237,6 +237,7 @@ export class AnalyticsService {
           refundedCents: true,
           feeCents: true,
           costCents: true,
+          commissionCents: true,
         },
       }),
       this.prisma.customer.findMany({
@@ -302,6 +303,7 @@ export class AnalyticsService {
           refundedCents: true,
           feeCents: true,
           costCents: true,
+          commissionCents: true,
         },
       }),
     ]);

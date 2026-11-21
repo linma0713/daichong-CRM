@@ -41,6 +41,7 @@ import {
   TASK_TYPES,
   displayNo,
   feeOf,
+  commissionOf,
   hasPermission,
   parseNo,
   resolveCommissionRates,
@@ -70,6 +71,7 @@ import { badRequest, notFound } from '../common/errors';
 import { PageQueryDto, skipTake } from '../common/pagination';
 import { SecretBox } from '../common/secret-box';
 import { productName } from '../catalog/catalog';
+import { CommissionDto, commissionInclude, toCommissionDto } from '../commissions/commissions';
 import { visibleCustomers } from '../customers/customers';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service';
@@ -253,7 +255,8 @@ export class OrderDto {
   @ApiProperty({
     type: Number,
     nullable: true,
-    description: '毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本；没有「查看成本」权限时为空',
+    description:
+      '毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金；没有「查看成本」权限时为空',
   })
   marginCents: number | null;
   @ApiProperty() createdAt: Date;
@@ -304,7 +307,9 @@ export class OrderProfitDto {
   @ApiProperty({ description: '已退款（分）' }) refundedCents: number;
   @ApiProperty({ description: '收款手续费（分）' }) feeCents: number;
   @ApiProperty({ description: '已发生成本（分）' }) costCents: number;
-  @ApiProperty({ description: '毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本' })
+  @ApiProperty({ description: '代理佣金（分），订单完成时计提，退款按比例扣减' })
+  commissionCents: number;
+  @ApiProperty({ description: '毛利（分）= 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金' })
   marginCents: number;
   @ApiProperty({ type: Number, nullable: true, description: '毛利率（0–1）' }) marginRate:
     number | null;
@@ -312,7 +317,10 @@ export class OrderProfitDto {
   @ApiProperty({ description: '服务期内应有的上游扣费次数（= 服务月数）' }) chargesExpected: number;
   @ApiProperty({ description: '还没发生的上游扣费，按当前汇率和官方月费估算（分）' })
   estRemainingCostCents: number;
-  @ApiProperty({ description: '预计毛利（分）= 毛利 − 预计还要发生的成本' }) estMarginCents: number;
+  @ApiProperty({ description: '有代理但还没完成的订单：完成后预计要计提的佣金（分）' })
+  estCommissionCents: number;
+  @ApiProperty({ description: '预计毛利（分）= 毛利 − 预计还要发生的成本 − 预计佣金' })
+  estMarginCents: number;
   @ApiProperty({ type: [CostEntryDto] }) costs: CostEntryDto[];
 }
 
@@ -340,6 +348,12 @@ export class OrderDetailDto extends OrderDto {
   refundableCents: number;
   @ApiProperty({ type: OrderProfitDto, nullable: true, description: '有「查看成本」权限时返回' })
   profit: OrderProfitDto | null;
+  @ApiProperty({
+    type: [CommissionDto],
+    nullable: true,
+    description: '这笔订单的代理佣金；没有佣金查看权限时为空',
+  })
+  commissions: CommissionDto[] | null;
 }
 
 // ─────────────── Service ───────────────
@@ -370,14 +384,15 @@ export function toCustomerBrief(c: {
   };
 }
 
-/** 毛利 = 已收 − 已退款 − 手续费 − 已发生成本 */
+/** 毛利 = 已收 − 已退款 − 手续费 − 已发生成本 − 代理佣金 */
 export function orderMargin(o: {
   paidCents: number;
   refundedCents: number;
   feeCents: number;
   costCents: number;
+  commissionCents: number;
 }): number {
-  return o.paidCents - o.refundedCents - o.feeCents - o.costCents;
+  return o.paidCents - o.refundedCents - o.feeCents - o.costCents - o.commissionCents;
 }
 
 export const canSeeCost = (user: AuthUser) => hasPermission(user.permissions, 'finance:read');
@@ -497,6 +512,14 @@ export class OrdersService {
       },
     });
     if (!o) throw notFound('订单');
+    const commissions =
+      canSeeCommission(user) && o.agentId
+        ? await this.prisma.commission.findMany({
+            where: { orderId: o.id },
+            include: commissionInclude,
+            orderBy: [{ role: 'asc' }, { kind: 'asc' }, { seq: 'asc' }, { createdAt: 'asc' }],
+          })
+        : null;
     const pending = o.refunds
       .filter((r) => r.status === 'PENDING')
       .reduce((sum, r) => sum + r.amountCents, 0);
@@ -504,6 +527,7 @@ export class OrdersService {
     return {
       ...toOrderDto(o, user),
       profit: canSeeCost(user) ? await this.profit(o, terminated) : null,
+      commissions: commissions ? commissions.map(toCommissionDto) : null,
       refunds: o.refunds.map((r) => ({
         id: r.id,
         code: displayNo('K', r.no),
@@ -542,7 +566,10 @@ export class OrdersService {
     };
   }
 
-  /** 每单毛利：已发生的成本 + 按服务月数估算还要发生的上游扣费（退款终止服务后不再估算） */
+  /**
+   * 每单毛利：已发生的成本 + 按服务月数估算还要发生的上游扣费（退款终止服务后不再估算）；
+   * 有代理还没完成的订单，按下单时的比例估算完成后要计提的佣金
+   */
   private async profit(
     o: {
       id: string;
@@ -553,6 +580,11 @@ export class OrdersService {
       refundedCents: number;
       feeCents: number;
       costCents: number;
+      commissionCents: number;
+      agentId: string | null;
+      commissionBaseCents: number;
+      agentRateBp: number;
+      parentRateBp: number;
     },
     terminated: boolean,
   ): Promise<OrderProfitDto> {
@@ -575,17 +607,24 @@ export class OrdersService {
     const estRemainingCostCents = Math.round(
       Math.max(0, chargesExpected - chargesDone) * monthly * exchangeRate,
     );
+    const estCommissionCents =
+      o.agentId && (o.status === 'PENDING_PAYMENT' || o.status === 'FULFILLING')
+        ? commissionOf(o.commissionBaseCents, o.agentRateBp) +
+          commissionOf(o.commissionBaseCents, o.parentRateBp)
+        : 0;
     return {
       revenueCents: o.paidCents,
       refundedCents: o.refundedCents,
       feeCents: o.feeCents,
       costCents: o.costCents,
+      commissionCents: o.commissionCents,
       marginCents,
       marginRate: o.paidCents > 0 ? Math.round((marginCents / o.paidCents) * 1000) / 1000 : null,
       chargesDone,
       chargesExpected,
       estRemainingCostCents,
-      estMarginCents: marginCents - estRemainingCostCents,
+      estCommissionCents,
+      estMarginCents: marginCents - estRemainingCostCents - estCommissionCents,
       costs: entries.map((e) => ({
         id: e.id,
         kind: e.kind,
