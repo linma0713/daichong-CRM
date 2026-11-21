@@ -46,6 +46,11 @@ export class EnvVars {
   @Matches(/^https?:\/\/[^\s]+$/, { message: 'APP_PUBLIC_URL 要以 http:// 或 https:// 开头' })
   APP_PUBLIC_URL?: string;
 
+  /** 附件（截图、凭证）存放目录；Docker 里是挂了卷的 /app/uploads，备份时要一起备份 */
+  @IsOptional()
+  @IsString()
+  UPLOAD_DIR?: string;
+
   /** 只在本地联调时使用：把企业微信接口指向模拟服务 */
   @IsOptional()
   @IsString()

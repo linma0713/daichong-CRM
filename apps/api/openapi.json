@@ -5851,6 +5851,487 @@
           "渠道与营销"
         ]
       }
+    },
+    "/api/attachments": {
+      "get": {
+        "operationId": "Attachments_list",
+        "parameters": [
+          {
+            "name": "ownerType",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "order",
+                "ticket",
+                "refund",
+                "customer",
+                "statement"
+              ]
+            }
+          },
+          {
+            "name": "ownerId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AttachmentDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "某条业务（订单、工单、退款、客户、对账单）的附件",
+        "tags": [
+          "附件"
+        ]
+      },
+      "post": {
+        "operationId": "Attachments_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "ownerType",
+                  "ownerId",
+                  "file"
+                ],
+                "properties": {
+                  "ownerType": {
+                    "type": "string",
+                    "enum": [
+                      "order",
+                      "ticket",
+                      "refund",
+                      "customer",
+                      "statement"
+                    ]
+                  },
+                  "ownerId": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "上传附件（图片或 PDF，10 MB 以内）",
+        "tags": [
+          "附件"
+        ]
+      }
+    },
+    "/api/attachments/{id}/file": {
+      "get": {
+        "operationId": "Attachments_file",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "下载 / 预览附件文件",
+        "tags": [
+          "附件"
+        ]
+      }
+    },
+    "/api/attachments/{id}": {
+      "delete": {
+        "operationId": "Attachments_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "删除附件（上传的人或管理员）",
+        "tags": [
+          "附件"
+        ]
+      }
+    },
+    "/api/customers/import": {
+      "post": {
+        "operationId": "CustomerImport_import",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportCustomersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "批量导入客户（一次最多 500 行）。dryRun=true 只检查；正式导入时有问题的行会跳过",
+        "tags": [
+          "客户"
+        ]
+      }
+    },
+    "/api/exports/customers": {
+      "get": {
+        "operationId": "Exports_customers",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "编号、称呼、微信、Telegram、邮箱或手机号",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "source",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "organic",
+                "referral",
+                "agent",
+                "ads",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "ownerId",
+            "required": false,
+            "in": "query",
+            "description": "负责人",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "description": "绑定的代理",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channelId",
+            "required": false,
+            "in": "query",
+            "description": "获客渠道；none = 没标渠道的",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CustomerStage"
+            }
+          },
+          {
+            "name": "vip",
+            "required": false,
+            "in": "query",
+            "description": "只看 VIP（累计实付达到业务设置里的门槛）",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "uncontacted",
+            "required": false,
+            "in": "query",
+            "description": "只看服务结束后还没联系过的（召回用）",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "lostReason",
+            "required": false,
+            "in": "query",
+            "description": "流失原因",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "price",
+                "no_need",
+                "competitor",
+                "official",
+                "bad_experience",
+                "unreachable",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "createdAt 最新录入 / netPaid 累计实付从高到低 / serviceEnd 服务最近结束 / lastContact 最久没联系",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "netPaid",
+                "serviceEnd",
+                "lastContact"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerExportDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "导出客户清单（筛选条件同客户列表，最多 5000 条，记日志）",
+        "tags": [
+          "导出"
+        ]
+      }
+    },
+    "/api/exports/orders": {
+      "get": {
+        "operationId": "Exports_orders",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "订单编号或客户称呼",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrderStatus"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrderKind"
+            }
+          },
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subscriptionId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "description": "直推代理",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderExportDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "导出订单清单（筛选条件同订单列表，最多 5000 条，记日志）",
+        "tags": [
+          "导出"
+        ]
+      }
     }
   },
   "info": {
@@ -14871,6 +15352,231 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "AttachmentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ownerType": {
+            "type": "string",
+            "enum": [
+              "order",
+              "ticket",
+              "refund",
+              "customer",
+              "statement"
+            ]
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "image/png"
+          },
+          "size": {
+            "type": "number",
+            "description": "字节数"
+          },
+          "uploadedBy": {
+            "$ref": "#/components/schemas/UserBriefDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "canDelete": {
+            "type": "boolean",
+            "description": "当前员工能不能删（上传的人或管理员）"
+          }
+        },
+        "required": [
+          "id",
+          "ownerType",
+          "ownerId",
+          "fileName",
+          "mimeType",
+          "size",
+          "uploadedBy",
+          "createdAt",
+          "canDelete"
+        ]
+      },
+      "ImportCustomerRowDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "wechat": {
+            "type": "string"
+          },
+          "telegram": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "description": "来源：中文名或英文值，不填为自然流量"
+          },
+          "channel": {
+            "type": "string",
+            "description": "渠道名称"
+          },
+          "tags": {
+            "type": "string",
+            "description": "标签，用逗号、顿号或空格隔开"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string",
+            "description": "负责人：员工姓名或登录名，不填为自己"
+          },
+          "line": {
+            "type": "number",
+            "description": "这一行在表格里的行号，提示里用它；不传按第几行数据算"
+          }
+        }
+      },
+      "ImportCustomersDto": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportCustomerRowDto"
+            }
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "true 只检查不导入"
+          }
+        },
+        "required": [
+          "rows"
+        ]
+      },
+      "ImportRowResultDto": {
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "number",
+            "description": "表格行号（传了 line 用 line，否则是第几行数据）"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ]
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ownerName": {
+            "type": "string",
+            "nullable": true,
+            "description": "负责人姓名"
+          }
+        },
+        "required": [
+          "row",
+          "name",
+          "status",
+          "errors",
+          "ownerName"
+        ]
+      },
+      "ImportResultDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "valid": {
+            "type": "number",
+            "description": "可以导入的行数"
+          },
+          "created": {
+            "type": "number",
+            "description": "实际新建的客户数（只检查时为 0）"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRowResultDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "valid",
+          "created",
+          "rows"
+        ]
+      },
+      "CustomerExportDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "超过 5000 条时只导出前 5000 条"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "truncated"
+        ]
+      },
+      "OrderExportDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "truncated"
         ]
       }
     }

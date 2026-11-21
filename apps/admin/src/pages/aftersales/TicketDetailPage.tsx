@@ -38,6 +38,7 @@ import {
 } from '../../components/business';
 import { formatTime } from '../../components/format';
 import { RefundRequestModal, useAftersalesRefresh } from './modals';
+import { Attachments, AttachmentsButton } from '../../components/attachments';
 
 type Ticket = Schemas['TicketDetailDto'];
 type TextAction = 'replace' | 'resolve' | 'close' | 'reopen';
@@ -236,6 +237,15 @@ export function TicketDetailPage() {
         </div>
       </Card>
 
+      <Card title="附件" size="small">
+        <Attachments
+          ownerType="ticket"
+          ownerId={t.id}
+          canUpload={can('ticket:create') || can('ticket:handle')}
+          hint="客户发来的报错截图、封号邮件、排查截图"
+        />
+      </Card>
+
       <Card title="处理记录" size="small">
         <Timeline
           style={{ marginTop: 8 }}
@@ -355,6 +365,8 @@ export function RefundTable({
   refunds: RefundRow[];
   style?: React.CSSProperties;
 }) {
+  const { can } = useAuth();
+  const canUpload = can('refund:approve') || can('ticket:handle');
   return (
     <Table<RefundRow>
       rowKey="id"
@@ -388,6 +400,19 @@ export function RefundTable({
             r.paidAt
               ? `${formatTime(r.paidAt)} · ${METHOD_LABELS[r.method ?? ''] ?? r.method}`
               : '—',
+        },
+        {
+          title: '凭证',
+          key: 'files',
+          render: (_, r) => (
+            <AttachmentsButton
+              ownerType="refund"
+              ownerId={r.id}
+              title={`退款凭证：${r.code}`}
+              canUpload={canUpload}
+              hint="退款截图、客户确认记录等"
+            />
+          ),
         },
       ]}
     />

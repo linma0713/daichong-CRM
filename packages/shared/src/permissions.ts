@@ -38,7 +38,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     available: true,
     permissions: [
       { code: 'customer:read', name: '查看客户' },
-      { code: 'customer:write', name: '新增 / 编辑客户' },
+      { code: 'customer:write', name: '新增 / 编辑客户、批量导入客户' },
+      { code: 'customer:export', name: '导出客户清单（含联系方式，会记录日志）' },
       { code: 'script:write', name: '管理话术库（所有员工都能查看和复制话术）' },
     ],
   },
@@ -56,6 +57,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { code: 'order:read', name: '查看订单' },
       { code: 'order:write', name: '录入 / 修改订单' },
       { code: 'payment:confirm', name: '确认收款' },
+      { code: 'order:export', name: '导出订单清单（会记录日志）' },
     ],
   },
   {

@@ -100,6 +100,11 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'channel.cost.delete', label: '删除投放成本' },
   { value: 'referral.pay', label: '发放转介绍奖励' },
   { value: 'referral.cancel', label: '作废转介绍奖励' },
+  { value: 'attachment.upload', label: '上传附件' },
+  { value: 'attachment.delete', label: '删除附件' },
+  { value: 'customer.import', label: '批量导入客户' },
+  { value: 'customer.export', label: '导出客户清单' },
+  { value: 'order.export', label: '导出订单清单' },
   { value: 'settings.update', label: '修改业务设置' },
   { value: 'job.sweep', label: '手动运行到期巡检' },
   { value: 'job.notify-scan', label: '手动运行消息巡检' },
@@ -123,6 +128,9 @@ const DANGER_ACTIONS = new Set([
   'refund.approve',
   'statement.pay',
   'referral.pay',
+  'attachment.delete',
+  'customer.export',
+  'order.export',
 ]);
 
 export function AuditLogsPage() {

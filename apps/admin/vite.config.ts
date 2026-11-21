@@ -11,8 +11,8 @@ export default defineConfig({
     proxy: { '/api': { target: apiTarget, changeOrigin: true } },
   },
   build: {
-    // antd 本身约 1MB（gzip 后 350KB），内部后台可以接受
-    chunkSizeWarningLimit: 1200,
+    // antd 约 1.25MB（gzip 后约 390KB），只加载一次、长期缓存，内部后台可以接受
+    chunkSizeWarningLimit: 1400,
     rollupOptions: {
       output: {
         manualChunks: {

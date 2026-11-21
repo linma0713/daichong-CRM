@@ -36,6 +36,7 @@ import {
 } from '../../components/business';
 import { formatTime } from '../../components/format';
 import { CommissionTable } from './CommissionTable';
+import { Attachments } from '../../components/attachments';
 
 type Detail = Schemas['StatementDetailDto'];
 type Payment = Schemas['StatementPaymentDto'];
@@ -231,6 +232,15 @@ export function StatementDetailPage() {
             <Descriptions.Item label="备注">{s.note ?? '—'}</Descriptions.Item>
           )}
         </Descriptions>
+      </Card>
+
+      <Card title="附件" size="small">
+        <Attachments
+          ownerType="statement"
+          ownerId={s.id}
+          canUpload={can('commission:settle')}
+          hint="打款截图、代理确认的对账截图"
+        />
       </Card>
 
       <Card title={`佣金明细（${s.commissions.length}）`} size="small">

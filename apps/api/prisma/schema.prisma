@@ -72,6 +72,7 @@ model User {
   channelCosts        ChannelCost[]
   paidRewards         ReferralReward[]      @relation("RewardPaidBy")
   scripts             ScriptTemplate[]      @relation("ScriptCreator")
+  attachments         Attachment[]          @relation("AttachmentUploader")
   /// 在班：自动派单优先派给在班的充值员；没人在班时照旧派给所有充值员
   onDuty              Boolean               @default(false)
   onDutyChangedAt     DateTime?
@@ -1114,4 +1115,24 @@ model ReferralReward {
 
   @@index([status, createdAt])
   @@index([referrerId])
+}
+
+/// 附件：收款截图、售后截图、打款凭证等。文件本身存在 UPLOAD_DIR（Docker 卷 uploads），这里只记元数据
+model Attachment {
+  id           String   @id @default(cuid())
+  /// 挂在哪类业务上：order 订单 / ticket 售后工单 / refund 退款 / customer 客户 / statement 佣金对账单
+  ownerType    String
+  ownerId      String
+  /// 上传时的文件名（只用于显示和下载）
+  fileName     String
+  /// 按文件内容识别的类型：image/png、image/jpeg、image/webp、image/gif、application/pdf
+  mimeType     String
+  size         Int
+  /// 存储里的路径，形如 2026/11/<随机>.png
+  storageKey   String   @unique
+  uploadedById String
+  uploadedBy   User     @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([ownerType, ownerId])
 }
