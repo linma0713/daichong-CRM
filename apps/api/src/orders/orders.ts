@@ -41,6 +41,9 @@ import {
   TASK_STATUSES,
   TASK_TYPES,
   displayNo,
+  formatCents,
+  receiptMethodLabel,
+  termLabel,
   feeOf,
   commissionOf,
   hasPermission,
@@ -78,6 +81,7 @@ import { visibleCustomers } from '../customers/customers';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service';
 import { SettingsModule, SettingsService } from '../settings/settings';
+import { NotifyService } from '../notify/notify';
 
 const ORDER_KINDS: OrderKind[] = ['NEW', 'RENEWAL'];
 
@@ -468,6 +472,7 @@ export class OrdersService {
     private readonly fulfillment: FulfillmentService,
     private readonly secrets: SecretBox,
     private readonly settings: SettingsService,
+    private readonly notify: NotifyService,
   ) {}
 
   async list(q: OrderQueryDto, user: AuthUser): Promise<OrderListDto> {
@@ -786,6 +791,26 @@ export class OrdersService {
         data: { paidCents: paid, feeCents: { increment: feeCents } },
       });
       if (paid === order.amountCents) await this.markPaid(tx, id);
+      const customer = await tx.customer.findUniqueOrThrow({
+        where: { id: order.customerId },
+        select: { no: true, name: true },
+      });
+      await this.notify.emit(tx, {
+        event: 'payment.received',
+        title: `收到付款 ${formatCents(dto.amountCents)} · 订单 ${displayNo('D', order.no)}`,
+        body: [
+          `客户：${customer.name}（${displayNo('C', customer.no)}） · ${order.planName} ${termLabel(order.termMonths)}`,
+          `${receiptMethodLabel(dto.method)}${
+            paid === order.amountCents
+              ? ' · 已收齐，开通任务已生成'
+              : ` · 还差 ${formatCents(order.amountCents - paid)}`
+          }`,
+          `确认人：${user.displayName}`,
+        ].join('\n'),
+        link: `/orders/${id}`,
+        to: [order.ownerId],
+        except: user.id,
+      });
     });
     return this.get(id, user);
   }

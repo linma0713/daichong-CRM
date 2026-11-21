@@ -57,6 +57,7 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'order.cancel', label: '取消订单' },
   { value: 'task.claim', label: '领取任务' },
   { value: 'task.assign', label: '转交任务' },
+  { value: 'task.duty', label: '切换在班状态' },
   { value: 'task.complete', label: '完成任务' },
   { value: 'task.fail', label: '任务标记失败' },
   { value: 'task.cancel', label: '作废任务' },
@@ -90,6 +91,12 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'statement.cancel', label: '作废佣金对账单' },
   { value: 'settings.update', label: '修改业务设置' },
   { value: 'job.sweep', label: '手动运行到期巡检' },
+  { value: 'job.notify-scan', label: '手动运行消息巡检' },
+  { value: 'notify.channel.create', label: '添加企业微信群机器人' },
+  { value: 'notify.channel.update', label: '修改企业微信群机器人' },
+  { value: 'notify.channel.delete', label: '删除企业微信群机器人' },
+  { value: 'notify.channel.test', label: '发送群机器人测试消息' },
+  { value: 'notify.message.retry', label: '重发群消息' },
 ];
 
 const DANGER_ACTIONS = new Set([
