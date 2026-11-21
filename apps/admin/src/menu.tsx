@@ -87,6 +87,12 @@ export const MENU: MenuNode[] = [
       { key: 'settings', label: '业务设置', path: '/settings', permission: 'settings:write' },
       { key: 'notify', label: '消息推送', path: '/system/notify', permission: 'settings:write' },
       {
+        key: 'readiness',
+        label: '上线检查',
+        path: '/system/readiness',
+        permission: 'settings:write',
+      },
+      {
         key: 'audit',
         label: '操作日志',
         path: '/system/audit-logs',

@@ -1,0 +1,83 @@
+# 上云用的覆盖配置，和 docker-compose.yml 一起用。
+# 服务器的 .env 里写 COMPOSE_FILE=docker-compose.yml:deploy/docker-compose.prod.yml，
+# 之后 docker compose 的所有命令（up / logs / ps …）都会自动带上这两个文件。
+#
+# 和本地相比：
+# - 加 Caddy：用 DOMAIN 自动申请、续期 HTTPS 证书，80 / 443 是唯一对外的端口
+# - 数据库端口不再开放；后台的 8080 只对服务器本机开放（排查问题时用 ssh 隧道）
+# - backup 容器每天自动备份数据库和附件到仓库根目录的 backups/，保留 BACKUP_KEEP_DAYS 天
+# - 日志限制大小，关闭接口文档，后端按两层代理取客户真实 IP
+#
+# 注意：用多个 compose 文件时，下面的相对路径都按仓库根目录（第一个文件所在目录）算。
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '5'
+
+services:
+  postgres:
+    ports: !reset []
+    logging: *logging
+
+  api:
+    environment:
+      # Caddy → nginx → 后端，两层代理
+      TRUST_PROXY: 2
+      API_DOCS: ${API_DOCS:-off}
+      # 「上线检查」看最近一次备份的时间
+      BACKUP_DIR: /backups
+    volumes:
+      - ./backups:/backups:ro
+    logging: *logging
+
+  admin:
+    ports: !override
+      - '127.0.0.1:${ADMIN_PORT:-8080}:80'
+    logging: *logging
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:?请在 .env 里设置 DOMAIN（后台的域名，例如 crm.example.com）}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # 证书存在这里，删掉会重新申请（Let's Encrypt 有次数限制，别频繁删）
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - admin
+    logging: *logging
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    entrypoint: ['sh', '/auto-backup.sh']
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-crm}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-crm}
+      BACKUP_HOUR: ${BACKUP_HOUR:-4}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      # POSIX 写法的北京时间，不依赖镜像里的时区数据
+      TZ: CST-8
+    volumes:
+      - ./deploy/auto-backup.sh:/auto-backup.sh:ro
+      - uploads:/uploads:ro
+      - ./backups:/backups
+    # 等后端起来（数据库表建好）再开始，第一次部署时的那份备份才有内容
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  caddy_data:
+  caddy_config:

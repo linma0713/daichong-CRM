@@ -162,7 +162,7 @@ export class UsersService {
     });
   }
 
-  /** 员工手机丢了：清掉两步验证，下次登录只要密码（角色要求的话会让他重新设置） */
+  /** 员工手机丢了：清掉两步验证，下次登录只要密码（角色要求的话，登录后会提示重新设置） */
   async resetTotp(id: string, actor: AuthUser): Promise<void> {
     const user = await this.findOrThrow(id);
     if (!user.totpEnabledAt) throw badRequest('这个员工没有开启两步验证');

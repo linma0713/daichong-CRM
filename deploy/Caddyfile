@@ -1,0 +1,10 @@
+# 自动申请、续期 HTTPS 证书（Let's Encrypt），把请求转给后台的 nginx。
+# 前提：DOMAIN 的 DNS 已经解析到这台服务器，云服务器安全组放行了 80 和 443。
+{$DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy admin:80
+}
