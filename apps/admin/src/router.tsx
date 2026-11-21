@@ -36,6 +36,13 @@ import { CommissionsPage } from './pages/commissions/CommissionsPage';
 import { StatementDetailPage } from './pages/commissions/StatementDetailPage';
 import { MarketingPage } from './pages/marketing/MarketingPage';
 import { AGENT_VIEW_PERMISSIONS } from './components/business';
+import { MobileLayout } from './mobile/MobileLayout';
+import { MobileHomePage } from './mobile/HomePage';
+import { MobileTaskDetailPage, MobileTasksPage } from './mobile/TasksPage';
+import { MobileCustomerDetailPage, MobileCustomersPage } from './mobile/CustomersPage';
+import { MobileRenewalsPage } from './mobile/RenewalsPage';
+import { MobileMessagesPage } from './mobile/MessagesPage';
+import { MobileMePage } from './mobile/MePage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -54,6 +61,61 @@ const router = createBrowserRouter([
         <SetupTotpPage />
       </RequireAuth>
     ),
+  },
+  {
+    // 员工手机端：和电脑版共用登录和接口，页面按手机重新排
+    path: '/m',
+    element: (
+      <RequireAuth>
+        <MobileLayout />
+      </RequireAuth>
+    ),
+    children: [
+      { index: true, element: <MobileHomePage /> },
+      {
+        path: 'tasks',
+        element: (
+          <RequirePermission permission="fulfillment:handle">
+            <MobileTasksPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'tasks/:id',
+        element: (
+          <RequirePermission permission="fulfillment:handle">
+            <MobileTaskDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'customers',
+        element: (
+          <RequirePermission permission="customer:read">
+            <MobileCustomersPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'customers/:id',
+        element: (
+          <RequirePermission permission="customer:read">
+            <MobileCustomerDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'renewals',
+        element: (
+          <RequirePermission permission="customer:read">
+            <MobileRenewalsPage />
+          </RequirePermission>
+        ),
+      },
+      { path: 'messages', element: <MobileMessagesPage /> },
+      { path: 'me', element: <MobileMePage /> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
   },
   {
     path: '/',
