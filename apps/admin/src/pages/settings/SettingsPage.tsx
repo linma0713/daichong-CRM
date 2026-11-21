@@ -19,8 +19,12 @@ import { useBusinessSettings } from '../../api/queries';
 
 type Settings = Schemas['BusinessSettingsDto'];
 /** 标签模式的下拉框只接受字符串，提交时再转成数字；手续费在界面上按百分比填 */
-type SettingsForm = Omit<Settings, 'reminderDays' | 'paymentFeeBp' | 'commissionRatesBp'> & {
+type SettingsForm = Omit<
+  Settings,
+  'reminderDays' | 'paymentFeeBp' | 'commissionRatesBp' | 'vipThresholdCents'
+> & {
   reminderDays: string[];
+  vipYuan: number;
   feePercent: Record<PaymentMethod, number>;
   commissionPercent: { first: number; renewal: number; parent: number };
 };
@@ -49,9 +53,10 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (settings.data) {
-      const { paymentFeeBp, commissionRatesBp, ...rest } = settings.data;
+      const { paymentFeeBp, commissionRatesBp, vipThresholdCents, ...rest } = settings.data;
       form.setFieldsValue({
         ...rest,
+        vipYuan: vipThresholdCents / 100,
         reminderDays: settings.data.reminderDays.map(String),
         feePercent: bpToPercent(paymentFeeBp),
         commissionPercent: {
@@ -69,12 +74,13 @@ export function SettingsPage() {
       if (days.some((d) => !Number.isInteger(d) || d < 0 || d > 60)) {
         return Promise.reject(new Error('提醒天数要填 0–60 之间的整数'));
       }
-      const { feePercent, commissionPercent, ...rest } = v;
+      const { feePercent, commissionPercent, vipYuan, ...rest } = v;
       const toBp = (p: number) => Math.round((p ?? 0) * 100);
       return unwrap(
         api.PATCH('/api/settings', {
           body: {
             ...rest,
+            vipThresholdCents: Math.round((vipYuan ?? 0) * 100),
             reminderDays: days,
             paymentFeeBp: percentToBp(feePercent),
             commissionRatesBp: {
@@ -91,6 +97,7 @@ export function SettingsPage() {
       queryClient.setQueryData(['settings'], saved);
       void queryClient.invalidateQueries({ queryKey: ['products'] });
       void queryClient.invalidateQueries({ queryKey: ['inventory-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
   });
 
@@ -100,6 +107,7 @@ export function SettingsPage() {
       void queryClient.invalidateQueries({ queryKey: ['tasks'] });
       void queryClient.invalidateQueries({ queryKey: ['tickets'] });
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['customers'] });
       modal.info({
         title: r.skipped ? '另一个巡检正在运行，这次跳过' : '巡检完成',
         content: (
@@ -115,6 +123,9 @@ export function SettingsPage() {
             <Descriptions.Item label="解冻的代理佣金">{r.releasedCommissions} 条</Descriptions.Item>
             <Descriptions.Item label="自动生成的上月对账单">
               {r.statementsGenerated} 张
+            </Descriptions.Item>
+            <Descriptions.Item label="分层有变化的客户">
+              {r.customerStageChanges} 位
             </Descriptions.Item>
           </Descriptions>
         ),
@@ -247,6 +258,25 @@ export function SettingsPage() {
             <InputNumber min={1} max={720} style={{ width: 200 }} />
           </Form.Item>
           <Typography.Title level={5} style={{ marginTop: 8 }}>
+            客户分层
+          </Typography.Title>
+          <Form.Item
+            name="vipYuan"
+            label="VIP 门槛（元）"
+            rules={[{ required: true }]}
+            extra="客户累计实付（已收 − 已退）满这个数自动标 VIP，客户列表可以单独筛选"
+          >
+            <InputNumber min={0} max={1000000} precision={0} prefix="¥" style={{ width: 200 }} />
+          </Form.Item>
+          <Form.Item
+            name="recallWindowDays"
+            label="召回期（天）"
+            rules={[{ required: true }]}
+            extra="客户没有服务中的订阅后，这么多天内算「沉睡」（进召回名单），超过算「流失」"
+          >
+            <InputNumber min={1} max={365} style={{ width: 200 }} />
+          </Form.Item>
+          <Typography.Title level={5} style={{ marginTop: 8 }}>
             代理佣金
           </Typography.Title>
           <Form.Item
@@ -310,7 +340,7 @@ export function SettingsPage() {
       </Card>
       <Card title="到期巡检">
         <Typography.Paragraph type="secondary">
-          系统每小时自动检查一次：把到期的订阅标记为「已到期」，并按上游扣费时间生成内部续费、取消自动续订、回收成品号任务；售后工单超时升级、已解决的到时自动关闭。
+          系统每小时自动检查一次：把到期的订阅标记为「已到期」，并按上游扣费时间生成内部续费、取消自动续订、回收成品号任务；售后工单超时升级、已解决的到时自动关闭；刷新客户分层。
           改了设置或手动校正订阅后，可以立即运行一次。
         </Typography.Paragraph>
         <Button loading={sweep.isPending} onClick={() => sweep.mutate()}>

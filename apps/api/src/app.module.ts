@@ -29,6 +29,8 @@ import { AnalyticsModule } from './analytics/analytics';
 import { AgentsModule } from './agents/agents';
 import { CommissionsModule } from './commissions/statements';
 import { NotifyModule } from './notify/notify';
+import { CustomerStatsModule } from './customers/stats';
+import { ScriptsModule } from './scripts/scripts';
 
 @Module({
   imports: [
@@ -43,6 +45,7 @@ import { NotifyModule } from './notify/notify';
     PrismaModule,
     SecretBoxModule,
     NotifyModule,
+    CustomerStatsModule,
     AuditModule,
     AuthModule,
     UsersModule,
@@ -63,6 +66,7 @@ import { NotifyModule } from './notify/notify';
     AnalyticsModule,
     AgentsModule,
     CommissionsModule,
+    ScriptsModule,
   ],
   providers: [
     // 顺序就是执行顺序：限流 → 登录 → 权限

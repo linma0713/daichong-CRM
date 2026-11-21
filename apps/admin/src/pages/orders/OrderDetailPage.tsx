@@ -28,6 +28,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import {
   AGENT_COLLECTED,
   COST_KIND_LABELS,
+  FULFILLMENT_TYPE_LABELS,
   RECEIPT_METHODS,
   formatCents,
   formatRate,
@@ -48,6 +49,7 @@ import {
   TaskTypeTag,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
+import { ScriptPicker } from '../../components/scripts';
 import { RefundRequestModal } from '../aftersales/modals';
 import { CommissionTable } from '../commissions/CommissionTable';
 import { RefundTable } from '../aftersales/TicketDetailPage';
@@ -118,7 +120,22 @@ export function OrderDetailPage() {
           </Space>
         }
         extra={
-          <Space>
+          <Space wrap>
+            {o.status === 'COMPLETED' && can('customer:write') && (
+              <ScriptPicker
+                category="delivery"
+                type="default"
+                size="middle"
+                text="交付话术"
+                vars={{
+                  客户称呼: o.customer.name,
+                  套餐: `${o.planName} ${termLabel(o.termMonths)}（${FULFILLMENT_TYPE_LABELS[o.fulfillmentType]}）`,
+                  账号: o.accountEmail,
+                  到期日: o.periodEndAt ? formatTime(o.periodEndAt).slice(0, 10) : undefined,
+                  客服: o.owner.displayName,
+                }}
+              />
+            )}
             {o.status === 'PENDING_PAYMENT' && can('payment:confirm') && (
               <Button type="primary" onClick={() => setPaying(true)}>
                 确认收款

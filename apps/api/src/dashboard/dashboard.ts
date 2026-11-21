@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../auth/decorators';
 import type { AuthUser } from '../common/auth-user';
 import { addDays, startOfLocalDay, startOfLocalMonth } from '../common/dates';
-import { visibleCustomers } from '../customers/customers';
+import { uncontactedSinceServiceEnd, visibleCustomers } from '../customers/customers';
 import { visibleOrders } from '../orders/orders';
 import { InventoryModule, InventoryService } from '../inventory/inventory';
 import { visibleRefunds, visibleTickets } from '../aftersales/aftersales';
@@ -40,6 +40,8 @@ export class SubscriptionStatsDto {
 export class CustomerStatsDto {
   @ApiProperty() total: number;
   @ApiProperty({ description: '本月新增' }) newThisMonth: number;
+  @ApiProperty({ description: '待召回：沉睡、服务结束后还没联系过的（我负责的）' })
+  recallPending: number;
 }
 
 export class InventoryAlertDto {
@@ -161,11 +163,20 @@ export class DashboardService {
     const customers = can('customer:read')
       ? (async (): Promise<CustomerStatsDto> => {
           const scope = visibleCustomers(user);
-          const [total, newThisMonth] = await Promise.all([
+          const [total, newThisMonth, recallPending] = await Promise.all([
             this.prisma.customer.count({ where: scope }),
             this.prisma.customer.count({ where: { ...scope, createdAt: { gte: month } } }),
+            this.prisma.customer.count({
+              where: {
+                AND: [
+                  scope,
+                  { ownerId: user.id, stage: 'DORMANT' },
+                  uncontactedSinceServiceEnd(this.prisma),
+                ],
+              },
+            }),
           ]);
-          return { total, newThisMonth };
+          return { total, newThisMonth, recallPending };
         })()
       : null;
 

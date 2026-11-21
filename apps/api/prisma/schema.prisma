@@ -69,6 +69,7 @@ model User {
   paidStatements      CommissionStatement[] @relation("StatementPaidBy")
   createdStatements   CommissionStatement[] @relation("StatementCreatedBy")
   notifications       Notification[]
+  scripts             ScriptTemplate[]      @relation("ScriptCreator")
   /// 在班：自动派单优先派给在班的充值员；没人在班时照旧派给所有充值员
   onDuty              Boolean               @default(false)
   onDutyChangedAt     DateTime?
@@ -150,46 +151,67 @@ model AuditLog {
 
 /// 客户：终端用户。由负责客服跟进，ownerId / teamId 决定谁能看到
 model Customer {
-  id            String            @id @default(cuid())
+  id             String            @id @default(cuid())
   /// 客户编号，界面显示为 C00001
-  no            Int               @unique @default(autoincrement())
+  no             Int               @unique @default(autoincrement())
   /// 称呼
-  name          String
-  wechat        String?
-  telegram      String?
-  email         String?
-  phone         String?
+  name           String
+  wechat         String?
+  telegram       String?
+  email          String?
+  phone          String?
   /// 来源：organic 自然流量 / referral 老客推荐 / agent 代理 / ads 投放 / other 其他
-  source        String            @default("organic")
+  source         String            @default("organic")
   /// 推荐人（老客户）
-  referrerId    String?
-  referrer      Customer?         @relation("CustomerReferral", fields: [referrerId], references: [id], onDelete: SetNull)
-  referrals     Customer[]        @relation("CustomerReferral")
+  referrerId     String?
+  referrer       Customer?         @relation("CustomerReferral", fields: [referrerId], references: [id], onDelete: SetNull)
+  referrals      Customer[]        @relation("CustomerReferral")
   /// 绑定的代理：客户首单（或建档时）绑定，以后的订单都算这个代理的
-  agentId       String?
-  agent         Agent?            @relation(fields: [agentId], references: [id])
-  agentBoundAt  DateTime?
-  tags          String[]
-  remark        String?
-  ownerId       String
-  owner         User              @relation("CustomerOwner", fields: [ownerId], references: [id])
+  agentId        String?
+  agent          Agent?            @relation(fields: [agentId], references: [id])
+  agentBoundAt   DateTime?
+  tags           String[]
+  remark         String?
+  ownerId        String
+  owner          User              @relation("CustomerOwner", fields: [ownerId], references: [id])
   /// 负责人所在小组，用于「本小组数据」范围；换负责人时同步
-  teamId        String?
-  orders        Order[]
-  subscriptions Subscription[]
-  accounts      ClaudeAccount[]
-  tasks         FulfillmentTask[]
-  followUps     FollowUp[]
-  tickets       Ticket[]
-  refunds       Refund[]
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  deletedAt     DateTime?
+  teamId         String?
+  orders         Order[]
+  subscriptions  Subscription[]
+  accounts       ClaudeAccount[]
+  tasks          FulfillmentTask[]
+  followUps      FollowUp[]
+  tickets        Ticket[]
+  refunds        Refund[]
+  // ── 分层与价值（系统按订单和订阅自动算，见 CustomerStatsService） ──
+  /// LEAD 潜在 / NEW 新客 / ACTIVE 活跃 / DORMANT 沉睡 / CHURNED 流失
+  stage          String            @default("LEAD")
+  stageChangedAt DateTime?
+  /// 第一次 / 最近一次收齐款的时间
+  firstPaidAt    DateTime?
+  lastPaidAt     DateTime?
+  /// 收齐款的订单数
+  paidOrderCount Int               @default(0)
+  /// 累计实付（分）= 各订单已收 − 已退
+  netPaidCents   Int               @default(0)
+  /// 所有订阅里最晚的服务结束时间（手动终止的按终止时间）
+  serviceEndAt   DateTime?
+  /// 最近一次跟进（含续费提醒、召回）的时间
+  lastContactAt  DateTime?
+  /// 流失原因（见 LOST_REASONS）；记录之后客户又付款会自动清掉
+  lostReason     String?
+  lostNote       String?
+  lostReasonAt   DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  deletedAt      DateTime?
 
   @@index([ownerId])
   @@index([teamId])
   @@index([createdAt])
   @@index([agentId])
+  @@index([stage, serviceEndAt])
+  @@index([netPaidCents])
 }
 
 /// 客户跟进记录：沟通备注、续费提醒等，构成客户时间线
@@ -199,7 +221,7 @@ model FollowUp {
   customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  /// note 普通跟进 / renewal_reminder 续费提醒
+  /// note 普通跟进 / renewal_reminder 续费提醒 / recall 召回 / lost_reason 记录流失原因
   kind           String        @default("note")
   content        String
   userId         String
@@ -1001,4 +1023,23 @@ model OutboundMessage {
 
   @@index([status, nextAttemptAt])
   @@index([channelId, createdAt])
+}
+
+/// 话术库：续费提醒、召回、开通交付等常用话术。{客户称呼} 这类变量复制时自动替换
+model ScriptTemplate {
+  id          String    @id @default(cuid())
+  /// renewal / recall / delivery / quote / aftersales / other
+  category    String
+  title       String
+  content     String
+  sortOrder   Int       @default(0)
+  /// 被复制的次数，用来把常用的排前面
+  useCount    Int       @default(0)
+  lastUsedAt  DateTime?
+  createdById String?
+  createdBy   User?     @relation("ScriptCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([category, sortOrder])
 }

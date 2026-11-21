@@ -19,9 +19,11 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsEmail,
   IsIn,
   IsNotEmpty,
@@ -33,11 +35,19 @@ import {
 import { Prisma } from '@prisma/client';
 import {
   CUSTOMER_SOURCE_VALUES,
+  CUSTOMER_STAGES,
   ErrorCode,
+  FOLLOW_UP_KIND_VALUES,
+  LOST_REASON_VALUES,
+  MANUAL_FOLLOW_UP_KINDS,
   displayNo,
   hasPermission,
+  lostReasonLabel,
   parseNo,
   type CustomerSource,
+  type CustomerStage,
+  type FollowUpKind,
+  type LostReason,
 } from '@crm/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { Audit, CurrentUser, RequirePermissions } from '../auth/decorators';
@@ -53,6 +63,11 @@ import { scopeWhere } from '../common/data-scope';
 import { badRequest, notFound } from '../common/errors';
 import { OkDto } from '../auth/auth.dto';
 import { PageQueryDto, skipTake } from '../common/pagination';
+import { SettingsModule, SettingsService } from '../settings/settings';
+
+const toBool = ({ value }: { value: unknown }) => value === true || value === 'true';
+const CUSTOMER_SORTS = ['createdAt', 'netPaid', 'serviceEnd', 'lastContact'] as const;
+type CustomerSort = (typeof CUSTOMER_SORTS)[number];
 
 // ─────────────── DTO ───────────────
 
@@ -81,6 +96,37 @@ export class CustomerQueryDto extends PageQueryDto {
   @IsOptional()
   @IsString()
   agentId?: string;
+
+  @ApiPropertyOptional({ enum: CUSTOMER_STAGES, enumName: 'CustomerStage' })
+  @IsOptional()
+  @IsIn(CUSTOMER_STAGES)
+  stage?: CustomerStage;
+
+  @ApiPropertyOptional({ description: '只看 VIP（累计实付达到业务设置里的门槛）' })
+  @IsOptional()
+  @Transform(toBool)
+  @IsBoolean()
+  vip?: boolean;
+
+  @ApiPropertyOptional({ description: '只看服务结束后还没联系过的（召回用）' })
+  @IsOptional()
+  @Transform(toBool)
+  @IsBoolean()
+  uncontacted?: boolean;
+
+  @ApiPropertyOptional({ enum: LOST_REASON_VALUES, description: '流失原因' })
+  @IsOptional()
+  @IsIn(LOST_REASON_VALUES)
+  lostReason?: LostReason;
+
+  @ApiPropertyOptional({
+    enum: CUSTOMER_SORTS,
+    description:
+      'createdAt 最新录入 / netPaid 累计实付从高到低 / serviceEnd 服务最近结束 / lastContact 最久没联系',
+  })
+  @IsOptional()
+  @IsIn(CUSTOMER_SORTS)
+  sort?: CustomerSort;
 }
 
 class CustomerFields {
@@ -179,15 +225,27 @@ export class CreateFollowUpDto {
   @MaxLength(1000)
   content: string;
 
-  @ApiPropertyOptional({ enum: ['note', 'renewal_reminder'] })
+  @ApiPropertyOptional({ enum: MANUAL_FOLLOW_UP_KINDS, description: '跟进 / 续费提醒 / 召回' })
   @IsOptional()
-  @IsIn(['note', 'renewal_reminder'])
-  kind?: 'note' | 'renewal_reminder';
+  @IsIn(MANUAL_FOLLOW_UP_KINDS)
+  kind?: FollowUpKind;
 
   @ApiPropertyOptional({ description: '关联的订阅（续费提醒时填写）' })
   @IsOptional()
   @IsString()
   subscriptionId?: string;
+}
+
+export class LostReasonDto {
+  @ApiProperty({ enum: LOST_REASON_VALUES })
+  @IsIn(LOST_REASON_VALUES, { message: '请选择流失原因' })
+  reason: LostReason;
+
+  @ApiPropertyOptional({ example: '说官方涨价后觉得不划算' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }
 
 export class CustomerRefDto {
@@ -216,6 +274,20 @@ export class CustomerDto {
   @ApiProperty({ description: '服务中的订阅数' }) activeSubscriptionCount: number;
   @ApiProperty({ type: String, nullable: true, description: '最近一个到期时间' })
   nextExpiryAt: Date | null;
+  @ApiProperty({ enum: CUSTOMER_STAGES, enumName: 'CustomerStage' }) stage: CustomerStage;
+  @ApiProperty({ type: String, nullable: true }) stageChangedAt: Date | null;
+  @ApiProperty({ description: '累计实付达到 VIP 门槛' }) vip: boolean;
+  @ApiProperty({ description: '累计实付（分）= 已收 − 已退' }) netPaidCents: number;
+  @ApiProperty({ description: '收齐款的订单数' }) paidOrderCount: number;
+  @ApiProperty({ type: String, nullable: true }) firstPaidAt: Date | null;
+  @ApiProperty({ type: String, nullable: true }) lastPaidAt: Date | null;
+  @ApiProperty({ type: String, nullable: true, description: '最晚的服务结束时间' })
+  serviceEndAt: Date | null;
+  @ApiProperty({ type: String, nullable: true, description: '最近一次跟进时间' })
+  lastContactAt: Date | null;
+  @ApiProperty({ enum: LOST_REASON_VALUES, nullable: true }) lostReason: string | null;
+  @ApiProperty({ type: String, nullable: true }) lostNote: string | null;
+  @ApiProperty({ type: String, nullable: true }) lostReasonAt: Date | null;
   @ApiProperty() createdAt: Date;
 }
 
@@ -226,11 +298,34 @@ export class CustomerListDto {
 
 export class FollowUpDto {
   @ApiProperty() id: string;
-  @ApiProperty({ enum: ['note', 'renewal_reminder'] }) kind: string;
+  @ApiProperty({ enum: FOLLOW_UP_KIND_VALUES }) kind: string;
   @ApiProperty() content: string;
   @ApiProperty({ type: UserBriefDto }) user: UserBriefDto;
   @ApiProperty({ type: String, nullable: true }) subscriptionId: string | null;
   @ApiProperty() createdAt: Date;
+}
+
+export class StageCountDto {
+  @ApiProperty({ enum: CUSTOMER_STAGES, enumName: 'CustomerStage' }) stage: CustomerStage;
+  @ApiProperty() count: number;
+}
+
+export class LostReasonCountDto {
+  @ApiProperty({ type: String, nullable: true, description: 'null = 没记录原因' })
+  reason: string | null;
+  @ApiProperty() count: number;
+}
+
+/** 客户分层统计（按数据范围） */
+export class CustomerSegmentsDto {
+  @ApiProperty() total: number;
+  @ApiProperty({ type: [StageCountDto] }) stages: StageCountDto[];
+  @ApiProperty() vip: number;
+  @ApiProperty({ description: 'VIP 门槛（分）' }) vipThresholdCents: number;
+  @ApiProperty({ description: '召回期（天）' }) recallWindowDays: number;
+  @ApiProperty({ description: '沉睡客户里服务结束后还没联系过的' }) dormantUncontacted: number;
+  @ApiProperty({ type: [LostReasonCountDto], description: '沉睡 + 流失客户的流失原因分布' })
+  lostReasons: LostReasonCountDto[];
 }
 
 export class CustomerDetailDto extends CustomerDto {
@@ -271,19 +366,46 @@ function assertCanAssign(user: AuthUser, target: { id: string; teamId: string | 
 
 const clean = (v: string | null | undefined) => (v === undefined ? undefined : v?.trim() || null);
 
+/** 服务结束后还没联系过：从没跟进过，或最近一次跟进早于服务结束 */
+export function uncontactedSinceServiceEnd(prisma: PrismaService): Prisma.CustomerWhereInput {
+  return {
+    OR: [{ lastContactAt: null }, { lastContactAt: { lt: prisma.customer.fields.serviceEndAt } }],
+  };
+}
+
+/** VIP：累计实付达到门槛；门槛设成 0 也至少要付过款 */
+export const isVip = (netPaidCents: number, thresholdCents: number) =>
+  netPaidCents > 0 && netPaidCents >= thresholdCents;
+
+const SORT_ORDER: Record<CustomerSort, Prisma.CustomerOrderByWithRelationInput[]> = {
+  createdAt: [{ createdAt: 'desc' }],
+  netPaid: [{ netPaidCents: 'desc' }, { createdAt: 'desc' }],
+  serviceEnd: [{ serviceEndAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+  lastContact: [{ lastContactAt: { sort: 'asc', nulls: 'first' } }, { createdAt: 'desc' }],
+};
+
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settings: SettingsService,
+  ) {}
 
   async list(q: CustomerQueryDto, user: AuthUser): Promise<CustomerListDto> {
     const no = parseNo(q.keyword, 'C');
     const kw = q.keyword?.trim();
+    const { vipThresholdCents } = await this.settings.getAll();
     // 数据范围单独放进 AND，避免筛选条件（例如 ownerId）把范围覆盖掉
+    const and: Prisma.CustomerWhereInput[] = [visibleCustomers(user)];
+    if (q.uncontacted) and.push(this.uncontactedWhere());
     const where: Prisma.CustomerWhereInput = {
-      AND: [visibleCustomers(user)],
+      AND: and,
       source: q.source,
       ownerId: q.ownerId,
       agentId: q.agentId,
+      stage: q.stage,
+      lostReason: q.lostReason,
+      netPaidCents: q.vip ? { gte: Math.max(1, vipThresholdCents) } : undefined,
       tags: q.tag ? { has: q.tag } : undefined,
       OR: kw
         ? [
@@ -298,12 +420,71 @@ export class CustomersService {
       this.prisma.customer.findMany({
         where,
         include: customerInclude,
-        orderBy: { createdAt: 'desc' },
+        orderBy: SORT_ORDER[q.sort ?? 'createdAt'],
         ...skipTake(q),
       }),
       this.prisma.customer.count({ where }),
     ]);
-    return { items: await this.withSubscriptionStats(rows), total };
+    return { items: await this.withSubscriptionStats(rows, vipThresholdCents), total };
+  }
+
+  /** 客户分层统计：各阶段人数、VIP、待召回、流失原因分布 */
+  async segments(user: AuthUser): Promise<CustomerSegmentsDto> {
+    const { vipThresholdCents, recallWindowDays } = await this.settings.getAll();
+    const scope = visibleCustomers(user);
+    const [byStage, vip, dormantUncontacted, byReason] = await Promise.all([
+      this.prisma.customer.groupBy({ by: ['stage'], where: scope, _count: { _all: true } }),
+      this.prisma.customer.count({
+        where: { ...scope, netPaidCents: { gte: Math.max(1, vipThresholdCents) } },
+      }),
+      this.prisma.customer.count({
+        where: { AND: [scope, { stage: 'DORMANT' }, this.uncontactedWhere()] },
+      }),
+      this.prisma.customer.groupBy({
+        by: ['lostReason'],
+        where: { ...scope, stage: { in: ['DORMANT', 'CHURNED'] } },
+        _count: { _all: true },
+      }),
+    ]);
+    const count = new Map(byStage.map((r) => [r.stage, r._count._all]));
+    return {
+      total: byStage.reduce((sum, r) => sum + r._count._all, 0),
+      stages: CUSTOMER_STAGES.map((stage) => ({ stage, count: count.get(stage) ?? 0 })),
+      vip,
+      vipThresholdCents,
+      recallWindowDays,
+      dormantUncontacted,
+      lostReasons: byReason
+        .map((r) => ({ reason: r.lostReason, count: r._count._all }))
+        .sort((a, b) => b.count - a.count),
+    };
+  }
+
+  /** 记录流失原因（同时写一条跟进记录）。之后客户再付款会自动清掉 */
+  async setLostReason(id: string, dto: LostReasonDto, user: AuthUser): Promise<CustomerDetailDto> {
+    await this.findVisible(id, user);
+    const now = new Date();
+    const note = dto.note?.trim() || null;
+    await this.prisma.$transaction([
+      this.prisma.customer.update({
+        where: { id },
+        data: { lostReason: dto.reason, lostNote: note, lostReasonAt: now, lastContactAt: now },
+      }),
+      this.prisma.followUp.create({
+        data: {
+          customerId: id,
+          kind: 'lost_reason',
+          content: `流失原因：${lostReasonLabel(dto.reason)}${note ? `。${note}` : ''}`,
+          userId: user.id,
+          createdAt: now,
+        },
+      }),
+    ]);
+    return this.get(id, user);
+  }
+
+  private uncontactedWhere(): Prisma.CustomerWhereInput {
+    return uncontactedSinceServiceEnd(this.prisma);
   }
 
   async get(id: string, user: AuthUser): Promise<CustomerDetailDto> {
@@ -411,16 +592,21 @@ export class CustomersService {
       });
       if (!sub) throw badRequest('订阅不属于这个客户');
     }
-    const f = await this.prisma.followUp.create({
-      data: {
-        customerId: id,
-        subscriptionId: dto.subscriptionId ?? null,
-        kind: dto.kind ?? (dto.subscriptionId ? 'renewal_reminder' : 'note'),
-        content: dto.content.trim(),
-        userId: user.id,
-      },
-      include: { user: { select: userBriefSelect } },
-    });
+    const now = new Date();
+    const [f] = await this.prisma.$transaction([
+      this.prisma.followUp.create({
+        data: {
+          customerId: id,
+          subscriptionId: dto.subscriptionId ?? null,
+          kind: dto.kind ?? (dto.subscriptionId ? 'renewal_reminder' : 'note'),
+          content: dto.content.trim(),
+          userId: user.id,
+          createdAt: now,
+        },
+        include: { user: { select: userBriefSelect } },
+      }),
+      this.prisma.customer.update({ where: { id }, data: { lastContactAt: now } }),
+    ]);
     return {
       id: f.id,
       kind: f.kind,
@@ -509,7 +695,11 @@ export class CustomersService {
     return u;
   }
 
-  private async withSubscriptionStats(rows: CustomerRow[]): Promise<CustomerDto[]> {
+  private async withSubscriptionStats(
+    rows: CustomerRow[],
+    vipThreshold?: number,
+  ): Promise<CustomerDto[]> {
+    const vipThresholdCents = vipThreshold ?? (await this.settings.getAll()).vipThresholdCents;
     const stats = rows.length
       ? await this.prisma.subscription.groupBy({
           by: ['customerId'],
@@ -538,6 +728,18 @@ export class CustomersService {
       agentBoundAt: r.agentBoundAt,
       activeSubscriptionCount: byId.get(r.id)?._count._all ?? 0,
       nextExpiryAt: byId.get(r.id)?._min.endAt ?? null,
+      stage: r.stage as CustomerStage,
+      stageChangedAt: r.stageChangedAt,
+      vip: isVip(r.netPaidCents, vipThresholdCents),
+      netPaidCents: r.netPaidCents,
+      paidOrderCount: r.paidOrderCount,
+      firstPaidAt: r.firstPaidAt,
+      lastPaidAt: r.lastPaidAt,
+      serviceEndAt: r.serviceEndAt,
+      lastContactAt: r.lastContactAt,
+      lostReason: r.lostReason,
+      lostNote: r.lostNote,
+      lostReasonAt: r.lostReasonAt,
       createdAt: r.createdAt,
     }));
   }
@@ -557,6 +759,14 @@ export class CustomersController {
   @ApiOkResponse({ type: CustomerListDto })
   list(@Query() q: CustomerQueryDto, @CurrentUser() user: AuthUser): Promise<CustomerListDto> {
     return this.customers.list(q, user);
+  }
+
+  @Get('segments')
+  @RequirePermissions('customer:read')
+  @ApiOperation({ summary: '客户分层统计：各阶段人数、VIP、待召回、流失原因' })
+  @ApiOkResponse({ type: CustomerSegmentsDto })
+  segments(@CurrentUser() user: AuthUser): Promise<CustomerSegmentsDto> {
+    return this.customers.segments(user);
   }
 
   @Get(':id')
@@ -624,9 +834,23 @@ export class CustomersController {
   ): Promise<FollowUpDto> {
     return this.customers.addFollowUp(id, dto, user);
   }
+
+  @Post(':id/lost-reason')
+  @RequirePermissions('customer:write')
+  @Audit('customer.lost_reason', '记录客户流失原因')
+  @ApiOperation({ summary: '记录流失原因（客户之后再付款会自动清掉）' })
+  @ApiOkResponse({ type: CustomerDetailDto })
+  setLostReason(
+    @Param('id') id: string,
+    @Body() dto: LostReasonDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<CustomerDetailDto> {
+    return this.customers.setLostReason(id, dto, user);
+  }
 }
 
 @Module({
+  imports: [SettingsModule],
   providers: [CustomersService],
   controllers: [CustomersController],
   exports: [CustomersService],

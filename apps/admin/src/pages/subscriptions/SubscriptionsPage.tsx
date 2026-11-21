@@ -39,6 +39,7 @@ import {
   SubscriptionStatusTag,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
+import { ScriptPicker, useSubscriptionVars } from '../../components/scripts';
 
 type Subscription = Schemas['SubscriptionDto'];
 type SubQuery = QueryOf<'/api/subscriptions'>;
@@ -315,12 +316,13 @@ export function ReminderModal({
   subscription,
   onClose,
 }: {
-  subscription: Pick<Subscription, 'id' | 'code' | 'customer' | 'endAt' | 'planName'>;
+  subscription: Subscription;
   onClose: () => void;
 }) {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm<{ content: string }>();
+  const vars = useSubscriptionVars(subscription, subscription.customer.name);
   const save = useMutation({
     mutationFn: (content: string) =>
       unwrap(
@@ -347,9 +349,13 @@ export function ReminderModal({
       onOk={() => form.submit()}
       onCancel={onClose}
     >
-      <Typography.Paragraph type="secondary">
-        {subscription.planName}，{formatTime(subscription.endAt)} 到期
-      </Typography.Paragraph>
+      <Space style={{ marginBottom: 12 }} wrap>
+        <Typography.Text type="secondary">
+          {subscription.planName}，{formatTime(subscription.endAt)}{' '}
+          {subscription.daysLeft >= 0 ? '到期' : '已到期'}
+        </Typography.Text>
+        <ScriptPicker category="renewal" vars={vars} type="default" text="选话术并复制" />
+      </Space>
       <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v.content)}>
         <Form.Item
           name="content"

@@ -12,6 +12,7 @@ import { AftersalesModule, TicketsService } from '../aftersales/aftersales';
 import { CommissionsModule, StatementsService } from '../commissions/statements';
 import { InventoryModule } from '../inventory/inventory';
 import { NotifyScanResultDto, NotifyScanService } from './notify-scan';
+import { CustomerStatsService } from '../customers/stats';
 
 /** 多个实例同时巡检时只让一个跑（PostgreSQL 事务级咨询锁） */
 const SWEEP_LOCK_ID = 20261120;
@@ -26,6 +27,10 @@ export class SweepResultDto {
   @ApiProperty({ description: '自动关闭的售后工单数' }) closedTickets: number;
   @ApiProperty({ description: '到期解冻、变成可结算的佣金条数' }) releasedCommissions: number;
   @ApiProperty({ description: '每月 1 号自动生成的上月佣金对账单数' }) statementsGenerated: number;
+  @ApiProperty({
+    description: '分层阶段有变化的客户数（例如新客满 30 天变活跃、沉睡超过召回期变流失）',
+  })
+  customerStageChanges: number;
 }
 
 /**
@@ -37,6 +42,7 @@ export class SweepResultDto {
  * 3. 售后工单：超过处理时限的升级，已解决超过设置小时数的自动关闭
  * 4. 代理佣金：到解冻时间的变成可结算
  * 5. 每月 1 号起第一次巡检：给上个月出佣金对账单
+ * 6. 刷新全部客户的分层（新客 → 活跃、沉睡 → 流失这类随时间变化的）
  * 任务带去重键（订阅 + 对应日期），重复跑不会重复建。
  */
 @Injectable()
@@ -50,6 +56,7 @@ export class SweepService {
     private readonly tickets: TicketsService,
     private readonly commissions: CommissionEngine,
     private readonly statements: StatementsService,
+    private readonly stats: CustomerStatsService,
   ) {}
 
   @Cron('5 * * * *', {
@@ -68,10 +75,11 @@ export class SweepService {
         r.escalatedTickets +
         r.closedTickets +
         r.releasedCommissions +
-        r.statementsGenerated;
+        r.statementsGenerated +
+        r.customerStageChanges;
       if (changed > 0) {
         this.logger.log(
-          `巡检完成：到期 ${r.expired}，回收 ${r.reclaimTasks}，内部续费 ${r.internalRenewTasks}，取消自动续订 ${r.cancelAutoRenewTasks}，工单升级 ${r.escalatedTickets}，工单自动关闭 ${r.closedTickets}，佣金解冻 ${r.releasedCommissions}，对账单 ${r.statementsGenerated}`,
+          `巡检完成：到期 ${r.expired}，回收 ${r.reclaimTasks}，内部续费 ${r.internalRenewTasks}，取消自动续订 ${r.cancelAutoRenewTasks}，工单升级 ${r.escalatedTickets}，工单自动关闭 ${r.closedTickets}，佣金解冻 ${r.releasedCommissions}，对账单 ${r.statementsGenerated}，客户分层变化 ${r.customerStageChanges}`,
         );
       }
     } catch (err) {
@@ -93,6 +101,7 @@ export class SweepService {
           closedTickets: 0,
           releasedCommissions: 0,
           statementsGenerated: 0,
+          customerStageChanges: 0,
         };
         const [{ locked }] = await tx.$queryRaw<{ locked: boolean }[]>`
           SELECT pg_try_advisory_xact_lock(${SWEEP_LOCK_ID}) AS locked`;
@@ -168,6 +177,9 @@ export class SweepService {
 
         // 5. 上月佣金对账单
         result.statementsGenerated = await this.statements.autoGenerate(tx, now);
+
+        // 6. 客户分层（放在最后，上面到期、退款终止的结果一起算进去）
+        result.customerStageChanges = await this.stats.refresh(tx, undefined, now);
         return result;
       },
       { timeout: 60_000 },

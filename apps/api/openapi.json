@@ -1690,6 +1690,65 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "stage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CustomerStage"
+            }
+          },
+          {
+            "name": "vip",
+            "required": false,
+            "in": "query",
+            "description": "只看 VIP（累计实付达到业务设置里的门槛）",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "uncontacted",
+            "required": false,
+            "in": "query",
+            "description": "只看服务结束后还没联系过的（召回用）",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "lostReason",
+            "required": false,
+            "in": "query",
+            "description": "流失原因",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "price",
+                "no_need",
+                "competitor",
+                "official",
+                "bad_experience",
+                "unreachable",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "createdAt 最新录入 / netPaid 累计实付从高到低 / serviceEnd 服务最近结束 / lastContact 最久没联系",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "netPaid",
+                "serviceEnd",
+                "lastContact"
+              ]
+            }
           }
         ],
         "responses": {
@@ -1745,6 +1804,33 @@
           }
         ],
         "summary": "新增客户",
+        "tags": [
+          "客户"
+        ]
+      }
+    },
+    "/api/customers/segments": {
+      "get": {
+        "operationId": "Customers_segments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerSegmentsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "客户分层统计：各阶段人数、VIP、待召回、流失原因",
         "tags": [
           "客户"
         ]
@@ -1951,6 +2037,52 @@
           }
         ],
         "summary": "记录跟进 / 续费提醒",
+        "tags": [
+          "客户"
+        ]
+      }
+    },
+    "/api/customers/{id}/lost-reason": {
+      "post": {
+        "operationId": "Customers_setLostReason",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LostReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "记录流失原因（客户之后再付款会自动清掉）",
         "tags": [
           "客户"
         ]
@@ -5022,6 +5154,213 @@
           "代理"
         ]
       }
+    },
+    "/api/scripts": {
+      "get": {
+        "operationId": "Scripts_list",
+        "parameters": [
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "renewal",
+                "recall",
+                "delivery",
+                "quote",
+                "aftersales",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "标题或内容",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScriptDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "话术列表（所有员工可查看）",
+        "tags": [
+          "话术库"
+        ]
+      },
+      "post": {
+        "operationId": "Scripts_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScriptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScriptDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "新增话术",
+        "tags": [
+          "话术库"
+        ]
+      }
+    },
+    "/api/scripts/{id}": {
+      "patch": {
+        "operationId": "Scripts_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScriptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScriptDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改话术",
+        "tags": [
+          "话术库"
+        ]
+      },
+      "delete": {
+        "operationId": "Scripts_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "删除话术",
+        "tags": [
+          "话术库"
+        ]
+      }
+    },
+    "/api/scripts/{id}/used": {
+      "post": {
+        "operationId": "Scripts_used",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "记录复制了一次（常用的排前面）",
+        "tags": [
+          "话术库"
+        ]
+      }
     }
   },
   "info": {
@@ -6268,6 +6607,16 @@
             "type": "number",
             "description": "每天几点（北京时间）往企业微信群推送早报",
             "example": 9
+          },
+          "vipThresholdCents": {
+            "type": "number",
+            "description": "累计实付满多少（分）算 VIP 客户",
+            "example": 300000
+          },
+          "recallWindowDays": {
+            "type": "number",
+            "description": "服务结束后多少天内算「沉睡」（召回期），超过算「流失」",
+            "example": 30
           }
         },
         "required": [
@@ -6282,7 +6631,9 @@
           "commissionRatesBp",
           "commissionFreezeDays",
           "commissionIncludeWarranty",
-          "dailyDigestHour"
+          "dailyDigestHour",
+          "vipThresholdCents",
+          "recallWindowDays"
         ]
       },
       "UpdateSettingsDto": {
@@ -6325,6 +6676,12 @@
             "type": "boolean"
           },
           "dailyDigestHour": {
+            "type": "number"
+          },
+          "vipThresholdCents": {
+            "type": "number"
+          },
+          "recallWindowDays": {
             "type": "number"
           }
         }
@@ -6581,6 +6938,16 @@
           }
         }
       },
+      "CustomerStage": {
+        "type": "string",
+        "enum": [
+          "LEAD",
+          "NEW",
+          "ACTIVE",
+          "DORMANT",
+          "CHURNED"
+        ]
+      },
       "UserBriefDto": {
         "type": "object",
         "properties": {
@@ -6720,6 +7087,68 @@
             "nullable": true,
             "description": "最近一个到期时间"
           },
+          "stage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerStage"
+              }
+            ]
+          },
+          "stageChangedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "vip": {
+            "type": "boolean",
+            "description": "累计实付达到 VIP 门槛"
+          },
+          "netPaidCents": {
+            "type": "number",
+            "description": "累计实付（分）= 已收 − 已退"
+          },
+          "paidOrderCount": {
+            "type": "number",
+            "description": "收齐款的订单数"
+          },
+          "firstPaidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastPaidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "serviceEndAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "最晚的服务结束时间"
+          },
+          "lastContactAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "最近一次跟进时间"
+          },
+          "lostReason": {
+            "type": "string",
+            "enum": [
+              "price",
+              "no_need",
+              "competitor",
+              "official",
+              "bad_experience",
+              "unreachable",
+              "other"
+            ],
+            "nullable": true
+          },
+          "lostNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "lostReasonAt": {
+            "type": "string",
+            "nullable": true
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -6742,6 +7171,18 @@
           "agentBoundAt",
           "activeSubscriptionCount",
           "nextExpiryAt",
+          "stage",
+          "stageChangedAt",
+          "vip",
+          "netPaidCents",
+          "paidOrderCount",
+          "firstPaidAt",
+          "lastPaidAt",
+          "serviceEndAt",
+          "lastContactAt",
+          "lostReason",
+          "lostNote",
+          "lostReasonAt",
           "createdAt"
         ]
       },
@@ -6763,6 +7204,87 @@
           "total"
         ]
       },
+      "StageCountDto": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerStage"
+              }
+            ]
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "stage",
+          "count"
+        ]
+      },
+      "LostReasonCountDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "null = 没记录原因"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "reason",
+          "count"
+        ]
+      },
+      "CustomerSegmentsDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageCountDto"
+            }
+          },
+          "vip": {
+            "type": "number"
+          },
+          "vipThresholdCents": {
+            "type": "number",
+            "description": "VIP 门槛（分）"
+          },
+          "recallWindowDays": {
+            "type": "number",
+            "description": "召回期（天）"
+          },
+          "dormantUncontacted": {
+            "type": "number",
+            "description": "沉睡客户里服务结束后还没联系过的"
+          },
+          "lostReasons": {
+            "description": "沉睡 + 流失客户的流失原因分布",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LostReasonCountDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "stages",
+          "vip",
+          "vipThresholdCents",
+          "recallWindowDays",
+          "dormantUncontacted",
+          "lostReasons"
+        ]
+      },
       "FollowUpDto": {
         "type": "object",
         "properties": {
@@ -6773,7 +7295,9 @@
             "type": "string",
             "enum": [
               "note",
-              "renewal_reminder"
+              "renewal_reminder",
+              "recall",
+              "lost_reason"
             ]
           },
           "content": {
@@ -6885,6 +7409,68 @@
             "nullable": true,
             "description": "最近一个到期时间"
           },
+          "stage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerStage"
+              }
+            ]
+          },
+          "stageChangedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "vip": {
+            "type": "boolean",
+            "description": "累计实付达到 VIP 门槛"
+          },
+          "netPaidCents": {
+            "type": "number",
+            "description": "累计实付（分）= 已收 − 已退"
+          },
+          "paidOrderCount": {
+            "type": "number",
+            "description": "收齐款的订单数"
+          },
+          "firstPaidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastPaidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "serviceEndAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "最晚的服务结束时间"
+          },
+          "lastContactAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "最近一次跟进时间"
+          },
+          "lostReason": {
+            "type": "string",
+            "enum": [
+              "price",
+              "no_need",
+              "competitor",
+              "official",
+              "bad_experience",
+              "unreachable",
+              "other"
+            ],
+            "nullable": true
+          },
+          "lostNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "lostReasonAt": {
+            "type": "string",
+            "nullable": true
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -6914,6 +7500,18 @@
           "agentBoundAt",
           "activeSubscriptionCount",
           "nextExpiryAt",
+          "stage",
+          "stageChangedAt",
+          "vip",
+          "netPaidCents",
+          "paidOrderCount",
+          "firstPaidAt",
+          "lastPaidAt",
+          "serviceEndAt",
+          "lastContactAt",
+          "lostReason",
+          "lostNote",
+          "lostReasonAt",
           "createdAt",
           "followUps"
         ]
@@ -7057,8 +7655,10 @@
             "type": "string",
             "enum": [
               "note",
-              "renewal_reminder"
-            ]
+              "renewal_reminder",
+              "recall"
+            ],
+            "description": "跟进 / 续费提醒 / 召回"
           },
           "subscriptionId": {
             "type": "string",
@@ -7067,6 +7667,30 @@
         },
         "required": [
           "content"
+        ]
+      },
+      "LostReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "price",
+              "no_need",
+              "competitor",
+              "official",
+              "bad_experience",
+              "unreachable",
+              "other"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "example": "说官方涨价后觉得不划算"
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "OrderStatus": {
@@ -8052,6 +8676,11 @@
             "type": "number",
             "description": "还可以申请退款的金额（分）= 已收 − 已退 − 审批中"
           },
+          "periodEndAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "这笔订单买到的服务期结束时间（开通 / 续费完成后才有）"
+          },
           "profit": {
             "nullable": true,
             "description": "有「查看成本」权限时返回",
@@ -8111,6 +8740,7 @@
           "tasks",
           "refunds",
           "refundableCents",
+          "periodEndAt",
           "profit",
           "commissions"
         ]
@@ -9282,6 +9912,10 @@
           "statementsGenerated": {
             "type": "number",
             "description": "每月 1 号自动生成的上月佣金对账单数"
+          },
+          "customerStageChanges": {
+            "type": "number",
+            "description": "分层阶段有变化的客户数（例如新客满 30 天变活跃、沉睡超过召回期变流失）"
           }
         },
         "required": [
@@ -9293,7 +9927,8 @@
           "escalatedTickets",
           "closedTickets",
           "releasedCommissions",
-          "statementsGenerated"
+          "statementsGenerated",
+          "customerStageChanges"
         ]
       },
       "NotifyScanResultDto": {
@@ -11327,11 +11962,16 @@
           "newThisMonth": {
             "type": "number",
             "description": "本月新增"
+          },
+          "recallPending": {
+            "type": "number",
+            "description": "待召回：沉睡、服务结束后还没联系过的（我负责的）"
           }
         },
         "required": [
           "total",
-          "newThisMonth"
+          "newThisMonth",
+          "recallPending"
         ]
       },
       "InventoryAlertDto": {
@@ -12953,6 +13593,125 @@
                 "$ref": "#/components/schemas/AgentStatus"
               }
             ]
+          }
+        }
+      },
+      "ScriptDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "renewal",
+              "recall",
+              "delivery",
+              "quote",
+              "aftersales",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "useCount": {
+            "type": "number",
+            "description": "被复制的次数"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "title",
+          "content",
+          "sortOrder",
+          "useCount",
+          "lastUsedAt",
+          "createdBy",
+          "updatedAt"
+        ]
+      },
+      "CreateScriptDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "renewal",
+              "recall",
+              "delivery",
+              "quote",
+              "aftersales",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "example": "到期前提醒"
+          },
+          "content": {
+            "type": "string",
+            "example": "{客户称呼}您好，您的 Claude {套餐} 将在 {到期日} 到期…"
+          },
+          "sortOrder": {
+            "type": "number",
+            "description": "同一分类里的排序，小的在前",
+            "example": 10
+          }
+        },
+        "required": [
+          "category",
+          "title",
+          "content"
+        ]
+      },
+      "UpdateScriptDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "renewal",
+              "recall",
+              "delivery",
+              "quote",
+              "aftersales",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
           }
         }
       }
