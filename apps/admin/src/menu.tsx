@@ -5,6 +5,7 @@ import {
   AuditOutlined,
   BarChartOutlined,
   CalendarOutlined,
+  CheckCircleOutlined,
   ClusterOutlined,
   MoneyCollectOutlined,
   NotificationOutlined,
@@ -124,5 +125,6 @@ export const MENU_ICONS: Record<string, ReactNode> = {
   users: <TeamOutlined />,
   roles: <SafetyCertificateOutlined />,
   teams: <ApartmentOutlined />,
+  readiness: <CheckCircleOutlined />,
   audit: <AuditOutlined />,
 };

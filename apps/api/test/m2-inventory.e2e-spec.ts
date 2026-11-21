@@ -261,6 +261,29 @@ describe('M2 库存与成本', () => {
   });
 
   describe('代充季付：开通扣 1 次，剩下 2 次按官方月费估算', () => {
+    it('待收款的订单：预计毛利按收齐款算', async () => {
+      const customer = await as('sales')
+        .post('/customers', { name: '待收款客户', wechat: 'm2_unpaid' })
+        .expect(201);
+      const created = await as('sales')
+        .post('/orders', {
+          customerId: customer.body.id,
+          kind: 'NEW',
+          productId: ids.maxQuarterly,
+          accountEmail: 'unpaid@example.com',
+        })
+        .expect(201);
+      const order = await as('admin').get(`/orders/${created.body.id}`).expect(200);
+      const p = order.body.profit;
+      expect(p.revenueCents).toBe(0);
+      expect(p.estUnpaidCents).toBe(created.body.amountCents);
+      expect(p.estRemainingCostCents).toBe(3 * 10000 * 7.2);
+      expect(p.estMarginCents).toBe(created.body.amountCents - 3 * 10000 * 7.2);
+      await as('sales').post(`/orders/${created.body.id}/cancel`, { reason: '测试' }).expect(200);
+      const cancelled = await as('admin').get(`/orders/${created.body.id}`).expect(200);
+      expect(cancelled.body.profit.estUnpaidCents).toBe(0);
+    });
+
     it('内部续费的成本归到季付订单，毛利里显示还要扣几次', async () => {
       const customer = await as('sales')
         .post('/customers', { name: '李女士', wechat: 'm2_li' })

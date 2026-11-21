@@ -575,6 +575,8 @@ function ProfitCard({
               title={
                 <Tooltip
                   title={[
+                    p.estUnpaidCents > 0 &&
+                      `还有 ${formatCents(p.estUnpaidCents)} 没收，按收齐款估算`,
                     pending > 0 &&
                       `服务期 ${p.chargesExpected} 个月，上游按月扣费，还有 ${pending} 次没发生；按官方月费和当前汇率估算`,
                     p.estCommissionCents > 0 &&
@@ -584,7 +586,11 @@ function ProfitCard({
                     .join('；')}
                 >
                   预计毛利（
-                  {[pending > 0 && `还要扣 ${pending} 次`, p.estCommissionCents > 0 && '含佣金']
+                  {[
+                    p.estUnpaidCents > 0 && '按收齐款',
+                    pending > 0 && `还要扣 ${pending} 次`,
+                    p.estCommissionCents > 0 && '含佣金',
+                  ]
                     .filter(Boolean)
                     .join('，')}
                   ）

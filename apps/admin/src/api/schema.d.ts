@@ -3237,7 +3237,9 @@ export interface components {
             estRemainingCostCents: number;
             /** @description 有代理但还没完成的订单：完成后预计要计提的佣金（分） */
             estCommissionCents: number;
-            /** @description 预计毛利（分）= 毛利 − 预计还要发生的成本 − 预计佣金 */
+            /** @description 待收款订单还没收的钱（分），预计毛利按收齐算 */
+            estUnpaidCents: number;
+            /** @description 预计毛利（分）= 毛利 + 还没收的钱 − 预计还要发生的成本 − 预计佣金 */
             estMarginCents: number;
             costs: components["schemas"]["CostEntryDto"][];
         };

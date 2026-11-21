@@ -305,9 +305,12 @@ export function DashboardPage() {
         </Card>
       )}
 
-      <Card title="开发进度" size="small">
-        <Steps direction="vertical" size="small" current={ROADMAP.length} items={ROADMAP} />
-      </Card>
+      {/* 开发进度只给管理员看，员工的工作台只放和工作有关的数字 */}
+      {profile?.permissions.includes('*') && (
+        <Card title="开发进度" size="small">
+          <Steps direction="vertical" size="small" current={ROADMAP.length} items={ROADMAP} />
+        </Card>
+      )}
     </Space>
   );
 }
