@@ -28,6 +28,7 @@ import { RefundsPage } from './pages/aftersales/RefundsPage';
 import { AgentsPage } from './pages/agents/AgentsPage';
 import { AgentDetailPage } from './pages/agents/AgentDetailPage';
 import { CommissionsPage } from './pages/commissions/CommissionsPage';
+import { StatementDetailPage } from './pages/commissions/StatementDetailPage';
 import { AGENT_VIEW_PERMISSIONS } from './components/business';
 
 const router = createBrowserRouter([
@@ -158,6 +159,14 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission anyOf={[...AGENT_VIEW_PERMISSIONS, 'finance:read']}>
             <CommissionsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: 'commissions/statements/:id',
+        element: (
+          <RequirePermission anyOf={[...AGENT_VIEW_PERMISSIONS, 'finance:read']}>
+            <StatementDetailPage />
           </RequirePermission>
         ),
       },

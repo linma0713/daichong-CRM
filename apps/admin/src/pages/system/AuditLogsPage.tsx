@@ -84,6 +84,10 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'refund.reject', label: '驳回退款' },
   { value: 'agent.create', label: '新增代理' },
   { value: 'agent.update', label: '修改代理（资料、上级、佣金比例或停用）' },
+  { value: 'statement.generate', label: '生成佣金对账单' },
+  { value: 'statement.confirm', label: '确认佣金对账单' },
+  { value: 'statement.pay', label: '登记佣金打款' },
+  { value: 'statement.cancel', label: '作废佣金对账单' },
   { value: 'settings.update', label: '修改业务设置' },
   { value: 'job.sweep', label: '手动运行到期巡检' },
 ];
@@ -99,6 +103,7 @@ const DANGER_ACTIONS = new Set([
   'resource.secret_view',
   'subscription.update',
   'refund.approve',
+  'statement.pay',
 ]);
 
 export function AuditLogsPage() {

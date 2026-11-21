@@ -5,8 +5,9 @@ import type { Prisma } from '@prisma/client';
 import {
   COST_KIND_LABELS,
   CUSTOMER_SOURCES,
-  PAYMENT_METHODS,
+  RECEIPT_METHODS,
   displayNo,
+  formatCents,
   type CostKind,
 } from '@crm/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -55,7 +56,7 @@ export function parseRange(q: { from: string; to: string }): LocalRange {
   };
 }
 
-/** 现金口径的金额：收款、手续费、退款、成本 */
+/** 现金口径的金额：收款、手续费、退款、成本、代理佣金 */
 export class FinanceAmountsDto {
   @ApiProperty({ description: '收款（分）' }) receivedCents: number;
   @ApiProperty({ description: '收款笔数' }) paymentCount: number;
@@ -64,7 +65,12 @@ export class FinanceAmountsDto {
   @ApiProperty({ description: '退款笔数' }) refundCount: number;
   @ApiProperty({ description: '净收入 = 收款 − 退款 − 手续费' }) netCents: number;
   @ApiProperty({ description: '当期发生的成本（上游扣费、成品号等）' }) costCents: number;
-  @ApiProperty({ description: '毛利 = 净收入 − 成本' }) profitCents: number;
+  @ApiProperty({
+    description:
+      '代理佣金（分）：佣金对账单结清当天按佣金合计计入（代理代收的款已经算在收款里，打款时只付差额）',
+  })
+  commissionCents: number;
+  @ApiProperty({ description: '毛利 = 净收入 − 成本 − 代理佣金' }) profitCents: number;
 }
 
 export class FinanceTotalsDto extends FinanceAmountsDto {
@@ -100,7 +106,9 @@ export class FinanceGroupDto {
   @ApiProperty() refundedCents: number;
   @ApiProperty() feeCents: number;
   @ApiProperty() costCents: number;
-  @ApiProperty() marginCents: number;
+  @ApiProperty({ description: '订单上的代理佣金（不含已作废）' }) commissionCents: number;
+  @ApiProperty({ description: '毛利 = 收款 − 退款 − 手续费 − 成本 − 代理佣金' })
+  marginCents: number;
 }
 
 export class FinanceReportDto {
@@ -114,17 +122,21 @@ export class FinanceReportDto {
   @ApiProperty({ type: [FinanceGroupDto], description: '按负责客服' }) byStaff: FinanceGroupDto[];
   @ApiProperty({ type: [FinanceGroupDto], description: '按客户来源' })
   bySource: FinanceGroupDto[];
+  @ApiProperty({ type: [FinanceGroupDto], description: '按代理（直客单独一行），也是代理业绩' })
+  byAgent: FinanceGroupDto[];
 }
 
 export class JournalEntryDto {
-  @ApiProperty({ enum: ['payment', 'refund', 'cost'] }) kind: 'payment' | 'refund' | 'cost';
+  @ApiProperty({ enum: ['payment', 'refund', 'cost', 'commission'] })
+  kind: 'payment' | 'refund' | 'cost' | 'commission';
   @ApiProperty() id: string;
   @ApiProperty() at: Date;
   @ApiProperty({ type: String, nullable: true }) orderId: string | null;
   @ApiProperty({ type: String, nullable: true, example: 'D00012' }) orderCode: string | null;
   @ApiProperty({ type: CustomerBriefDto, nullable: true }) customer: CustomerBriefDto | null;
-  @ApiProperty({ description: '收款 / 退款方式，或成本类型' }) category: string;
-  @ApiProperty({ description: '金额（分），收款为正、退款和成本为负' }) amountCents: number;
+  @ApiProperty({ description: '收款 / 退款方式、成本类型，或「代理佣金」' }) category: string;
+  @ApiProperty({ description: '金额（分），收款为正，退款、成本和代理佣金为负' })
+  amountCents: number;
   @ApiProperty({ description: '手续费（分），仅收款' }) feeCents: number;
   @ApiProperty({ type: String, nullable: true, description: '单号 / 退款编号 / 说明' })
   reference: string | null;
@@ -137,7 +149,7 @@ export class JournalDto {
 }
 
 const METHOD_LABELS: Record<string, string> = Object.fromEntries(
-  PAYMENT_METHODS.map((m) => [m.value, m.label]),
+  RECEIPT_METHODS.map((m) => [m.value, m.label]),
 );
 const SOURCE_LABELS: Record<string, string> = Object.fromEntries(
   CUSTOMER_SOURCES.map((s) => [s.value, s.label]),
@@ -152,13 +164,14 @@ function emptyAmounts(): FinanceAmountsDto {
     refundCount: 0,
     netCents: 0,
     costCents: 0,
+    commissionCents: 0,
     profitCents: 0,
   };
 }
 
 function settle<T extends FinanceAmountsDto>(a: T): T {
   a.netCents = a.receivedCents - a.refundedCents - a.feeCents;
-  a.profitCents = a.netCents - a.costCents;
+  a.profitCents = a.netCents - a.costCents - a.commissionCents;
   return a;
 }
 
@@ -182,9 +195,18 @@ export class FinanceService {
     };
   }
 
+  /** 区间内结清的佣金对账单里、看得到的订单上的佣金明细 */
+  private paidCommissionWhere(user: AuthUser, r: LocalRange): Prisma.CommissionWhereInput {
+    return {
+      status: { not: 'VOID' },
+      statement: { status: 'PAID', paidAt: this.inRange(r) },
+      order: visibleOrders(user),
+    };
+  }
+
   async report(user: AuthUser, q: DateRangeQueryDto): Promise<FinanceReportDto> {
     const r = parseRange(q);
-    const [payments, refunds, costs, topUps, orders] = await Promise.all([
+    const [payments, refunds, costs, topUps, orders, commissions] = await Promise.all([
       this.prisma.payment.findMany({
         where: { receivedAt: this.inRange(r), order: visibleOrders(user) },
         select: { amountCents: true, feeCents: true, method: true, receivedAt: true },
@@ -218,7 +240,12 @@ export class FinanceService {
           ownerId: true,
           owner: { select: { displayName: true } },
           customer: { select: { source: true } },
+          agent: { select: { id: true, no: true, name: true } },
         },
+      }),
+      this.prisma.commission.findMany({
+        where: this.paidCommissionWhere(user, r),
+        select: { amountCents: true, statement: { select: { paidAt: true } } },
       }),
     ]);
 
@@ -277,6 +304,11 @@ export class FinanceService {
         if (a) a.costCents += c.amountCents;
       }
     }
+    for (const c of commissions) {
+      for (const a of [totals, day(c.statement!.paidAt!)]) {
+        if (a) a.commissionCents += c.amountCents;
+      }
+    }
     settle(totals);
     for (const d of days.values()) settle(d);
     for (const m of methods.values()) m.netCents = m.receivedCents - m.feeCents - m.refundedCents;
@@ -295,6 +327,7 @@ export class FinanceService {
             refundedCents: 0,
             feeCents: 0,
             costCents: 0,
+            commissionCents: 0,
             marginCents: 0,
           };
           rows.set(key, row);
@@ -304,12 +337,13 @@ export class FinanceService {
         row.refundedCents += o.refundedCents;
         row.feeCents += o.feeCents;
         row.costCents += o.costCents;
+        row.commissionCents += o.commissionCents;
         row.marginCents += orderMargin(o);
       }
       return [...rows.values()].sort((a, b) => b.paidCents - a.paidCents);
     };
 
-    const methodOrder = PAYMENT_METHODS.map((m) => m.value as string);
+    const methodOrder = RECEIPT_METHODS.map((m) => m.value as string);
     return {
       from: q.from,
       to: q.to,
@@ -327,15 +361,18 @@ export class FinanceService {
         o.customer.source,
         SOURCE_LABELS[o.customer.source] ?? o.customer.source,
       ]),
+      byAgent: group((o) =>
+        o.agent ? [o.agent.id, `${o.agent.name}（${displayNo('A', o.agent.no)}）`] : ['', '直客'],
+      ),
     };
   }
 
-  /** 收支明细：收款、退款出账、成本，按时间排 */
+  /** 收支明细：收款、退款出账、成本、代理佣金打款，按时间排 */
   async journal(user: AuthUser, q: DateRangeQueryDto): Promise<JournalDto> {
     const r = parseRange(q);
     const orderSelect = { id: true, no: true, customer: { select: customerBriefSelect } };
     const take = JOURNAL_LIMIT + 1;
-    const [payments, refunds, costs] = await Promise.all([
+    const [payments, refunds, costs, commissions] = await Promise.all([
       this.prisma.payment.findMany({
         where: { receivedAt: this.inRange(r), order: visibleOrders(user) },
         include: { order: { select: orderSelect }, confirmedBy: { select: { displayName: true } } },
@@ -354,7 +391,36 @@ export class FinanceService {
         orderBy: { createdAt: 'asc' },
         take,
       }),
+      this.prisma.commission.findMany({
+        where: this.paidCommissionWhere(user, r),
+        select: {
+          amountCents: true,
+          statement: {
+            select: {
+              id: true,
+              no: true,
+              paidAt: true,
+              payMethod: true,
+              payReference: true,
+              collectedCents: true,
+              agent: { select: { name: true } },
+              paidBy: { select: { displayName: true } },
+            },
+          },
+        },
+      }),
     ]);
+    // 佣金按对账单合成一条
+    const statements = new Map<
+      string,
+      { s: NonNullable<(typeof commissions)[number]['statement']>; cents: number }
+    >();
+    for (const c of commissions) {
+      const s = c.statement!;
+      const row = statements.get(s.id) ?? { s, cents: 0 };
+      row.cents += c.amountCents;
+      statements.set(s.id, row);
+    }
     type OrderRef = { id: string; no: number; customer: Parameters<typeof toCustomerBrief>[0] };
     const ref = (o: OrderRef | null) => ({
       orderId: o?.id ?? null,
@@ -395,6 +461,27 @@ export class FinanceService {
         reference: c.note,
         userName: c.user.displayName,
       })),
+      ...[...statements.values()].map(({ s, cents }): JournalEntryDto => ({
+        kind: 'commission',
+        id: s.id,
+        at: s.paidAt!,
+        orderId: null,
+        orderCode: null,
+        customer: null,
+        category: '代理佣金',
+        amountCents: -cents,
+        feeCents: 0,
+        reference: [
+          displayNo('J', s.no),
+          s.agent.name,
+          s.collectedCents > 0 ? `代收抵扣 ${formatCents(s.collectedCents)}` : null,
+          s.payMethod ? (METHOD_LABELS[s.payMethod] ?? s.payMethod) : null,
+          s.payReference,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        userName: s.paidBy?.displayName ?? null,
+      })),
     ].sort((a, b) => a.at.getTime() - b.at.getTime());
     const truncated =
       items.length > JOURNAL_LIMIT ||
@@ -411,7 +498,9 @@ export class FinanceController {
 
   @Get('report')
   @RequirePermissions('finance:read')
-  @ApiOperation({ summary: '财务对账：现金口径汇总、每日对账、按收款方式、按商品 / 客服 / 来源' })
+  @ApiOperation({
+    summary: '财务对账：现金口径汇总、每日对账、按收款方式、按商品 / 客服 / 来源 / 代理',
+  })
   @ApiOkResponse({ type: FinanceReportDto })
   report(@CurrentUser() user: AuthUser, @Query() q: DateRangeQueryDto): Promise<FinanceReportDto> {
     return this.finance.report(user, q);
@@ -419,7 +508,7 @@ export class FinanceController {
 
   @Get('journal')
   @RequirePermissions('finance:read')
-  @ApiOperation({ summary: '收支明细（收款、退款出账、成本），用于导出对账' })
+  @ApiOperation({ summary: '收支明细（收款、退款出账、成本、代理佣金），用于导出对账' })
   @ApiOkResponse({ type: JournalDto })
   journal(@CurrentUser() user: AuthUser, @Query() q: DateRangeQueryDto): Promise<JournalDto> {
     return this.finance.journal(user, q);

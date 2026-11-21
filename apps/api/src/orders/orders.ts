@@ -35,7 +35,8 @@ import {
   COST_KINDS,
   FULFILLMENT_TYPES,
   ORDER_STATUSES,
-  PAYMENT_METHOD_VALUES,
+  AGENT_COLLECTED,
+  RECEIPT_METHOD_VALUES,
   REFUND_STATUSES,
   TASK_STATUSES,
   TASK_TYPES,
@@ -50,6 +51,7 @@ import {
   type OrderKind,
   type OrderStatus,
   type PaymentMethod,
+  type ReceiptMethod,
   type RefundStatus,
   type TaskStatus,
   type TaskType,
@@ -174,9 +176,12 @@ export class AddPaymentDto {
   @Max(100_000_00)
   amountCents: number;
 
-  @ApiProperty({ enum: PAYMENT_METHOD_VALUES })
-  @IsIn(PAYMENT_METHOD_VALUES)
-  method: PaymentMethod;
+  @ApiProperty({
+    enum: RECEIPT_METHOD_VALUES,
+    description: 'agent = 代理代收（只有代理客户的订单能用，月底对账从佣金里抵扣）',
+  })
+  @IsIn(RECEIPT_METHOD_VALUES)
+  method: ReceiptMethod;
 
   @ApiPropertyOptional({ description: '转账单号或备注' })
   @IsOptional()
@@ -271,9 +276,15 @@ export class PaymentDto {
   @ApiProperty() id: string;
   @ApiProperty() amountCents: number;
   @ApiProperty({ description: '收款手续费（分）' }) feeCents: number;
-  @ApiProperty({ enum: PAYMENT_METHOD_VALUES }) method: string;
+  @ApiProperty({ enum: RECEIPT_METHOD_VALUES }) method: string;
   @ApiProperty({ type: String, nullable: true }) reference: string | null;
   @ApiProperty() receivedAt: Date;
+  @ApiProperty({
+    type: RefDto,
+    nullable: true,
+    description: '代理代收的款：在哪张佣金对账单里抵扣（还没出单为空）',
+  })
+  statement: RefDto | null;
   @ApiProperty({ type: UserBriefDto }) confirmedBy: UserBriefDto;
   @ApiProperty() createdAt: Date;
 }
@@ -495,7 +506,10 @@ export class OrdersService {
       include: {
         ...orderInclude,
         payments: {
-          include: { confirmedBy: { select: userBriefSelect } },
+          include: {
+            confirmedBy: { select: userBriefSelect },
+            statement: { select: { id: true, no: true, status: true } },
+          },
           orderBy: { receivedAt: 'asc' },
         },
         tasks: {
@@ -550,6 +564,10 @@ export class OrdersService {
         method: p.method,
         reference: p.reference,
         receivedAt: p.receivedAt,
+        statement:
+          p.statement && p.statement.status !== 'CANCELLED'
+            ? { id: p.statement.id, code: displayNo('J', p.statement.no) }
+            : null,
         confirmedBy: p.confirmedBy,
         createdAt: p.createdAt,
       })),
@@ -735,7 +753,11 @@ export class OrdersService {
   /** 确认收款；收齐后自动建开通 / 续费任务 */
   async addPayment(id: string, dto: AddPaymentDto, user: AuthUser): Promise<OrderDetailDto> {
     const { paymentFeeBp } = await this.settings.getAll();
-    const feeCents = feeOf(dto.amountCents, paymentFeeBp[dto.method] ?? 0);
+    const byAgent = dto.method === AGENT_COLLECTED;
+    // 代理代收的钱不经过我们的收款账户，没有手续费
+    const feeCents = byAgent
+      ? 0
+      : feeOf(dto.amountCents, paymentFeeBp[dto.method as PaymentMethod] ?? 0);
     await this.prisma.$transaction(async (tx) => {
       // 锁住订单行，避免两个人同时确认收款
       await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${id} FOR UPDATE`;
@@ -746,12 +768,14 @@ export class OrdersService {
       if (paid > order.amountCents) {
         throw badRequest(`收款超过应收：还差 ${(order.amountCents - order.paidCents) / 100} 元`);
       }
+      if (byAgent && !order.agentId) throw badRequest('这单不是代理客户的订单，不能记「代理代收」');
       await tx.payment.create({
         data: {
           orderId: id,
           amountCents: dto.amountCents,
           feeCents,
           method: dto.method,
+          agentId: byAgent ? order.agentId : null,
           reference: dto.reference?.trim() || null,
           receivedAt: dto.receivedAt ? new Date(dto.receivedAt) : new Date(),
           confirmedById: user.id,

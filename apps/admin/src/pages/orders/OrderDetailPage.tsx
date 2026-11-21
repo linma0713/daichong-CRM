@@ -26,12 +26,14 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
+  AGENT_COLLECTED,
   COST_KIND_LABELS,
-  PAYMENT_METHODS,
+  RECEIPT_METHODS,
   formatCents,
   formatRate,
+  receiptMethodLabel,
   termLabel,
-  type PaymentMethod,
+  type ReceiptMethod,
 } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
@@ -49,8 +51,6 @@ import { formatTime } from '../../components/format';
 import { RefundRequestModal } from '../aftersales/modals';
 import { CommissionTable } from '../commissions/CommissionTable';
 import { RefundTable } from '../aftersales/TicketDetailPage';
-
-const METHOD_LABELS = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.label]));
 
 export function OrderDetailPage() {
   const { id = '' } = useParams();
@@ -245,7 +245,30 @@ export function OrderDetailPage() {
               key: 'amount',
               render: (_, p) => <Money cents={p.amountCents} strong />,
             },
-            { title: '方式', key: 'method', render: (_, p) => METHOD_LABELS[p.method] ?? p.method },
+            {
+              title: '方式',
+              key: 'method',
+              render: (_, p) => (
+                <Space direction="vertical" size={0}>
+                  <span>{receiptMethodLabel(p.method)}</span>
+                  {p.method === AGENT_COLLECTED && (
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {p.statement ? (
+                        <>
+                          在对账单{' '}
+                          <Link to={`/commissions/statements/${p.statement.id}`}>
+                            {p.statement.code}
+                          </Link>{' '}
+                          抵扣
+                        </>
+                      ) : (
+                        '月底对账时从佣金抵扣'
+                      )}
+                    </Typography.Text>
+                  )}
+                </Space>
+              ),
+            },
             ...(o.profit
               ? [
                   {
@@ -324,6 +347,7 @@ export function OrderDetailPage() {
         <PaymentModal
           orderId={o.id}
           remaining={remaining}
+          agentName={o.agent?.name ?? null}
           onClose={() => setPaying(false)}
           onDone={refresh}
         />
@@ -334,7 +358,7 @@ export function OrderDetailPage() {
 
 interface PaymentForm {
   amount: number;
-  method: PaymentMethod;
+  method: ReceiptMethod;
   reference?: string;
   receivedAt?: Dayjs;
 }
@@ -342,11 +366,14 @@ interface PaymentForm {
 function PaymentModal({
   orderId,
   remaining,
+  agentName,
   onClose,
   onDone,
 }: {
   orderId: string;
   remaining: number;
+  /** 代理客户的订单才能选「代理代收」 */
+  agentName: string | null;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -400,8 +427,20 @@ function PaymentModal({
             style={{ width: '100%' }}
           />
         </Form.Item>
-        <Form.Item name="method" label="收款方式">
-          <Select options={PAYMENT_METHODS.map((m) => ({ value: m.value, label: m.label }))} />
+        <Form.Item
+          name="method"
+          label="收款方式"
+          extra={
+            agentName
+              ? `客户把钱付给了代理${agentName}时选「代理代收」：不进我们账户，月底对账时从代理佣金里抵扣`
+              : undefined
+          }
+        >
+          <Select
+            options={RECEIPT_METHODS.filter((m) => agentName || m.value !== AGENT_COLLECTED).map(
+              (m) => ({ value: m.value, label: m.label }),
+            )}
+          />
         </Form.Item>
         <Form.Item name="reference" label="转账单号 / 备注">
           <Input maxLength={200} />

@@ -9,6 +9,7 @@ import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { FulfillmentService } from '../fulfillment/fulfillment.service';
 import { CommissionEngine } from '../commissions/engine';
 import { AftersalesModule, TicketsService } from '../aftersales/aftersales';
+import { CommissionsModule, StatementsService } from '../commissions/statements';
 
 /** 多个实例同时巡检时只让一个跑（PostgreSQL 事务级咨询锁） */
 const SWEEP_LOCK_ID = 20261120;
@@ -22,6 +23,7 @@ export class SweepResultDto {
   @ApiProperty({ description: '超时升级的售后工单数' }) escalatedTickets: number;
   @ApiProperty({ description: '自动关闭的售后工单数' }) closedTickets: number;
   @ApiProperty({ description: '到期解冻、变成可结算的佣金条数' }) releasedCommissions: number;
+  @ApiProperty({ description: '每月 1 号自动生成的上月佣金对账单数' }) statementsGenerated: number;
 }
 
 /**
@@ -32,6 +34,7 @@ export class SweepResultDto {
  *    - 服务期不再覆盖、也没有已付款的续费 → 取消自动续订任务，避免替客户垫付下个月
  * 3. 售后工单：超过处理时限的升级，已解决超过设置小时数的自动关闭
  * 4. 代理佣金：到解冻时间的变成可结算
+ * 5. 每月 1 号起第一次巡检：给上个月出佣金对账单
  * 任务带去重键（订阅 + 对应日期），重复跑不会重复建。
  */
 @Injectable()
@@ -44,6 +47,7 @@ export class SweepService {
     private readonly fulfillment: FulfillmentService,
     private readonly tickets: TicketsService,
     private readonly commissions: CommissionEngine,
+    private readonly statements: StatementsService,
   ) {}
 
   @Cron('5 * * * *', {
@@ -61,10 +65,11 @@ export class SweepService {
         r.cancelAutoRenewTasks +
         r.escalatedTickets +
         r.closedTickets +
-        r.releasedCommissions;
+        r.releasedCommissions +
+        r.statementsGenerated;
       if (changed > 0) {
         this.logger.log(
-          `巡检完成：到期 ${r.expired}，回收 ${r.reclaimTasks}，内部续费 ${r.internalRenewTasks}，取消自动续订 ${r.cancelAutoRenewTasks}，工单升级 ${r.escalatedTickets}，工单自动关闭 ${r.closedTickets}，佣金解冻 ${r.releasedCommissions}`,
+          `巡检完成：到期 ${r.expired}，回收 ${r.reclaimTasks}，内部续费 ${r.internalRenewTasks}，取消自动续订 ${r.cancelAutoRenewTasks}，工单升级 ${r.escalatedTickets}，工单自动关闭 ${r.closedTickets}，佣金解冻 ${r.releasedCommissions}，对账单 ${r.statementsGenerated}`,
         );
       }
     } catch (err) {
@@ -85,6 +90,7 @@ export class SweepService {
           escalatedTickets: 0,
           closedTickets: 0,
           releasedCommissions: 0,
+          statementsGenerated: 0,
         };
         const [{ locked }] = await tx.$queryRaw<{ locked: boolean }[]>`
           SELECT pg_try_advisory_xact_lock(${SWEEP_LOCK_ID}) AS locked`;
@@ -157,6 +163,9 @@ export class SweepService {
 
         // 4. 佣金解冻
         result.releasedCommissions = await this.commissions.release(tx, now);
+
+        // 5. 上月佣金对账单
+        result.statementsGenerated = await this.statements.autoGenerate(tx, now);
         return result;
       },
       { timeout: 60_000 },
@@ -182,7 +191,7 @@ export class JobsController {
 }
 
 @Module({
-  imports: [SettingsModule, FulfillmentModule, AftersalesModule],
+  imports: [SettingsModule, FulfillmentModule, AftersalesModule, CommissionsModule],
   providers: [SweepService],
   controllers: [JobsController],
   exports: [SweepService],

@@ -1,4 +1,4 @@
-import { Controller, Get, Injectable, Module, Query } from '@nestjs/common';
+import { Controller, Get, Injectable, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -265,10 +265,3 @@ export class CommissionsController {
     return this.commissions.summary();
   }
 }
-
-@Module({
-  providers: [CommissionsService],
-  controllers: [CommissionsController],
-  exports: [CommissionsService],
-})
-export class CommissionsModule {}

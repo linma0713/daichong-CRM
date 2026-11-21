@@ -36,6 +36,23 @@ export const PAYMENT_METHODS = [
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value'];
 export const PAYMENT_METHOD_VALUES = PAYMENT_METHODS.map((m) => m.value) as PaymentMethod[];
 
+/**
+ * 订单收款方式：自己的收款账户之外，多一个「代理代收」（钱在代理手里，月底对账时从佣金里抵扣）。
+ * 退款、佣金打款只能用自己的账户（PAYMENT_METHODS）。
+ */
+export const AGENT_COLLECTED = 'agent' as const;
+export const RECEIPT_METHODS = [
+  ...PAYMENT_METHODS,
+  { value: AGENT_COLLECTED, label: '代理代收' },
+] as const;
+export type ReceiptMethod = (typeof RECEIPT_METHODS)[number]['value'];
+export const RECEIPT_METHOD_VALUES = RECEIPT_METHODS.map((m) => m.value) as ReceiptMethod[];
+/** 收款方式 / 打款方式的中文名 */
+export function receiptMethodLabel(method: string | null | undefined): string {
+  if (!method) return '—';
+  return RECEIPT_METHODS.find((m) => m.value === method)?.label ?? method;
+}
+
 export type OrderKind = 'NEW' | 'RENEWAL';
 export const ORDER_KIND_LABELS: Record<OrderKind, string> = { NEW: '新购', RENEWAL: '续费' };
 
@@ -344,4 +361,20 @@ export function splitCents(total: number, n: number): number[] {
   return Array.from({ length: parts }, (_, i) =>
     i === parts - 1 ? total - each * (parts - 1) : each,
   );
+}
+
+export type StatementStatus = 'DRAFT' | 'CONFIRMED' | 'PAID' | 'CANCELLED';
+export const STATEMENT_STATUSES: StatementStatus[] = ['DRAFT', 'CONFIRMED', 'PAID', 'CANCELLED'];
+export const STATEMENT_STATUS_LABELS: Record<StatementStatus, string> = {
+  DRAFT: '待确认',
+  CONFIRMED: '待打款',
+  PAID: '已结清',
+  CANCELLED: '已作废',
+};
+
+/** 对账月份 YYYY-MM 往前 / 往后推 n 个月 */
+export function shiftMonth(month: string, n: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const idx = y * 12 + (m - 1) + n;
+  return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, '0')}`;
 }

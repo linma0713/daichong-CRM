@@ -112,6 +112,9 @@ export function SettingsPage() {
             <Descriptions.Item label="超时升级的工单">{r.escalatedTickets}</Descriptions.Item>
             <Descriptions.Item label="自动关闭的工单">{r.closedTickets}</Descriptions.Item>
             <Descriptions.Item label="解冻的代理佣金">{r.releasedCommissions} 条</Descriptions.Item>
+            <Descriptions.Item label="自动生成的上月对账单">
+              {r.statementsGenerated} 张
+            </Descriptions.Item>
           </Descriptions>
         ),
       });

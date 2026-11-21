@@ -3167,6 +3167,420 @@
         ]
       }
     },
+    "/api/commissions": {
+      "get": {
+        "operationId": "Commissions_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CommissionStatus"
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CommissionRole"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CommissionKind"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "订单编号或客户称呼",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "佣金明细",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/commissions/summary": {
+      "get": {
+        "operationId": "Commissions_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AgentCommissionSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "按代理汇总佣金（冻结中、可结算、已对账、已发放）",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/commission-statements": {
+      "get": {
+        "operationId": "Statements_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/StatementStatus"
+            }
+          },
+          {
+            "name": "month",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11",
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "required": false,
+            "in": "query",
+            "description": "对账单编号",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "佣金对账单列表",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/commission-statements/generate": {
+      "post": {
+        "operationId": "Statements_generate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateStatementsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "生成某个月的对账单（每月 1 号会自动生成上个月的；已有草稿的补进新明细）",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/commission-statements/{id}": {
+      "get": {
+        "operationId": "Statements_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "对账单详情：佣金明细和代收款",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/commission-statements/{id}/confirm": {
+      "post": {
+        "operationId": "Statements_confirm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmStatementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "和代理核对无误后确认，金额定下来，明细变成「已对账」",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/commission-statements/{id}/pay": {
+      "post": {
+        "operationId": "Statements_pay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayStatementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "登记打款（或代理补交差额），明细变成「已发放」",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
+    "/api/commission-statements/{id}/cancel": {
+      "post": {
+        "operationId": "Statements_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelStatementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "作废对账单，明细退回可结算，下次重新出单",
+        "tags": [
+          "代理"
+        ]
+      }
+    },
     "/api/dashboard": {
       "get": {
         "operationId": "Dashboard_summary",
@@ -3768,7 +4182,7 @@
             "bearer": []
           }
         ],
-        "summary": "财务对账：现金口径汇总、每日对账、按收款方式、按商品 / 客服 / 来源",
+        "summary": "财务对账：现金口径汇总、每日对账、按收款方式、按商品 / 客服 / 来源 / 代理",
         "tags": [
           "财务"
         ]
@@ -3816,7 +4230,7 @@
             "bearer": []
           }
         ],
-        "summary": "收支明细（收款、退款出账、成本），用于导出对账",
+        "summary": "收支明细（收款、退款出账、成本、代理佣金），用于导出对账",
         "tags": [
           "财务"
         ]
@@ -4080,126 +4494,6 @@
           }
         ],
         "summary": "修改代理；改比例只影响之后的新订单",
-        "tags": [
-          "代理"
-        ]
-      }
-    },
-    "/api/commissions": {
-      "get": {
-        "operationId": "Commissions_list",
-        "parameters": [
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
-            }
-          },
-          {
-            "name": "pageSize",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20,
-              "type": "number"
-            }
-          },
-          {
-            "name": "agentId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/CommissionStatus"
-            }
-          },
-          {
-            "name": "role",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/CommissionRole"
-            }
-          },
-          {
-            "name": "kind",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/CommissionKind"
-            }
-          },
-          {
-            "name": "keyword",
-            "required": false,
-            "in": "query",
-            "description": "订单编号或客户称呼",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CommissionListDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "佣金明细",
-        "tags": [
-          "代理"
-        ]
-      }
-    },
-    "/api/commissions/summary": {
-      "get": {
-        "operationId": "Commissions_summary",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AgentCommissionSummaryDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "按代理汇总佣金（冻结中、可结算、已对账、已发放）",
         "tags": [
           "代理"
         ]
@@ -6202,7 +6496,8 @@
               "alipay",
               "usdt",
               "bank",
-              "other"
+              "other",
+              "agent"
             ]
           },
           "reference": {
@@ -6212,6 +6507,16 @@
           "receivedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "statement": {
+            "nullable": true,
+            "description": "代理代收的款：在哪张佣金对账单里抵扣（还没出单为空）",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefDto"
+              }
+            ]
           },
           "confirmedBy": {
             "$ref": "#/components/schemas/UserBriefDto"
@@ -6228,6 +6533,7 @@
           "method",
           "reference",
           "receivedAt",
+          "statement",
           "confirmedBy",
           "createdAt"
         ]
@@ -6994,8 +7300,10 @@
               "alipay",
               "usdt",
               "bank",
-              "other"
-            ]
+              "other",
+              "agent"
+            ],
+            "description": "agent = 代理代收（只有代理客户的订单能用，月底对账从佣金里抵扣）"
           },
           "reference": {
             "type": "string",
@@ -7996,6 +8304,10 @@
           "releasedCommissions": {
             "type": "number",
             "description": "到期解冻、变成可结算的佣金条数"
+          },
+          "statementsGenerated": {
+            "type": "number",
+            "description": "每月 1 号自动生成的上月佣金对账单数"
           }
         },
         "required": [
@@ -8006,7 +8318,8 @@
           "cancelAutoRenewTasks",
           "escalatedTickets",
           "closedTickets",
-          "releasedCommissions"
+          "releasedCommissions",
+          "statementsGenerated"
         ]
       },
       "TicketSubscriptionDto": {
@@ -8751,6 +9064,527 @@
           "reason"
         ]
       },
+      "CommissionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommissionDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "sumCents": {
+            "type": "number",
+            "description": "符合条件的佣金金额合计（分，不含已作废）"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "sumCents"
+        ]
+      },
+      "AgentCommissionSummaryDto": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/AgentBriefDto"
+          },
+          "frozenCents": {
+            "type": "number",
+            "description": "冻结中（分）"
+          },
+          "releasableCents": {
+            "type": "number",
+            "description": "可结算（分），已扣掉待扣回"
+          },
+          "clawbackCents": {
+            "type": "number",
+            "description": "其中待扣回（分，负数）"
+          },
+          "settledCents": {
+            "type": "number",
+            "description": "已对账待打款（分）"
+          },
+          "paidCents": {
+            "type": "number",
+            "description": "已发放（分）"
+          }
+        },
+        "required": [
+          "agent",
+          "frozenCents",
+          "releasableCents",
+          "clawbackCents",
+          "settledCents",
+          "paidCents"
+        ]
+      },
+      "StatementStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "CONFIRMED",
+          "PAID",
+          "CANCELLED"
+        ]
+      },
+      "StatementDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "J00001"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/AgentBriefDto"
+          },
+          "month": {
+            "type": "string",
+            "example": "2026-11",
+            "description": "对账月份（北京时间）"
+          },
+          "cutoffAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "收录截止时间：这之前变成可结算的佣金和代收款"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementStatus"
+              }
+            ]
+          },
+          "commissionCents": {
+            "type": "number",
+            "description": "佣金合计（分，含退款扣回）。待确认时按当前明细实时算"
+          },
+          "collectedCents": {
+            "type": "number",
+            "description": "代理代收的款（分），从佣金里抵扣"
+          },
+          "payableCents": {
+            "type": "number",
+            "description": "应付代理（分）= 佣金 − 代收；负数表示代理要补交给我们"
+          },
+          "commissionCount": {
+            "type": "number",
+            "description": "佣金明细条数"
+          },
+          "paymentCount": {
+            "type": "number",
+            "description": "代收款笔数"
+          },
+          "confirmedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "confirmedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "payMethod": {
+            "type": "string",
+            "nullable": true,
+            "description": "打款方式（代理补交时是收款方式）；应付为 0 时为空"
+          },
+          "payReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdBy": {
+            "nullable": true,
+            "description": "手动生成的人；自动生成为空",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "cancelledAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "description": "确认备注或作废原因"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "agent",
+          "month",
+          "cutoffAt",
+          "status",
+          "commissionCents",
+          "collectedCents",
+          "payableCents",
+          "commissionCount",
+          "paymentCount",
+          "confirmedBy",
+          "confirmedAt",
+          "paidBy",
+          "paidAt",
+          "payMethod",
+          "payReference",
+          "createdBy",
+          "cancelledAt",
+          "note",
+          "createdAt"
+        ]
+      },
+      "StatementListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "GenerateStatementsDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "example": "2026-11",
+            "description": "对账月份；当月生成的收录到现在为止"
+          },
+          "agentId": {
+            "type": "string",
+            "description": "只给这个代理生成；不填为全部有待结算佣金的代理"
+          }
+        },
+        "required": [
+          "month"
+        ]
+      },
+      "GenerateResultDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "created": {
+            "type": "number",
+            "description": "新生成的对账单数"
+          },
+          "refreshed": {
+            "type": "number",
+            "description": "已有草稿、补进新明细的对账单数"
+          },
+          "skipped": {
+            "type": "number",
+            "description": "这个月已经确认 / 结清的代理数，新明细留到下个月"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementDto"
+            }
+          }
+        },
+        "required": [
+          "month",
+          "created",
+          "refreshed",
+          "skipped",
+          "items"
+        ]
+      },
+      "AgentPayoutDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "account": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "method",
+          "account"
+        ]
+      },
+      "StatementPaymentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "$ref": "#/components/schemas/CommissionRefDto"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CustomerBriefDto"
+          },
+          "amountCents": {
+            "type": "number"
+          },
+          "receivedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "order",
+          "customer",
+          "amountCents",
+          "receivedAt",
+          "reference"
+        ]
+      },
+      "StatementDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "J00001"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/AgentBriefDto"
+          },
+          "month": {
+            "type": "string",
+            "example": "2026-11",
+            "description": "对账月份（北京时间）"
+          },
+          "cutoffAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "收录截止时间：这之前变成可结算的佣金和代收款"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementStatus"
+              }
+            ]
+          },
+          "commissionCents": {
+            "type": "number",
+            "description": "佣金合计（分，含退款扣回）。待确认时按当前明细实时算"
+          },
+          "collectedCents": {
+            "type": "number",
+            "description": "代理代收的款（分），从佣金里抵扣"
+          },
+          "payableCents": {
+            "type": "number",
+            "description": "应付代理（分）= 佣金 − 代收；负数表示代理要补交给我们"
+          },
+          "commissionCount": {
+            "type": "number",
+            "description": "佣金明细条数"
+          },
+          "paymentCount": {
+            "type": "number",
+            "description": "代收款笔数"
+          },
+          "confirmedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "confirmedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "payMethod": {
+            "type": "string",
+            "nullable": true,
+            "description": "打款方式（代理补交时是收款方式）；应付为 0 时为空"
+          },
+          "payReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdBy": {
+            "nullable": true,
+            "description": "手动生成的人；自动生成为空",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBriefDto"
+              }
+            ]
+          },
+          "cancelledAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "description": "确认备注或作废原因"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "payout": {
+            "description": "代理的收款方式和账号",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentPayoutDto"
+              }
+            ]
+          },
+          "commissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommissionDto"
+            }
+          },
+          "payments": {
+            "description": "代理代收、在这张单里抵扣的款",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementPaymentDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "agent",
+          "month",
+          "cutoffAt",
+          "status",
+          "commissionCents",
+          "collectedCents",
+          "payableCents",
+          "commissionCount",
+          "paymentCount",
+          "confirmedBy",
+          "confirmedAt",
+          "paidBy",
+          "paidAt",
+          "payMethod",
+          "payReference",
+          "createdBy",
+          "cancelledAt",
+          "note",
+          "createdAt",
+          "payout",
+          "commissions",
+          "payments"
+        ]
+      },
+      "ConfirmStatementDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "备注，比如和代理核对的情况"
+          }
+        }
+      },
+      "PayStatementDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "wechat",
+              "alipay",
+              "usdt",
+              "bank",
+              "other"
+            ],
+            "description": "打款方式；代理补交时是收款方式。应付为 0 时可以不填"
+          },
+          "reference": {
+            "type": "string",
+            "description": "转账单号或备注"
+          },
+          "paidAt": {
+            "type": "string",
+            "description": "打款时间，不填为现在"
+          }
+        }
+      },
+      "CancelStatementDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "金额核对有误，重新出单"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "OrderStatsDto": {
         "type": "object",
         "properties": {
@@ -8910,6 +9744,33 @@
           "pendingRefunds"
         ]
       },
+      "CommissionStatsDto": {
+        "type": "object",
+        "properties": {
+          "draftStatements": {
+            "type": "number",
+            "description": "待确认的佣金对账单"
+          },
+          "unpaidStatements": {
+            "type": "number",
+            "description": "已确认、待打款的佣金对账单"
+          },
+          "unpaidCents": {
+            "type": "number",
+            "description": "待打款合计（分，负数表示代理要补交）"
+          },
+          "unstatementedCents": {
+            "type": "number",
+            "description": "可结算、还没进对账单的佣金（分）"
+          }
+        },
+        "required": [
+          "draftStatements",
+          "unpaidStatements",
+          "unpaidCents",
+          "unstatementedCents"
+        ]
+      },
       "DashboardDto": {
         "type": "object",
         "properties": {
@@ -8970,6 +9831,16 @@
                 "$ref": "#/components/schemas/AftersalesStatsDto"
               }
             ]
+          },
+          "commissions": {
+            "nullable": true,
+            "description": "有「佣金结算」权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommissionStatsDto"
+              }
+            ]
           }
         },
         "required": [
@@ -8978,7 +9849,8 @@
           "subscriptions",
           "customers",
           "inventory",
-          "aftersales"
+          "aftersales",
+          "commissions"
         ]
       },
       "StockPoolDto": {
@@ -9658,9 +10530,13 @@
             "type": "number",
             "description": "当期发生的成本（上游扣费、成品号等）"
           },
+          "commissionCents": {
+            "type": "number",
+            "description": "代理佣金（分）：佣金对账单结清当天按佣金合计计入（代理代收的款已经算在收款里，打款时只付差额）"
+          },
           "profitCents": {
             "type": "number",
-            "description": "毛利 = 净收入 − 成本"
+            "description": "毛利 = 净收入 − 成本 − 代理佣金"
           },
           "resourceSpendCents": {
             "type": "number",
@@ -9676,6 +10552,7 @@
           "refundCount",
           "netCents",
           "costCents",
+          "commissionCents",
           "profitCents",
           "resourceSpendCents"
         ]
@@ -9711,9 +10588,13 @@
             "type": "number",
             "description": "当期发生的成本（上游扣费、成品号等）"
           },
+          "commissionCents": {
+            "type": "number",
+            "description": "代理佣金（分）：佣金对账单结清当天按佣金合计计入（代理代收的款已经算在收款里，打款时只付差额）"
+          },
           "profitCents": {
             "type": "number",
-            "description": "毛利 = 净收入 − 成本"
+            "description": "毛利 = 净收入 − 成本 − 代理佣金"
           },
           "date": {
             "type": "string",
@@ -9728,6 +10609,7 @@
           "refundCount",
           "netCents",
           "costCents",
+          "commissionCents",
           "profitCents",
           "date"
         ]
@@ -9798,8 +10680,13 @@
           "costCents": {
             "type": "number"
           },
+          "commissionCents": {
+            "type": "number",
+            "description": "订单上的代理佣金（不含已作废）"
+          },
           "marginCents": {
-            "type": "number"
+            "type": "number",
+            "description": "毛利 = 收款 − 退款 − 手续费 − 成本 − 代理佣金"
           }
         },
         "required": [
@@ -9810,6 +10697,7 @@
           "refundedCents",
           "feeCents",
           "costCents",
+          "commissionCents",
           "marginCents"
         ]
       },
@@ -9858,6 +10746,13 @@
             "items": {
               "$ref": "#/components/schemas/FinanceGroupDto"
             }
+          },
+          "byAgent": {
+            "description": "按代理（直客单独一行），也是代理业绩",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceGroupDto"
+            }
           }
         },
         "required": [
@@ -9868,7 +10763,8 @@
           "methods",
           "byProduct",
           "byStaff",
-          "bySource"
+          "bySource",
+          "byAgent"
         ]
       },
       "JournalEntryDto": {
@@ -9879,7 +10775,8 @@
             "enum": [
               "payment",
               "refund",
-              "cost"
+              "cost",
+              "commission"
             ]
           },
           "id": {
@@ -9909,11 +10806,11 @@
           },
           "category": {
             "type": "string",
-            "description": "收款 / 退款方式，或成本类型"
+            "description": "收款 / 退款方式、成本类型，或「代理佣金」"
           },
           "amountCents": {
             "type": "number",
-            "description": "金额（分），收款为正、退款和成本为负"
+            "description": "金额（分），收款为正，退款、成本和代理佣金为负"
           },
           "feeCents": {
             "type": "number",
@@ -11057,65 +11954,6 @@
             ]
           }
         }
-      },
-      "CommissionListDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CommissionDto"
-            }
-          },
-          "total": {
-            "type": "number"
-          },
-          "sumCents": {
-            "type": "number",
-            "description": "符合条件的佣金金额合计（分，不含已作废）"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "sumCents"
-        ]
-      },
-      "AgentCommissionSummaryDto": {
-        "type": "object",
-        "properties": {
-          "agent": {
-            "$ref": "#/components/schemas/AgentBriefDto"
-          },
-          "frozenCents": {
-            "type": "number",
-            "description": "冻结中（分）"
-          },
-          "releasableCents": {
-            "type": "number",
-            "description": "可结算（分），已扣掉待扣回"
-          },
-          "clawbackCents": {
-            "type": "number",
-            "description": "其中待扣回（分，负数）"
-          },
-          "settledCents": {
-            "type": "number",
-            "description": "已对账待打款（分）"
-          },
-          "paidCents": {
-            "type": "number",
-            "description": "已发放（分）"
-          }
-        },
-        "required": [
-          "agent",
-          "frozenCents",
-          "releasableCents",
-          "clawbackCents",
-          "settledCents",
-          "paidCents"
-        ]
       }
     }
   }

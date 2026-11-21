@@ -12,6 +12,7 @@ import {
   ORDER_KIND_LABELS,
   ORDER_STATUS_LABELS,
   REFUND_STATUS_LABELS,
+  STATEMENT_STATUS_LABELS,
   SUBSCRIPTION_STATUS_LABELS,
   TASK_STATUS_LABELS,
   TASK_TYPE_LABELS,
@@ -25,6 +26,7 @@ import {
   type OrderKind,
   type OrderStatus,
   type RefundStatus,
+  type StatementStatus,
   type SubscriptionStatus,
   type TaskStatus,
   type TaskType,
@@ -420,5 +422,31 @@ export function CommissionStatusTag({ status }: { status: CommissionStatus }) {
     <Tag color={COMMISSION_STATUS_COLORS[status]} style={status === 'VOID' ? { opacity: 0.6 } : {}}>
       {COMMISSION_STATUS_LABELS[status]}
     </Tag>
+  );
+}
+
+const STATEMENT_STATUS_COLORS: Record<StatementStatus, string> = {
+  DRAFT: 'orange',
+  CONFIRMED: 'blue',
+  PAID: 'green',
+  CANCELLED: 'default',
+};
+export function StatementStatusTag({ status }: { status: StatementStatus }) {
+  return <Tag color={STATEMENT_STATUS_COLORS[status]}>{STATEMENT_STATUS_LABELS[status]}</Tag>;
+}
+
+/** 对账单应付金额：正数是我们打给代理，负数是代理要补交 */
+export function PayableText({ cents, strong }: { cents: number; strong?: boolean }) {
+  if (cents < 0) {
+    return (
+      <Typography.Text strong={strong} type="danger" style={{ whiteSpace: 'nowrap' }}>
+        代理补交 {formatCents(-cents)}
+      </Typography.Text>
+    );
+  }
+  return (
+    <Typography.Text strong={strong} style={{ whiteSpace: 'nowrap' }}>
+      {formatCents(cents)}
+    </Typography.Text>
   );
 }
