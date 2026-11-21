@@ -12,13 +12,15 @@ function FullPageSpin() {
   );
 }
 
-/** 需要登录；还没改初始密码的员工先去改密码 */
+/** 需要登录；还没改初始密码的员工先去改密码，角色要求两步验证但还没开的先去设置 */
 export function RequireAuth({
   children,
   allowPendingPassword = false,
+  allowPendingTotp = false,
 }: {
   children: ReactNode;
   allowPendingPassword?: boolean;
+  allowPendingTotp?: boolean;
 }) {
   const { profile, loading, error, reload } = useAuth();
   const location = useLocation();
@@ -37,6 +39,9 @@ export function RequireAuth({
   if (!profile) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (profile.mustChangePassword && !allowPendingPassword) {
     return <Navigate to="/change-password" replace />;
+  }
+  if (profile.mustSetupTotp && !profile.mustChangePassword && !allowPendingTotp) {
+    return <Navigate to="/setup-2fa" replace />;
   }
   return <>{children}</>;
 }

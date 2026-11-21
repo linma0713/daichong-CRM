@@ -8,6 +8,7 @@ import {
   ChangePasswordDto,
   LoginDto,
   LoginResponseDto,
+  LoginTotpDto,
   OkDto,
   ProfileDto,
   RefreshDto,
@@ -29,7 +30,18 @@ export class AuthController {
   @ApiOperation({ summary: '员工登录' })
   @ApiOkResponse({ type: LoginResponseDto })
   login(@Body() dto: LoginDto, @Req() req: Request): Promise<LoginResponseDto> {
-    return this.auth.login(dto.username, dto.password, requestMeta(req));
+    return this.auth.login(dto.username, dto.password, requestMeta(req), dto.deviceId);
+  }
+
+  @Public()
+  @SkipAudit()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('login/totp')
+  @HttpCode(200)
+  @ApiOperation({ summary: '登录第二步：输入两步验证码或恢复码' })
+  @ApiOkResponse({ type: LoginResponseDto })
+  loginTotp(@Body() dto: LoginTotpDto, @Req() req: Request): Promise<LoginResponseDto> {
+    return this.auth.loginTotp(dto.challenge, dto.code, requestMeta(req), dto.deviceId);
   }
 
   @Public()

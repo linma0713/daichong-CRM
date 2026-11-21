@@ -5,6 +5,7 @@ export const IS_PUBLIC_KEY = 'crm:isPublic';
 export const PERMISSIONS_KEY = 'crm:permissions';
 export const ANY_PERMISSIONS_KEY = 'crm:anyPermissions';
 export const ALLOW_PENDING_PASSWORD_KEY = 'crm:allowPendingPassword';
+export const ALLOW_PENDING_TOTP_KEY = 'crm:allowPendingTotp';
 export const AUDIT_KEY = 'crm:audit';
 
 /** 不需要登录即可访问 */
@@ -18,6 +19,9 @@ export const RequireAnyPermission = (...codes: string[]) => SetMetadata(ANY_PERM
 
 /** 还没改初始密码时也允许访问（登录信息、改密码、退出） */
 export const AllowPendingPasswordChange = () => SetMetadata(ALLOW_PENDING_PASSWORD_KEY, true);
+
+/** 角色要求两步验证但还没开启时，也允许调用（设置两步验证用的接口） */
+export const AllowPendingTotpSetup = () => SetMetadata(ALLOW_PENDING_TOTP_KEY, true);
 
 export interface AuditMeta {
   action?: string;

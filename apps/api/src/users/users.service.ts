@@ -7,6 +7,12 @@ import type { AuthUser } from '../common/auth-user';
 import { badRequest } from '../common/errors';
 import { skipTake } from '../common/pagination';
 import type { CreateUserDto, UpdateUserDto, UserDto, UserListDto, UserQueryDto } from './users.dto';
+import {
+  activeSessionWhere,
+  toSessionDto,
+  type RevokeResultDto,
+  type SessionDto,
+} from '../auth/security';
 
 const userInclude = {
   team: { select: { id: true, name: true } },
@@ -26,6 +32,8 @@ function toDto(u: UserWithRelations): UserDto {
     roles: u.roles.map((r) => r.role),
     lastLoginAt: u.lastLoginAt,
     createdAt: u.createdAt,
+    totpEnabled: u.totpEnabledAt !== null,
+    lockedUntil: u.lockedUntil && u.lockedUntil.getTime() > Date.now() ? u.lockedUntil : null,
   };
 }
 
@@ -133,10 +141,54 @@ export class UsersService {
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id },
-        data: { passwordHash: await bcrypt.hash(password, 10), mustChangePassword: true },
+        // 重置密码顺便解除输错锁定，员工拿到新密码就能登录
+        data: {
+          passwordHash: await bcrypt.hash(password, 10),
+          mustChangePassword: true,
+          failedLogins: 0,
+          lockedUntil: null,
+        },
       }),
       this.revokeSessions(id),
     ]);
+  }
+
+  /** 解除输错密码造成的锁定 */
+  async unlock(id: string): Promise<void> {
+    await this.findOrThrow(id);
+    await this.prisma.user.update({
+      where: { id },
+      data: { lockedUntil: null, failedLogins: 0 },
+    });
+  }
+
+  /** 员工手机丢了：清掉两步验证，下次登录只要密码（角色要求的话会让他重新设置） */
+  async resetTotp(id: string, actor: AuthUser): Promise<void> {
+    const user = await this.findOrThrow(id);
+    if (!user.totpEnabledAt) throw badRequest('这个员工没有开启两步验证');
+    if (await this.isAdmin(id)) assertActorIsAdmin(actor, '重置管理员的两步验证');
+    await this.prisma.user.update({
+      where: { id },
+      data: { totpSecret: null, totpEnabledAt: null, totpLastStep: null, totpRecoveryHashes: [] },
+    });
+  }
+
+  async sessions(id: string): Promise<SessionDto[]> {
+    await this.findOrThrow(id);
+    const rows = await this.prisma.session.findMany({
+      where: activeSessionWhere(id),
+      orderBy: [{ lastSeenAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+    });
+    return rows.map((s) => toSessionDto(s));
+  }
+
+  /** 强制下线：这个员工所有设备上的登录立即失效 */
+  async forceLogout(id: string, actor: AuthUser): Promise<RevokeResultDto> {
+    await this.findOrThrow(id);
+    if (id === actor.id) throw badRequest('要退出自己的其他设备，请去「账号安全」');
+    if (await this.isAdmin(id)) assertActorIsAdmin(actor, '让管理员下线');
+    const res = await this.revokeSessions(id);
+    return { count: res.count };
   }
 
   /** 删除员工：软删除，保留历史记录，立即踢下线 */

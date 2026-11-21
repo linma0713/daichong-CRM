@@ -11,6 +11,7 @@ import { ErrorCode, hasPermission } from '@crm/shared';
 import type { AuthUser } from '../common/auth-user';
 import {
   ALLOW_PENDING_PASSWORD_KEY,
+  ALLOW_PENDING_TOTP_KEY,
   ANY_PERMISSIONS_KEY,
   IS_PUBLIC_KEY,
   PERMISSIONS_KEY,
@@ -41,7 +42,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 }
 
-/** 全局权限校验：检查 @RequirePermissions()，并拦住还没改初始密码的账号 */
+/** 全局权限校验：检查 @RequirePermissions()，并拦住还没改初始密码、还没按要求开两步验证的账号 */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
@@ -61,6 +62,16 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException({
         code: ErrorCode.PASSWORD_CHANGE_REQUIRED,
         message: '请先修改初始密码',
+      });
+    }
+    const allowPendingTotp = this.reflector.getAllAndOverride<boolean>(
+      ALLOW_PENDING_TOTP_KEY,
+      targets,
+    );
+    if (user.mustSetupTotp && !allowPending && !allowPendingTotp) {
+      throw new ForbiddenException({
+        code: ErrorCode.TOTP_SETUP_REQUIRED,
+        message: '你的角色要求开启两步验证，请先完成设置',
       });
     }
 

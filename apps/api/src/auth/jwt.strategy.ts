@@ -19,7 +19,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: AccessPayload): Promise<AuthUser> {
-    const user = await this.auth.loadAuthUser(payload.sub, payload.sid);
+    const user =
+      payload?.sub && payload?.sid ? await this.auth.loadAuthUser(payload.sub, payload.sid) : null;
     if (!user) {
       throw new UnauthorizedException({ code: 'UNAUTHORIZED', message: '登录已失效，请重新登录' });
     }

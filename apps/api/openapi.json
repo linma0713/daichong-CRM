@@ -553,6 +553,38 @@
         ]
       }
     },
+    "/api/auth/login/totp": {
+      "post": {
+        "operationId": "Auth_loginTotp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginTotpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "登录第二步：输入两步验证码或恢复码",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
     "/api/auth/refresh": {
       "post": {
         "operationId": "Auth_refresh",
@@ -671,6 +703,294 @@
           }
         ],
         "summary": "修改自己的密码",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
+    "/api/auth/totp": {
+      "get": {
+        "operationId": "Security_totpStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "我的两步验证状态",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
+    "/api/auth/totp/setup": {
+      "post": {
+        "operationId": "Security_setup",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSetupDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "开始设置两步验证：生成密钥和二维码",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
+    "/api/auth/totp/enable": {
+      "post": {
+        "operationId": "Security_enable",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodesDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "输入验证码确认，开启两步验证，返回恢复码",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
+    "/api/auth/totp/disable": {
+      "post": {
+        "operationId": "Security_disable",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordConfirmDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "关闭两步验证（要输登录密码）",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
+    "/api/auth/totp/recovery-codes": {
+      "post": {
+        "operationId": "Security_regenerate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordConfirmDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodesDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "重新生成恢复码，旧的全部作废（要输登录密码）",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
+    "/api/auth/sessions": {
+      "get": {
+        "operationId": "Security_sessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "我登录着的设备",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
+    "/api/auth/sessions/{id}": {
+      "delete": {
+        "operationId": "Security_revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "让某个设备退出登录",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
+    "/api/auth/sessions/revoke-others": {
+      "post": {
+        "operationId": "Security_revokeOthers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "除了现在这个浏览器，其他设备全部退出登录",
+        "tags": [
+          "登录"
+        ]
+      }
+    },
+    "/api/auth/login-history": {
+      "get": {
+        "operationId": "Security_loginHistory",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LoginEventDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "我最近的登录记录（30 条）",
         "tags": [
           "登录"
         ]
@@ -948,6 +1268,153 @@
           }
         ],
         "summary": "重置员工密码（员工下次登录需修改）",
+        "tags": [
+          "员工"
+        ]
+      }
+    },
+    "/api/users/{id}/unlock": {
+      "post": {
+        "operationId": "Users_unlock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "解除输错密码造成的锁定",
+        "tags": [
+          "员工"
+        ]
+      }
+    },
+    "/api/users/{id}/reset-totp": {
+      "post": {
+        "operationId": "Users_resetTotp",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "重置两步验证（员工手机丢了、换了）",
+        "tags": [
+          "员工"
+        ]
+      }
+    },
+    "/api/users/{id}/sessions": {
+      "get": {
+        "operationId": "Users_sessions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "员工登录着的设备",
+        "tags": [
+          "员工"
+        ]
+      }
+    },
+    "/api/users/{id}/force-logout": {
+      "post": {
+        "operationId": "Users_forceLogout",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "强制下线：所有设备上的登录立即失效",
         "tags": [
           "员工"
         ]
@@ -6373,6 +6840,8 @@
               "inventory.low",
               "statement.generated",
               "referral.created",
+              "security.new_device",
+              "security.locked",
               "daily.digest"
             ]
           },
@@ -6488,6 +6957,8 @@
                 "inventory.low",
                 "statement.generated",
                 "referral.created",
+                "security.new_device",
+                "security.locked",
                 "daily.digest"
               ]
             }
@@ -6561,6 +7032,8 @@
                 "inventory.low",
                 "statement.generated",
                 "referral.created",
+                "security.new_device",
+                "security.locked",
                 "daily.digest"
               ]
             }
@@ -6600,6 +7073,8 @@
                 "inventory.low",
                 "statement.generated",
                 "referral.created",
+                "security.new_device",
+                "security.locked",
                 "daily.digest"
               ]
             }
@@ -6653,6 +7128,8 @@
               "inventory.low",
               "statement.generated",
               "referral.created",
+              "security.new_device",
+              "security.locked",
               "daily.digest"
             ]
           },
@@ -6823,6 +7300,10 @@
           "password": {
             "type": "string",
             "example": "Admin@123456"
+          },
+          "deviceId": {
+            "type": "string",
+            "description": "浏览器生成的设备编号，用来判断是不是新设备登录"
           }
         },
         "required": [
@@ -6896,6 +7377,14 @@
           "mustChangePassword": {
             "type": "boolean",
             "description": "是否需要先修改初始密码"
+          },
+          "totpEnabled": {
+            "type": "boolean",
+            "description": "已开启两步验证"
+          },
+          "mustSetupTotp": {
+            "type": "boolean",
+            "description": "角色要求两步验证但还没开，需要先设置"
           }
         },
         "required": [
@@ -6906,12 +7395,22 @@
           "roles",
           "permissions",
           "dataScope",
-          "mustChangePassword"
+          "mustChangePassword",
+          "totpEnabled",
+          "mustSetupTotp"
         ]
       },
       "LoginResponseDto": {
         "type": "object",
         "properties": {
+          "totpRequired": {
+            "type": "boolean",
+            "description": "需要输入两步验证码"
+          },
+          "challenge": {
+            "type": "string",
+            "description": "两步验证用的中间令牌，5 分钟内有效"
+          },
           "accessToken": {
             "type": "string"
           },
@@ -6923,9 +7422,27 @@
           }
         },
         "required": [
-          "accessToken",
-          "refreshToken",
-          "user"
+          "totpRequired"
+        ]
+      },
+      "LoginTotpDto": {
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "type": "string",
+            "description": "第一步登录返回的 challenge"
+          },
+          "code": {
+            "type": "string",
+            "description": "验证器里的 6 位数字，或者一个恢复码（xxxx-xxxx）"
+          },
+          "deviceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge",
+          "code"
         ]
       },
       "RefreshDto": {
@@ -6968,6 +7485,176 @@
         "required": [
           "oldPassword",
           "newPassword"
+        ]
+      },
+      "TotpStatusDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "enabledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "recoveryCodesLeft": {
+            "type": "number",
+            "description": "还剩几个恢复码"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "角色要求必须开启（开了以后不能关）"
+          }
+        },
+        "required": [
+          "enabled",
+          "enabledAt",
+          "recoveryCodesLeft",
+          "required"
+        ]
+      },
+      "TotpSetupDto": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string",
+            "description": "密钥，扫不了码时手动输入"
+          },
+          "otpauthUrl": {
+            "type": "string",
+            "description": "二维码内容"
+          }
+        },
+        "required": [
+          "secret",
+          "otpauthUrl"
+        ]
+      },
+      "TotpCodeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "验证器里的 6 位数字"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "RecoveryCodesDto": {
+        "type": "object",
+        "properties": {
+          "recoveryCodes": {
+            "description": "只显示这一次，请让员工抄下来或下载保存",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "recoveryCodes"
+        ]
+      },
+      "PasswordConfirmDto": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "当前登录密码"
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
+      "SessionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string",
+            "example": "Chrome · Windows"
+          },
+          "ip": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "登录时间"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "最近活跃"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "就是现在这个浏览器"
+          }
+        },
+        "required": [
+          "id",
+          "device",
+          "ip",
+          "createdAt",
+          "lastSeenAt",
+          "current"
+        ]
+      },
+      "RevokeResultDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "description": "退出了几个设备"
+          }
+        },
+        "required": [
+          "count"
+        ]
+      },
+      "LoginEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "example": "auth.login"
+          },
+          "summary": {
+            "type": "string",
+            "example": "登录"
+          },
+          "ip": {
+            "type": "string",
+            "nullable": true
+          },
+          "device": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "action",
+          "summary",
+          "ip",
+          "device"
         ]
       },
       "UserStatus": {
@@ -7037,6 +7724,16 @@
           "createdAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "totpEnabled": {
+            "type": "boolean",
+            "description": "已开启两步验证"
+          },
+          "lockedUntil": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "输错太多次锁定到这个时间"
           }
         },
         "required": [
@@ -7048,7 +7745,9 @@
           "team",
           "roles",
           "lastLoginAt",
-          "createdAt"
+          "createdAt",
+          "totpEnabled",
+          "lockedUntil"
         ]
       },
       "UserListDto": {
@@ -7287,6 +7986,10 @@
             "type": "boolean",
             "description": "内置角色不能删除"
           },
+          "requireTotp": {
+            "type": "boolean",
+            "description": "这个角色的员工必须开启两步验证"
+          },
           "userCount": {
             "type": "number",
             "description": "有多少员工使用这个角色"
@@ -7300,6 +8003,7 @@
           "permissions",
           "dataScope",
           "builtIn",
+          "requireTotp",
           "userCount"
         ]
       },
@@ -7330,6 +8034,10 @@
                 "$ref": "#/components/schemas/DataScope"
               }
             ]
+          },
+          "requireTotp": {
+            "type": "boolean",
+            "description": "这个角色的员工必须开启两步验证"
           }
         },
         "required": [
@@ -7360,6 +8068,10 @@
                 "$ref": "#/components/schemas/DataScope"
               }
             ]
+          },
+          "requireTotp": {
+            "type": "boolean",
+            "description": "这个角色的员工必须开启两步验证"
           }
         }
       },

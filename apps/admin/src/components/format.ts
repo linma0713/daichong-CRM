@@ -4,6 +4,13 @@ export function formatTime(value: string | null | undefined): string {
   return value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '—';
 }
 
+/** 手机上用的短时间：今年的省掉年份 */
+export function formatShortTime(value: string | null | undefined, now = dayjs()): string {
+  if (!value) return '—';
+  const d = dayjs(value);
+  return d.format(d.year() === now.year() ? 'MM-DD HH:mm' : 'YYYY-MM-DD HH:mm');
+}
+
 /** 生成一个符合密码规则的随机初始密码（字母 + 数字，10 位） */
 export function randomPassword(): string {
   const letters = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ';

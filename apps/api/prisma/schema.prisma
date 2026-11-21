@@ -79,6 +79,17 @@ model User {
   /// 上次被自动派单的时间，负载相同时轮流派
   lastAssignedAt      DateTime?
   lastLoginAt         DateTime?
+  /// 两步验证密钥（用 ACCOUNT_SECRET_KEY 加密）；totpEnabledAt 为空表示没开或还在设置中
+  totpSecret          String?
+  totpEnabledAt       DateTime?
+  /// 上次用过的验证码时间片，同一个码不能用两次
+  totpLastStep        Int?
+  /// 恢复码的 sha256，手机丢了用它登录，用掉一个删一个
+  totpRecoveryHashes  String[]              @default([])
+  /// 连续输错密码 / 验证码的次数，登录成功清零
+  failedLogins        Int                   @default(0)
+  /// 输错太多次后锁到这个时间
+  lockedUntil         DateTime?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   /// 软删除：删除的员工保留历史记录
@@ -97,6 +108,8 @@ model Role {
   dataScope   DataScope  @default(SELF)
   /// 内置角色不能删除
   builtIn     Boolean    @default(false)
+  /// 这个角色的员工必须开启两步验证
+  requireTotp Boolean    @default(false)
   users       UserRole[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -120,12 +133,17 @@ model Session {
   refreshHash String    @unique
   userAgent   String?
   ip          String?
+  /// 浏览器第一次打开后台时生成的随机编号，用来判断是不是新设备登录
+  deviceId    String?
+  /// 最近一次用这个登录访问接口的时间（每 5 分钟最多更新一次）
+  lastSeenAt  DateTime?
   expiresAt   DateTime
   revokedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([userId])
+  @@index([userId, deviceId])
 }
 
 /// 操作日志：谁、在什么时候、做了什么

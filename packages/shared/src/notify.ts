@@ -7,7 +7,7 @@ export interface NotifyEventDef {
   label: string;
   /** 站内消息发给谁，显示在设置页帮助员工理解 */
   audience: string;
-  group: '履约' | '售后' | '库存' | '代理' | '收款' | '营销' | '汇总';
+  group: '履约' | '售后' | '库存' | '代理' | '收款' | '营销' | '安全' | '汇总';
 }
 
 export type NotifyEvent =
@@ -24,6 +24,8 @@ export type NotifyEvent =
   | 'inventory.low'
   | 'statement.generated'
   | 'referral.created'
+  | 'security.new_device'
+  | 'security.locked'
   | 'daily.digest';
 
 export const NOTIFY_EVENTS: NotifyEventDef[] = [
@@ -84,6 +86,18 @@ export const NOTIFY_EVENTS: NotifyEventDef[] = [
     label: '转介绍奖励待发放',
     audience: '有渠道与营销权限的员工',
     group: '营销',
+  },
+  {
+    value: 'security.new_device',
+    label: '账号在新设备登录',
+    audience: '登录的员工本人',
+    group: '安全',
+  },
+  {
+    value: 'security.locked',
+    label: '账号因输错密码被锁定',
+    audience: '被锁定的员工和能管理员工的人',
+    group: '安全',
   },
   {
     value: 'daily.digest',

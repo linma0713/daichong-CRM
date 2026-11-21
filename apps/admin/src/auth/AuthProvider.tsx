@@ -13,7 +13,10 @@ interface AuthContextValue {
   loading: boolean;
   /** 加载登录信息失败（非登录过期，例如后端没启动） */
   error: unknown;
-  login(username: string, password: string): Promise<Profile>;
+  /** 第一步：密码。开了两步验证的账号返回 challenge，再调 loginTotp */
+  login(username: string, password: string): Promise<LoginResult>;
+  /** 第二步：两步验证码或恢复码 */
+  loginTotp(challenge: string, code: string): Promise<Profile>;
   logout(): Promise<void>;
   /** 是否拥有这些权限（需同时满足） */
   can(...permissions: string[]): boolean;
@@ -21,7 +24,26 @@ interface AuthContextValue {
   reload(): Promise<unknown>;
 }
 
+export type LoginResult =
+  { totpRequired: true; challenge: string } | { totpRequired: false; user: Profile };
+
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+/** 浏览器的设备编号：第一次打开时随机生成，后端用它判断是不是新设备登录 */
+function deviceId(): string | undefined {
+  try {
+    let id = localStorage.getItem('crm.deviceId');
+    if (!id) {
+      // 局域网 http 访问时没有 crypto.randomUUID，用 getRandomValues
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      id = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem('crm.deviceId', id);
+    }
+    return id;
+  } catch {
+    return undefined;
+  }
+}
 export const ME_KEY = ['auth', 'me'] as const;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -47,15 +69,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setSessionExpiredHandler(null);
   }, [signOutLocally]);
 
-  const login = useCallback(
-    async (username: string, password: string) => {
-      const res = await unwrap(api.POST('/api/auth/login', { body: { username, password } }));
-      tokenStore.save(res);
+  const finish = useCallback(
+    (res: Schemas['LoginResponseDto']): Profile => {
+      if (!res.accessToken || !res.refreshToken || !res.user) throw new Error('登录返回不完整');
+      tokenStore.save({ accessToken: res.accessToken, refreshToken: res.refreshToken });
       queryClient.setQueryData(ME_KEY, res.user);
       setAuthed(true);
       return res.user;
     },
     [queryClient],
+  );
+
+  const login = useCallback(
+    async (username: string, password: string): Promise<LoginResult> => {
+      const res = await unwrap(
+        api.POST('/api/auth/login', { body: { username, password, deviceId: deviceId() } }),
+      );
+      if (res.totpRequired && res.challenge)
+        return { totpRequired: true, challenge: res.challenge };
+      return { totpRequired: false, user: finish(res) };
+    },
+    [finish],
+  );
+
+  const loginTotp = useCallback(
+    async (challenge: string, code: string) =>
+      finish(
+        await unwrap(
+          api.POST('/api/auth/login/totp', { body: { challenge, code, deviceId: deviceId() } }),
+        ),
+      ),
+    [finish],
   );
 
   const logout = useCallback(async () => {
@@ -73,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: authed && me.isPending,
     error: authed ? me.error : null,
     login,
+    loginTotp,
     logout,
     can: (...permissions) => Boolean(profile && canWith(profile.permissions, ...permissions)),
     reload: () => queryClient.invalidateQueries({ queryKey: ME_KEY }),

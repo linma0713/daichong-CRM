@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import {
   KeyOutlined,
+  SafetyOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -59,6 +60,7 @@ export function AdminLayout() {
   const openKeys = useMemo(() => menu.filter((n) => n.children).map((n) => n.key), [menu]);
 
   const userMenu: MenuProps['items'] = [
+    { key: 'security', icon: <SafetyOutlined />, label: '账号安全' },
     { key: 'password', icon: <KeyOutlined />, label: '修改密码' },
     { type: 'divider' },
     { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true },
@@ -66,6 +68,7 @@ export function AdminLayout() {
 
   const onUserMenu: MenuProps['onClick'] = async ({ key }) => {
     if (key === 'password') navigate('/account/password');
+    if (key === 'security') navigate('/account/security');
     if (key === 'logout') {
       await logout();
       navigate('/login', { replace: true });

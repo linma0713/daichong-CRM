@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { PASSWORD_RULE } from '@crm/shared';
-import { beijingToday, bpToPercent, formatTime, percentToBp, randomPassword } from './format';
+import dayjs from 'dayjs';
+import {
+  beijingToday,
+  bpToPercent,
+  formatShortTime,
+  formatTime,
+  percentToBp,
+  randomPassword,
+} from './format';
 
 describe('randomPassword', () => {
   it('生成的密码总是符合密码规则', () => {
@@ -15,6 +23,12 @@ describe('randomPassword', () => {
 describe('formatTime', () => {
   it('空值显示破折号', () => {
     expect(formatTime(null)).toBe('—');
+    expect(formatShortTime(undefined)).toBe('—');
+  });
+  it('短时间：今年的省掉年份', () => {
+    const now = dayjs('2026-11-21T12:00:00');
+    expect(formatShortTime('2026-03-05T08:07:00', now)).toBe('03-05 08:07');
+    expect(formatShortTime('2025-12-31T23:59:00', now)).toBe('2025-12-31 23:59');
   });
 });
 

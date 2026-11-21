@@ -12,13 +12,14 @@ import {
   Radio,
   Row,
   Space,
+  Switch,
   Table,
   Tag,
   Tooltip,
   Typography,
   type TableColumnsType,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ALL_PERMISSIONS, DATA_SCOPE_LABELS, type DataScope } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
@@ -34,6 +35,7 @@ interface RoleForm {
   description?: string;
   dataScope: DataScope;
   permissions: string[];
+  requireTotp: boolean;
 }
 
 export function RolesPage() {
@@ -78,7 +80,20 @@ export function RolesPage() {
           `${r.permissions.length} 项`
         ),
     },
-    { title: '数据范围', key: 'dataScope', render: (_, r) => DATA_SCOPE_LABELS[r.dataScope] },
+    {
+      title: '数据范围',
+      key: 'dataScope',
+      render: (_, r) => (
+        <Space direction="vertical" size={0}>
+          <span>{DATA_SCOPE_LABELS[r.dataScope]}</span>
+          {r.requireTotp && (
+            <Typography.Text type="success" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+              <SafetyOutlined /> 必须两步验证
+            </Typography.Text>
+          )}
+        </Space>
+      ),
+    },
     { title: '员工数', dataIndex: 'userCount' },
   ];
 
@@ -183,12 +198,13 @@ function RoleDrawer({
             api.PATCH('/api/roles/{id}', {
               params: { path: { id: role.id } },
               body: isAdmin
-                ? { name: v.name, description: v.description }
+                ? { name: v.name, description: v.description, requireTotp: v.requireTotp }
                 : {
                     name: v.name,
                     description: v.description,
                     dataScope: v.dataScope,
                     permissions: v.permissions,
+                    requireTotp: v.requireTotp,
                   },
             }),
           ),
@@ -220,13 +236,14 @@ function RoleDrawer({
         disabled={readOnly}
         initialValues={
           isNew
-            ? { dataScope: 'SELF', permissions: [] }
+            ? { dataScope: 'SELF', permissions: [], requireTotp: false }
             : {
                 code: role.code,
                 name: role.name,
                 description: role.description ?? undefined,
                 dataScope: role.dataScope,
                 permissions: role.permissions,
+                requireTotp: role.requireTotp,
               }
         }
         onFinish={(v) => save.mutate(v)}
@@ -259,6 +276,14 @@ function RoleDrawer({
         </Row>
         <Form.Item name="description" label="说明">
           <Input.TextArea rows={2} maxLength={200} placeholder="这个角色负责什么" />
+        </Form.Item>
+        <Form.Item
+          name="requireTotp"
+          label="必须开启两步验证"
+          valuePropName="checked"
+          extra="打开后，这个角色的员工下次操作时会被要求先在手机验证器上设置两步验证，设置完才能继续用后台。建议管理员和财务打开。"
+        >
+          <Switch />
         </Form.Item>
 
         {isAdmin ? (
