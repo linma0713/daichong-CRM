@@ -27,7 +27,7 @@ import { AftersalesModule } from './aftersales/aftersales';
 import { FinanceModule } from './finance/finance';
 import { AnalyticsModule } from './analytics/analytics';
 import { AgentsModule } from './agents/agents';
-import { CommissionsModule } from './commissions/commissions';
+import { CommissionsModule } from './commissions/statements';
 
 @Module({
   imports: [

@@ -38,38 +38,41 @@ model Team {
 
 /// 员工账号（客户和代理不登录系统）
 model User {
-  id                 String                @id @default(cuid())
-  username           String                @unique
-  displayName        String
-  passwordHash       String
-  status             UserStatus            @default(ACTIVE)
+  id                  String                @id @default(cuid())
+  username            String                @unique
+  displayName         String
+  passwordHash        String
+  status              UserStatus            @default(ACTIVE)
   /// 管理员创建或重置密码后，首次登录必须改密码
-  mustChangePassword Boolean               @default(true)
-  teamId             String?
-  team               Team?                 @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  roles              UserRole[]
-  sessions           Session[]
-  auditLogs          AuditLog[]
-  ownedCustomers     Customer[]            @relation("CustomerOwner")
-  ownedOrders        Order[]               @relation("OrderOwner")
-  createdOrders      Order[]               @relation("OrderCreator")
-  confirmedPayments  Payment[]
-  assignedTasks      FulfillmentTask[]     @relation("TaskAssignee")
-  ownedSubscriptions Subscription[]        @relation("SubscriptionOwner")
-  followUps          FollowUp[]
-  resourceTxs        ResourceTransaction[]
-  costEntries        CostEntry[]
-  assignedTickets    Ticket[]              @relation("TicketAssignee")
-  ownedTickets       Ticket[]              @relation("TicketOwner")
-  createdTickets     Ticket[]              @relation("TicketCreator")
-  ticketEvents       TicketEvent[]
-  requestedRefunds   Refund[]              @relation("RefundRequester")
-  approvedRefunds    Refund[]              @relation("RefundApprover")
-  lastLoginAt        DateTime?
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  mustChangePassword  Boolean               @default(true)
+  teamId              String?
+  team                Team?                 @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  roles               UserRole[]
+  sessions            Session[]
+  auditLogs           AuditLog[]
+  ownedCustomers      Customer[]            @relation("CustomerOwner")
+  ownedOrders         Order[]               @relation("OrderOwner")
+  createdOrders       Order[]               @relation("OrderCreator")
+  confirmedPayments   Payment[]
+  assignedTasks       FulfillmentTask[]     @relation("TaskAssignee")
+  ownedSubscriptions  Subscription[]        @relation("SubscriptionOwner")
+  followUps           FollowUp[]
+  resourceTxs         ResourceTransaction[]
+  costEntries         CostEntry[]
+  assignedTickets     Ticket[]              @relation("TicketAssignee")
+  ownedTickets        Ticket[]              @relation("TicketOwner")
+  createdTickets      Ticket[]              @relation("TicketCreator")
+  ticketEvents        TicketEvent[]
+  requestedRefunds    Refund[]              @relation("RefundRequester")
+  approvedRefunds     Refund[]              @relation("RefundApprover")
+  confirmedStatements CommissionStatement[] @relation("StatementConfirmedBy")
+  paidStatements      CommissionStatement[] @relation("StatementPaidBy")
+  createdStatements   CommissionStatement[] @relation("StatementCreatedBy")
+  lastLoginAt         DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
   /// 软删除：删除的员工保留历史记录
-  deletedAt          DateTime?
+  deletedAt           DateTime?
 
   @@index([teamId])
 }
@@ -347,25 +350,32 @@ model Order {
 
 /// 收款记录。现在由员工手动确认；以后接入支付时，channel / externalId 记录支付平台流水
 model Payment {
-  id            String   @id @default(cuid())
+  id            String               @id @default(cuid())
   orderId       String
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order         Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
   amountCents   Int
   /// 收款手续费（分），按业务设置里各收款方式的费率计算
-  feeCents      Int      @default(0)
-  /// wechat / alipay / usdt / bank / other
+  feeCents      Int                  @default(0)
+  /// wechat / alipay / usdt / bank / other；agent = 代理代收（钱在代理手里，月底对账抵扣佣金）
   method        String
   /// 付款备注或转账单号
   reference     String?
   /// 以后接入支付平台时使用
   channel       String?
-  externalId    String?  @unique
+  externalId    String?              @unique
   receivedAt    DateTime
   confirmedById String
-  confirmedBy   User     @relation(fields: [confirmedById], references: [id])
-  createdAt     DateTime @default(now())
+  confirmedBy   User                 @relation(fields: [confirmedById], references: [id])
+  /// 代理代收时：哪个代理收的钱
+  agentId       String?
+  agent         Agent?               @relation(fields: [agentId], references: [id])
+  /// 代理代收的款在哪张对账单里抵扣
+  statementId   String?
+  statement     CommissionStatement? @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  createdAt     DateTime             @default(now())
 
   @@index([orderId])
+  @@index([agentId, statementId])
 }
 
 /// Claude 账号。代充时是客户自己的号，成品号是公司准备的号；密码等敏感信息加密保存
@@ -776,17 +786,17 @@ enum AgentStatus {
 
 /// 代理：不登录系统，由员工维护资料、代录订单、月底对账。最多两级
 model Agent {
-  id            String       @id @default(cuid())
+  id            String                @id @default(cuid())
   /// 代理编号，界面显示为 A00001
-  no            Int          @unique @default(autoincrement())
+  no            Int                   @unique @default(autoincrement())
   name          String
   wechat        String?
   phone         String?
   /// 上级代理；上级本身不能再有上级
   parentId      String?
-  parent        Agent?       @relation("AgentTree", fields: [parentId], references: [id])
-  children      Agent[]      @relation("AgentTree")
-  status        AgentStatus  @default(ACTIVE)
+  parent        Agent?                @relation("AgentTree", fields: [parentId], references: [id])
+  children      Agent[]               @relation("AgentTree")
+  status        AgentStatus           @default(ACTIVE)
   /// 单独设置的佣金比例（万分比），为空按商品或全局默认
   firstRateBp   Int?
   renewalRateBp Int?
@@ -797,11 +807,14 @@ model Agent {
   payoutAccount String?
   remark        String?
   customers     Customer[]
-  orders        Order[]      @relation("OrderAgent")
-  parentOrders  Order[]      @relation("OrderParentAgent")
+  orders        Order[]               @relation("OrderAgent")
+  parentOrders  Order[]               @relation("OrderParentAgent")
   commissions   Commission[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  statements    CommissionStatement[]
+  /// 代理代收的款
+  payments      Payment[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
   @@index([parentId])
 }
@@ -838,15 +851,15 @@ enum CommissionStatus {
  * 加购质保的按服务月拆成多条，逐月释放。退款按退款占比扣减。
  */
 model Commission {
-  id            String           @id @default(cuid())
+  id            String               @id @default(cuid())
   orderId       String
-  order         Order            @relation(fields: [orderId], references: [id])
+  order         Order                @relation(fields: [orderId], references: [id])
   agentId       String
-  agent         Agent            @relation(fields: [agentId], references: [id])
+  agent         Agent                @relation(fields: [agentId], references: [id])
   role          CommissionRole
-  kind          CommissionKind   @default(ACCRUAL)
+  kind          CommissionKind       @default(ACCRUAL)
   /// 第几期（加购质保的按月拆分，从 1 开始）；扣回为 0
-  seq           Int              @default(1)
+  seq           Int                  @default(1)
   rateBp        Int
   /// 这一期对应的佣金基数（分）
   baseCents     Int
@@ -860,11 +873,65 @@ model Commission {
   releasedAt    DateTime?
   /// 最近一次因为哪笔退款扣减 / 扣回
   refundId      String?
-  refund        Refund?          @relation(fields: [refundId], references: [id])
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  refund        Refund?              @relation(fields: [refundId], references: [id])
+  /// 在哪张对账单里结算
+  statementId   String?
+  statement     CommissionStatement? @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   @@index([agentId, status])
   @@index([orderId])
   @@index([status, releaseAt])
+  @@index([statementId])
+}
+
+enum StatementStatus {
+  /// 草稿：每月 1 号自动生成，可以刷新
+  DRAFT
+  /// 已和代理核对，佣金变成「已对账」
+  CONFIRMED
+  /// 已打款（或代理已补交差额）
+  PAID
+  /// 作废：佣金和代收款退回可结算，下次重新出单
+  CANCELLED
+}
+
+/// 代理佣金月度对账单：上月可结算的佣金（含退款扣回）减去代理代收的款，多退少补
+model CommissionStatement {
+  id              String          @id @default(cuid())
+  /// 对账单编号，界面显示为 J00001
+  no              Int             @unique @default(autoincrement())
+  agentId         String
+  agent           Agent           @relation(fields: [agentId], references: [id])
+  /// 对账月份 YYYY-MM（北京时间）
+  month           String
+  /// 收录截止时间：这之前变成可结算的佣金和代收款
+  cutoffAt        DateTime
+  status          StatementStatus @default(DRAFT)
+  /// 确认时定下的金额（分）：佣金合计、代收合计、应付 = 佣金 − 代收（负数表示代理要补交）
+  commissionCents Int             @default(0)
+  collectedCents  Int             @default(0)
+  payableCents    Int             @default(0)
+  confirmedById   String?
+  confirmedBy     User?           @relation("StatementConfirmedBy", fields: [confirmedById], references: [id])
+  confirmedAt     DateTime?
+  paidById        String?
+  paidBy          User?           @relation("StatementPaidBy", fields: [paidById], references: [id])
+  paidAt          DateTime?
+  /// 打款方式和流水号（代理补交时是收款方式）
+  payMethod       String?
+  payReference    String?
+  /// 手动生成时是谁；每月自动生成的为空
+  createdById     String?
+  createdBy       User?           @relation("StatementCreatedBy", fields: [createdById], references: [id])
+  cancelledAt     DateTime?
+  note            String?
+  commissions     Commission[]
+  payments        Payment[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([agentId, month])
+  @@index([status])
 }

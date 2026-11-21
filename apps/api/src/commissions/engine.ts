@@ -128,6 +128,8 @@ export class CommissionEngine {
     now = new Date(),
   ): Promise<number> {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+    // 锁住这单的佣金行，避免和对账单确认 / 作废同时改状态
+    await tx.$queryRaw`SELECT id FROM "Commission" WHERE "orderId" = ${orderId} FOR UPDATE`;
     const rows = await tx.commission.findMany({ where: { orderId } });
     if (rows.length === 0) return 0;
     let reduced = 0;

@@ -57,6 +57,13 @@ export class AftersalesStatsDto {
   pendingRefunds: number;
 }
 
+export class CommissionStatsDto {
+  @ApiProperty({ description: '待确认的佣金对账单' }) draftStatements: number;
+  @ApiProperty({ description: '已确认、待打款的佣金对账单' }) unpaidStatements: number;
+  @ApiProperty({ description: '待打款合计（分，负数表示代理要补交）' }) unpaidCents: number;
+  @ApiProperty({ description: '可结算、还没进对账单的佣金（分）' }) unstatementedCents: number;
+}
+
 export class DashboardDto {
   @ApiProperty({ type: OrderStatsDto, nullable: true, description: '有「查看订单」权限时返回' })
   orders: OrderStatsDto | null;
@@ -73,6 +80,12 @@ export class DashboardDto {
     description: '有售后或退款审批权限时返回',
   })
   aftersales: AftersalesStatsDto | null;
+  @ApiProperty({
+    type: CommissionStatsDto,
+    nullable: true,
+    description: '有「佣金结算」权限时返回',
+  })
+  commissions: CommissionStatsDto | null;
 }
 
 const OPEN = { in: ['PENDING' as const, 'IN_PROGRESS' as const, 'FAILED' as const] };
@@ -190,15 +203,49 @@ export class DashboardService {
           })()
         : null;
 
-    const [o, t, s, c, i, a] = await Promise.all([
+    const commissions = can('commission:settle')
+      ? (async (): Promise<CommissionStatsDto> => {
+          const [groups, unstatemented] = await Promise.all([
+            this.prisma.commissionStatement.groupBy({
+              by: ['status'],
+              where: { status: { in: ['DRAFT', 'CONFIRMED'] } },
+              _count: { _all: true },
+              _sum: { payableCents: true },
+            }),
+            this.prisma.commission.aggregate({
+              where: { status: 'RELEASABLE', statementId: null },
+              _sum: { amountCents: true },
+            }),
+          ]);
+          const draft = groups.find((g) => g.status === 'DRAFT');
+          const confirmed = groups.find((g) => g.status === 'CONFIRMED');
+          return {
+            draftStatements: draft?._count._all ?? 0,
+            unpaidStatements: confirmed?._count._all ?? 0,
+            unpaidCents: confirmed?._sum.payableCents ?? 0,
+            unstatementedCents: unstatemented._sum.amountCents ?? 0,
+          };
+        })()
+      : null;
+
+    const [o, t, s, c, i, a, m] = await Promise.all([
       orders,
       tasks,
       subscriptions,
       customers,
       inventory,
       aftersales,
+      commissions,
     ]);
-    return { orders: o, tasks: t, subscriptions: s, customers: c, inventory: i, aftersales: a };
+    return {
+      orders: o,
+      tasks: t,
+      subscriptions: s,
+      customers: c,
+      inventory: i,
+      aftersales: a,
+      commissions: m,
+    };
   }
 }
 

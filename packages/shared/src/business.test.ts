@@ -9,6 +9,8 @@ import {
   proratedRefund,
   resolveCommissionRates,
   splitCents,
+  shiftMonth,
+  receiptMethodLabel,
   termLabel,
 } from './business';
 
@@ -162,5 +164,18 @@ describe('佣金金额', () => {
     expect(splitCents(100, 0)).toEqual([100]);
     const parts = splitCents(29999, 12);
     expect(parts.reduce((a, b) => a + b, 0)).toBe(29999);
+  });
+});
+
+describe('对账月份与收款方式', () => {
+  it('shiftMonth 跨年', () => {
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12');
+    expect(shiftMonth('2026-12', 1)).toBe('2027-01');
+    expect(shiftMonth('2026-11', 0)).toBe('2026-11');
+  });
+  it('receiptMethodLabel 包含代理代收', () => {
+    expect(receiptMethodLabel('agent')).toBe('代理代收');
+    expect(receiptMethodLabel('alipay')).toBe('支付宝');
+    expect(receiptMethodLabel(null)).toBe('—');
   });
 });

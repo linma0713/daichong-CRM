@@ -214,6 +214,7 @@ describe('M2 财务对账与数据看板', () => {
         refundCount: 1,
         netCents: 133000 - 1000 - 198,
         costCents: cost,
+        commissionCents: 0,
         profitCents: 133000 - 1000 - 198 - cost,
         resourceSpendCents: 720000,
       });

@@ -50,6 +50,7 @@ const KIND_META: Record<Entry['kind'], { label: string; color: string }> = {
   payment: { label: '收款', color: 'green' },
   refund: { label: '退款', color: 'red' },
   cost: { label: '成本', color: 'orange' },
+  commission: { label: '代理佣金', color: 'purple' },
 };
 
 const money = (cents: number, opts: { danger?: boolean; strong?: boolean } = {}) => (
@@ -64,7 +65,7 @@ const money = (cents: number, opts: { danger?: boolean; strong?: boolean } = {})
 const rate = (part: number, whole: number) =>
   whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '—';
 
-const AMOUNT_TITLES = ['收款', '退款', '手续费', '净收入', '成本', '毛利'];
+const AMOUNT_TITLES = ['收款', '退款', '手续费', '净收入', '成本', '代理佣金', '毛利'];
 
 function withCount(cents: number, count: number) {
   return (
@@ -87,6 +88,7 @@ function amountCells(d: Omit<Day, 'date'>): ReactNode[] {
     money(d.feeCents),
     money(d.netCents, { danger: true, strong: true }),
     money(d.costCents),
+    money(d.commissionCents),
     money(d.profitCents, { danger: true, strong: true }),
   ];
 }
@@ -175,6 +177,12 @@ export function FinancePage() {
     { title: '手续费', key: 'fee', align: 'right', render: (_, g) => money(g.feeCents) },
     { title: '成本', key: 'cost', align: 'right', render: (_, g) => money(g.costCents) },
     {
+      title: '代理佣金',
+      key: 'commission',
+      align: 'right',
+      render: (_, g) => money(g.commissionCents),
+    },
+    {
       title: '毛利',
       key: 'margin',
       align: 'right',
@@ -215,7 +223,14 @@ export function FinancePage() {
       title: '订单',
       key: 'order',
       width: 100,
-      render: (_, e) => (e.orderId ? <Link to={`/orders/${e.orderId}`}>{e.orderCode}</Link> : '—'),
+      render: (_, e) =>
+        e.kind === 'commission' ? (
+          <Link to={`/commissions/statements/${e.id}`}>对账单</Link>
+        ) : e.orderId ? (
+          <Link to={`/orders/${e.orderId}`}>{e.orderCode}</Link>
+        ) : (
+          '—'
+        ),
     },
     {
       title: '客户',
@@ -237,6 +252,7 @@ export function FinancePage() {
       '手续费',
       '净收入',
       '成本',
+      '代理佣金',
       '毛利',
     ];
     const line = (label: string, d: Day | Report['totals']) => [
@@ -248,6 +264,7 @@ export function FinancePage() {
       yuan(d.feeCents),
       yuan(d.netCents),
       yuan(d.costCents),
+      yuan(d.commissionCents),
       yuan(d.profitCents),
     ];
     downloadCsv(`finance-daily_${suffix}.csv`, [
@@ -317,24 +334,24 @@ export function FinancePage() {
         </div>
         <div style={{ opacity: report.isFetching && r ? 0.6 : 1, transition: 'opacity .2s' }}>
           <Row gutter={[12, 12]}>
-            <Col xs={12} md={8} xl={4}>
+            <Col xs={12} md={6} xl={{ flex: '1 1 0' }}>
               <StatTile
                 title="收款"
                 cents={t?.receivedCents ?? 0}
                 hint={t ? `${t.paymentCount} 笔` : undefined}
               />
             </Col>
-            <Col xs={12} md={8} xl={4}>
+            <Col xs={12} md={6} xl={{ flex: '1 1 0' }}>
               <StatTile
                 title="退款出账"
                 cents={t?.refundedCents ?? 0}
                 hint={t ? `${t.refundCount} 笔` : undefined}
               />
             </Col>
-            <Col xs={12} md={8} xl={4}>
+            <Col xs={12} md={6} xl={{ flex: '1 1 0' }}>
               <StatTile title="收款手续费" cents={t?.feeCents ?? 0} />
             </Col>
-            <Col xs={12} md={8} xl={4}>
+            <Col xs={12} md={6} xl={{ flex: '1 1 0' }}>
               <StatTile
                 title="净收入"
                 cents={t?.netCents ?? 0}
@@ -342,10 +359,13 @@ export function FinancePage() {
                 hint="收款 − 退款 − 手续费"
               />
             </Col>
-            <Col xs={12} md={8} xl={4}>
+            <Col xs={12} md={6} xl={{ flex: '1 1 0' }}>
               <StatTile title="成本" cents={t?.costCents ?? 0} hint="上游扣费、成品号等" />
             </Col>
-            <Col xs={12} md={8} xl={4}>
+            <Col xs={12} md={6} xl={{ flex: '1 1 0' }}>
+              <StatTile title="代理佣金" cents={t?.commissionCents ?? 0} hint="对账单结清时计入" />
+            </Col>
+            <Col xs={12} md={6} xl={{ flex: '1 1 0' }}>
               <StatTile
                 title="毛利"
                 cents={t?.profitCents ?? 0}
@@ -396,6 +416,7 @@ export function FinancePage() {
                 <>
                   <Typography.Paragraph type="secondary">
                     和微信、支付宝等账单逐项核对：到账净额 = 收款 − 手续费 − 从这个渠道退出去的钱。
+                    「代理代收」的钱在代理手里，不进我们的账户，月底在佣金对账单里抵扣。
                   </Typography.Paragraph>
                   <Table<Method>
                     rowKey="method"
@@ -414,6 +435,7 @@ export function FinancePage() {
                 ['product', '按商品', '商品', r?.byProduct],
                 ['staff', '按客服', '负责客服', r?.byStaff],
                 ['source', '按来源', '客户来源', r?.bySource],
+                ['agent', '按代理', '代理', r?.byAgent],
               ] as const
             ).map(([key, label, title, rows]) => ({
               key,
@@ -449,6 +471,7 @@ export function FinancePage() {
                         { value: 'payment', label: '收款' },
                         { value: 'refund', label: '退款' },
                         { value: 'cost', label: '成本' },
+                        { value: 'commission', label: '代理佣金' },
                       ]}
                     />
                     <Button

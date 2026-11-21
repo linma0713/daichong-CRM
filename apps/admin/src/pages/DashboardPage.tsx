@@ -14,7 +14,7 @@ const ROADMAP = [
     description: '客户、商品与套餐、订单与收款、开通 / 发号任务、订阅与到期提醒、到期风控',
   },
   { title: 'M2 经营闭环', description: '付款资源与成品号库存、单笔毛利、售后与质保、数据看板' },
-  { title: 'M3 代理', description: '代理录单、两级佣金、冻结期与月度对账' },
+  { title: 'M3 代理', description: '代理档案、两级佣金、冻结期与月度对账、代理代收抵扣' },
   { title: 'M4 多端与上云', description: '员工手机端（小程序 / App）、云端部署与备份' },
 ];
 
@@ -217,6 +217,43 @@ export function DashboardPage() {
         </Card>
       )}
 
+      {d?.commissions && (
+        <Card title="代理佣金" size="small">
+          <Row gutter={[12, 12]}>
+            <Col {...colProps}>
+              <StatCard
+                title="待确认对账单"
+                value={d.commissions.draftStatements}
+                to="/commissions?tab=statements"
+                danger={d.commissions.draftStatements > 0}
+                hint="和代理核对后确认"
+              />
+            </Col>
+            <Col {...colProps}>
+              <StatCard
+                title="待打款对账单"
+                value={d.commissions.unpaidStatements}
+                to="/commissions?tab=statements"
+                danger={d.commissions.unpaidStatements > 0}
+                hint={
+                  d.commissions.unpaidStatements
+                    ? `合计 ${formatCents(d.commissions.unpaidCents)}`
+                    : undefined
+                }
+              />
+            </Col>
+            <Col {...colProps}>
+              <StatCard
+                title="可结算未出单"
+                value={formatCents(d.commissions.unstatementedCents)}
+                to="/commissions"
+                hint="下月 1 号自动出单"
+              />
+            </Col>
+          </Row>
+        </Card>
+      )}
+
       {(d?.orders || d?.customers) && (
         <Card title="订单与客户" size="small">
           <Row gutter={[12, 12]}>
@@ -254,7 +291,7 @@ export function DashboardPage() {
       )}
 
       <Card title="开发进度" size="small">
-        <Steps direction="vertical" size="small" current={2} items={ROADMAP} />
+        <Steps direction="vertical" size="small" current={3} items={ROADMAP} />
       </Card>
     </Space>
   );

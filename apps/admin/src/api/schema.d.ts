@@ -906,6 +906,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/commissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 佣金明细 */
+        get: operations["Commissions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commissions/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 按代理汇总佣金（冻结中、可结算、已对账、已发放） */
+        get: operations["Commissions_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commission-statements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 佣金对账单列表 */
+        get: operations["Statements_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commission-statements/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 生成某个月的对账单（每月 1 号会自动生成上个月的；已有草稿的补进新明细） */
+        post: operations["Statements_generate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commission-statements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 对账单详情：佣金明细和代收款 */
+        get: operations["Statements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commission-statements/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 和代理核对无误后确认，金额定下来，明细变成「已对账」 */
+        post: operations["Statements_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commission-statements/{id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 登记打款（或代理补交差额），明细变成「已发放」 */
+        post: operations["Statements_pay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commission-statements/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 作废对账单，明细退回可结算，下次重新出单 */
+        post: operations["Statements_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard": {
         parameters: {
             query?: never;
@@ -1102,7 +1238,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 财务对账：现金口径汇总、每日对账、按收款方式、按商品 / 客服 / 来源 */
+        /** 财务对账：现金口径汇总、每日对账、按收款方式、按商品 / 客服 / 来源 / 代理 */
         get: operations["Finance_report"];
         put?: never;
         post?: never;
@@ -1119,7 +1255,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 收支明细（收款、退款出账、成本），用于导出对账 */
+        /** 收支明细（收款、退款出账、成本、代理佣金），用于导出对账 */
         get: operations["Finance_journal"];
         put?: never;
         post?: never;
@@ -1197,40 +1333,6 @@ export interface paths {
         head?: never;
         /** 修改代理；改比例只影响之后的新订单 */
         patch: operations["Agents_update"];
-        trace?: never;
-    };
-    "/api/commissions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 佣金明细 */
-        get: operations["Commissions_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/commissions/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 按代理汇总佣金（冻结中、可结算、已对账、已发放） */
-        get: operations["Commissions_summary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
 }
@@ -1834,10 +1936,12 @@ export interface components {
             /** @description 收款手续费（分） */
             feeCents: number;
             /** @enum {string} */
-            method: "wechat" | "alipay" | "usdt" | "bank" | "other";
+            method: "wechat" | "alipay" | "usdt" | "bank" | "other" | "agent";
             reference: string | null;
             /** Format: date-time */
             receivedAt: string;
+            /** @description 代理代收的款：在哪张佣金对账单里抵扣（还没出单为空） */
+            statement: components["schemas"]["RefDto"] | null;
             confirmedBy: components["schemas"]["UserBriefDto"];
             /** Format: date-time */
             createdAt: string;
@@ -2050,8 +2154,11 @@ export interface components {
         AddPaymentDto: {
             /** @description 收款金额（分） */
             amountCents: number;
-            /** @enum {string} */
-            method: "wechat" | "alipay" | "usdt" | "bank" | "other";
+            /**
+             * @description agent = 代理代收（只有代理客户的订单能用，月底对账从佣金里抵扣）
+             * @enum {string}
+             */
+            method: "wechat" | "alipay" | "usdt" | "bank" | "other" | "agent";
             /** @description 转账单号或备注 */
             reference?: string;
             /** @description 到账时间，不填为现在 */
@@ -2345,6 +2452,8 @@ export interface components {
             closedTickets: number;
             /** @description 到期解冻、变成可结算的佣金条数 */
             releasedCommissions: number;
+            /** @description 每月 1 号自动生成的上月佣金对账单数 */
+            statementsGenerated: number;
         };
         TicketSubscriptionDto: {
             id: string;
@@ -2551,6 +2660,169 @@ export interface components {
         RejectRefundDto: {
             reason: string;
         };
+        CommissionListDto: {
+            items: components["schemas"]["CommissionDto"][];
+            total: number;
+            /** @description 符合条件的佣金金额合计（分，不含已作废） */
+            sumCents: number;
+        };
+        AgentCommissionSummaryDto: {
+            agent: components["schemas"]["AgentBriefDto"];
+            /** @description 冻结中（分） */
+            frozenCents: number;
+            /** @description 可结算（分），已扣掉待扣回 */
+            releasableCents: number;
+            /** @description 其中待扣回（分，负数） */
+            clawbackCents: number;
+            /** @description 已对账待打款（分） */
+            settledCents: number;
+            /** @description 已发放（分） */
+            paidCents: number;
+        };
+        /** @enum {string} */
+        StatementStatus: "DRAFT" | "CONFIRMED" | "PAID" | "CANCELLED";
+        StatementDto: {
+            id: string;
+            /** @example J00001 */
+            code: string;
+            agent: components["schemas"]["AgentBriefDto"];
+            /**
+             * @description 对账月份（北京时间）
+             * @example 2026-11
+             */
+            month: string;
+            /**
+             * Format: date-time
+             * @description 收录截止时间：这之前变成可结算的佣金和代收款
+             */
+            cutoffAt: string;
+            status: components["schemas"]["StatementStatus"];
+            /** @description 佣金合计（分，含退款扣回）。待确认时按当前明细实时算 */
+            commissionCents: number;
+            /** @description 代理代收的款（分），从佣金里抵扣 */
+            collectedCents: number;
+            /** @description 应付代理（分）= 佣金 − 代收；负数表示代理要补交给我们 */
+            payableCents: number;
+            /** @description 佣金明细条数 */
+            commissionCount: number;
+            /** @description 代收款笔数 */
+            paymentCount: number;
+            confirmedBy: components["schemas"]["UserBriefDto"] | null;
+            confirmedAt: string | null;
+            paidBy: components["schemas"]["UserBriefDto"] | null;
+            paidAt: string | null;
+            /** @description 打款方式（代理补交时是收款方式）；应付为 0 时为空 */
+            payMethod: string | null;
+            payReference: string | null;
+            /** @description 手动生成的人；自动生成为空 */
+            createdBy: components["schemas"]["UserBriefDto"] | null;
+            cancelledAt: string | null;
+            /** @description 确认备注或作废原因 */
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        StatementListDto: {
+            items: components["schemas"]["StatementDto"][];
+            total: number;
+        };
+        GenerateStatementsDto: {
+            /**
+             * @description 对账月份；当月生成的收录到现在为止
+             * @example 2026-11
+             */
+            month: string;
+            /** @description 只给这个代理生成；不填为全部有待结算佣金的代理 */
+            agentId?: string;
+        };
+        GenerateResultDto: {
+            month: string;
+            /** @description 新生成的对账单数 */
+            created: number;
+            /** @description 已有草稿、补进新明细的对账单数 */
+            refreshed: number;
+            /** @description 这个月已经确认 / 结清的代理数，新明细留到下个月 */
+            skipped: number;
+            items: components["schemas"]["StatementDto"][];
+        };
+        AgentPayoutDto: {
+            method: string | null;
+            account: string | null;
+        };
+        StatementPaymentDto: {
+            id: string;
+            order: components["schemas"]["CommissionRefDto"];
+            customer: components["schemas"]["CustomerBriefDto"];
+            amountCents: number;
+            /** Format: date-time */
+            receivedAt: string;
+            reference: string | null;
+        };
+        StatementDetailDto: {
+            id: string;
+            /** @example J00001 */
+            code: string;
+            agent: components["schemas"]["AgentBriefDto"];
+            /**
+             * @description 对账月份（北京时间）
+             * @example 2026-11
+             */
+            month: string;
+            /**
+             * Format: date-time
+             * @description 收录截止时间：这之前变成可结算的佣金和代收款
+             */
+            cutoffAt: string;
+            status: components["schemas"]["StatementStatus"];
+            /** @description 佣金合计（分，含退款扣回）。待确认时按当前明细实时算 */
+            commissionCents: number;
+            /** @description 代理代收的款（分），从佣金里抵扣 */
+            collectedCents: number;
+            /** @description 应付代理（分）= 佣金 − 代收；负数表示代理要补交给我们 */
+            payableCents: number;
+            /** @description 佣金明细条数 */
+            commissionCount: number;
+            /** @description 代收款笔数 */
+            paymentCount: number;
+            confirmedBy: components["schemas"]["UserBriefDto"] | null;
+            confirmedAt: string | null;
+            paidBy: components["schemas"]["UserBriefDto"] | null;
+            paidAt: string | null;
+            /** @description 打款方式（代理补交时是收款方式）；应付为 0 时为空 */
+            payMethod: string | null;
+            payReference: string | null;
+            /** @description 手动生成的人；自动生成为空 */
+            createdBy: components["schemas"]["UserBriefDto"] | null;
+            cancelledAt: string | null;
+            /** @description 确认备注或作废原因 */
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description 代理的收款方式和账号 */
+            payout: components["schemas"]["AgentPayoutDto"];
+            commissions: components["schemas"]["CommissionDto"][];
+            /** @description 代理代收、在这张单里抵扣的款 */
+            payments: components["schemas"]["StatementPaymentDto"][];
+        };
+        ConfirmStatementDto: {
+            /** @description 备注，比如和代理核对的情况 */
+            note?: string;
+        };
+        PayStatementDto: {
+            /**
+             * @description 打款方式；代理补交时是收款方式。应付为 0 时可以不填
+             * @enum {string}
+             */
+            method?: "wechat" | "alipay" | "usdt" | "bank" | "other";
+            /** @description 转账单号或备注 */
+            reference?: string;
+            /** @description 打款时间，不填为现在 */
+            paidAt?: string;
+        };
+        CancelStatementDto: {
+            /** @example 金额核对有误，重新出单 */
+            reason: string;
+        };
         OrderStatsDto: {
             /** @description 待收款订单数 */
             pendingPayment: number;
@@ -2608,6 +2880,16 @@ export interface components {
             /** @description 待审批的退款（有审批权限时才统计，否则为 0） */
             pendingRefunds: number;
         };
+        CommissionStatsDto: {
+            /** @description 待确认的佣金对账单 */
+            draftStatements: number;
+            /** @description 已确认、待打款的佣金对账单 */
+            unpaidStatements: number;
+            /** @description 待打款合计（分，负数表示代理要补交） */
+            unpaidCents: number;
+            /** @description 可结算、还没进对账单的佣金（分） */
+            unstatementedCents: number;
+        };
         DashboardDto: {
             /** @description 有「查看订单」权限时返回 */
             orders: components["schemas"]["OrderStatsDto"] | null;
@@ -2619,6 +2901,8 @@ export interface components {
             inventory: components["schemas"]["InventoryAlertDto"] | null;
             /** @description 有售后或退款审批权限时返回 */
             aftersales: components["schemas"]["AftersalesStatsDto"] | null;
+            /** @description 有「佣金结算」权限时返回 */
+            commissions: components["schemas"]["CommissionStatsDto"] | null;
         };
         StockPoolDto: {
             planId: string;
@@ -2830,7 +3114,9 @@ export interface components {
             netCents: number;
             /** @description 当期发生的成本（上游扣费、成品号等） */
             costCents: number;
-            /** @description 毛利 = 净收入 − 成本 */
+            /** @description 代理佣金（分）：佣金对账单结清当天按佣金合计计入（代理代收的款已经算在收款里，打款时只付差额） */
+            commissionCents: number;
+            /** @description 毛利 = 净收入 − 成本 − 代理佣金 */
             profitCents: number;
             /** @description 付款资源入库支出（买卡、充值的实际花费）。只对能看全部数据的人返回 */
             resourceSpendCents: number | null;
@@ -2850,7 +3136,9 @@ export interface components {
             netCents: number;
             /** @description 当期发生的成本（上游扣费、成品号等） */
             costCents: number;
-            /** @description 毛利 = 净收入 − 成本 */
+            /** @description 代理佣金（分）：佣金对账单结清当天按佣金合计计入（代理代收的款已经算在收款里，打款时只付差额） */
+            commissionCents: number;
+            /** @description 毛利 = 净收入 − 成本 − 代理佣金 */
             profitCents: number;
             /** @example 2026-11-20 */
             date: string;
@@ -2876,6 +3164,9 @@ export interface components {
             refundedCents: number;
             feeCents: number;
             costCents: number;
+            /** @description 订单上的代理佣金（不含已作废） */
+            commissionCents: number;
+            /** @description 毛利 = 收款 − 退款 − 手续费 − 成本 − 代理佣金 */
             marginCents: number;
         };
         FinanceReportDto: {
@@ -2891,10 +3182,12 @@ export interface components {
             byStaff: components["schemas"]["FinanceGroupDto"][];
             /** @description 按客户来源 */
             bySource: components["schemas"]["FinanceGroupDto"][];
+            /** @description 按代理（直客单独一行），也是代理业绩 */
+            byAgent: components["schemas"]["FinanceGroupDto"][];
         };
         JournalEntryDto: {
             /** @enum {string} */
-            kind: "payment" | "refund" | "cost";
+            kind: "payment" | "refund" | "cost" | "commission";
             id: string;
             /** Format: date-time */
             at: string;
@@ -2902,9 +3195,9 @@ export interface components {
             /** @example D00012 */
             orderCode: string | null;
             customer: components["schemas"]["CustomerBriefDto"] | null;
-            /** @description 收款 / 退款方式，或成本类型 */
+            /** @description 收款 / 退款方式、成本类型，或「代理佣金」 */
             category: string;
-            /** @description 金额（分），收款为正、退款和成本为负 */
+            /** @description 金额（分），收款为正，退款、成本和代理佣金为负 */
             amountCents: number;
             /** @description 手续费（分），仅收款 */
             feeCents: number;
@@ -3239,25 +3532,6 @@ export interface components {
             remark?: string | null;
             name?: string;
             status?: components["schemas"]["AgentStatus"];
-        };
-        CommissionListDto: {
-            items: components["schemas"]["CommissionDto"][];
-            total: number;
-            /** @description 符合条件的佣金金额合计（分，不含已作废） */
-            sumCents: number;
-        };
-        AgentCommissionSummaryDto: {
-            agent: components["schemas"]["AgentBriefDto"];
-            /** @description 冻结中（分） */
-            frozenCents: number;
-            /** @description 可结算（分），已扣掉待扣回 */
-            releasableCents: number;
-            /** @description 其中待扣回（分，负数） */
-            clawbackCents: number;
-            /** @description 已对账待打款（分） */
-            settledCents: number;
-            /** @description 已发放（分） */
-            paidCents: number;
         };
     };
     responses: never;
@@ -4924,6 +5198,199 @@ export interface operations {
             };
         };
     };
+    Commissions_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                agentId?: string;
+                status?: components["schemas"]["CommissionStatus"];
+                role?: components["schemas"]["CommissionRole"];
+                kind?: components["schemas"]["CommissionKind"];
+                /** @description 订单编号或客户称呼 */
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommissionListDto"];
+                };
+            };
+        };
+    };
+    Commissions_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentCommissionSummaryDto"][];
+                };
+            };
+        };
+    };
+    Statements_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                agentId?: string;
+                status?: components["schemas"]["StatementStatus"];
+                month?: string;
+                /** @description 对账单编号 */
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementListDto"];
+                };
+            };
+        };
+    };
+    Statements_generate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateStatementsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateResultDto"];
+                };
+            };
+        };
+    };
+    Statements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDetailDto"];
+                };
+            };
+        };
+    };
+    Statements_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmStatementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDetailDto"];
+                };
+            };
+        };
+    };
+    Statements_pay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayStatementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDetailDto"];
+                };
+            };
+        };
+    };
+    Statements_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelStatementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDetailDto"];
+                };
+            };
+        };
+    };
     Dashboard_summary: {
         parameters: {
             query?: never;
@@ -5405,53 +5872,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentDetailDto"];
-                };
-            };
-        };
-    };
-    Commissions_list: {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-                agentId?: string;
-                status?: components["schemas"]["CommissionStatus"];
-                role?: components["schemas"]["CommissionRole"];
-                kind?: components["schemas"]["CommissionKind"];
-                /** @description 订单编号或客户称呼 */
-                keyword?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CommissionListDto"];
-                };
-            };
-        };
-    };
-    Commissions_summary: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AgentCommissionSummaryDto"][];
                 };
             };
         };

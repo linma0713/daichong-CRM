@@ -28,6 +28,7 @@ import { api, unwrap, type QueryOf, type Schemas } from '../../api/client';
 import { useBusinessSettings } from '../../api/queries';
 import { AgentLink, AgentSelect, Money } from '../../components/business';
 import { CommissionTable } from './CommissionTable';
+import { StatementsTab } from './StatementsTab';
 
 type Summary = Schemas['AgentCommissionSummaryDto'];
 type Filters = QueryOf<'/api/commissions'> & { page: number; pageSize: number };
@@ -45,7 +46,8 @@ export function CommissionsPage() {
       <Typography.Paragraph type="secondary">
         订单完成时按下单时的比例计提佣金。没加购质保的冻结{' '}
         {settings.data?.commissionFreezeDays ?? 7}{' '}
-        天，加购质保的按服务月逐月释放；冻结期内退款直接扣减或作废，已发放后退款记「退款扣回」，下次对账时抵扣。
+        天，加购质保的按服务月逐月释放；冻结期内退款直接扣减或作废，已对账后退款记「退款扣回」，下次对账时抵扣。
+        每月 1 号自动给上个月出对账单，佣金减去代理代收的款，多退少补。
       </Typography.Paragraph>
       <Tabs
         activeKey={tab}
@@ -57,6 +59,11 @@ export function CommissionsPage() {
             key: 'summary',
             label: '按代理汇总',
             children: <SummaryTab onOpen={openDetails} />,
+          },
+          {
+            key: 'statements',
+            label: '月度对账单',
+            children: <StatementsTab />,
           },
           {
             key: 'list',

@@ -28,6 +28,7 @@ import {
   OrderStatusTag,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
+import { StatementsTab } from '../commissions/StatementsTab';
 import { AgentFormModal, AgentRates, RateText } from './AgentsPage';
 
 type AgentOrder = Schemas['AgentOrderDto'];
@@ -229,6 +230,10 @@ export function AgentDetailPage() {
           />
         </Card>
       )}
+
+      <Card title="月度对账单" size="small">
+        <StatementsTab agentId={a.id} />
+      </Card>
 
       <Card title="订单（最近 100 笔，含下级代理的客户）" size="small">
         <Table<AgentOrder>
