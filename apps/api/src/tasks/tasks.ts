@@ -72,6 +72,7 @@ import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { CommissionEngine } from '../commissions/engine';
 import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service';
 import { LedgerModule, LedgerService } from '../inventory/ledger';
+import { NotifyService } from '../notify/notify';
 
 const OPEN: TaskStatus[] = ['PENDING', 'IN_PROGRESS', 'FAILED'];
 /**
@@ -79,6 +80,8 @@ const OPEN: TaskStatus[] = ['PENDING', 'IN_PROGRESS', 'FAILED'];
  * 开通 / 续费跟着订单走；内部续费关系到上游扣费，都不能作废，处理不了就标记失败。
  */
 const CANCELLABLE: TaskType[] = ['CANCEL_AUTO_RENEW', 'RECLAIM_ACCOUNT'];
+/** 完成后要提醒客服交付客户的任务 */
+const DELIVERY_TASKS: TaskType[] = ['ACTIVATE', 'RENEW', 'REPLACE_ACCOUNT'];
 
 /**
  * 完成任务时要不要登记上游扣费：
@@ -212,6 +215,28 @@ export class CompleteTaskDto {
   @IsOptional()
   @IsIn(['STOCK', 'VOID'])
   reclaimTo?: 'STOCK' | 'VOID';
+}
+
+export class DutyStaffDto {
+  @ApiProperty() id: string;
+  @ApiProperty() displayName: string;
+  @ApiProperty() onDuty: boolean;
+  @ApiProperty({ type: Date, nullable: true }) onDutyChangedAt: Date | null;
+  @ApiProperty({ description: '手上未完成的任务数' }) open: number;
+}
+
+export class DutyDto {
+  @ApiProperty({ description: '我是否在班' }) onDuty: boolean;
+  @ApiProperty({ description: '我是否参与自动派单（管理员不参与）' }) dispatchable: boolean;
+  @ApiProperty({ type: [DutyStaffDto] }) staff: DutyStaffDto[];
+}
+
+export class DutyChangeDto extends DutyDto {
+  @ApiProperty({ description: '这次转手的任务数' }) moved: number;
+}
+
+export class SetDutyDto {
+  @ApiProperty() @IsBoolean() onDuty: boolean;
 }
 
 export class TaskNoteDto {
@@ -413,7 +438,42 @@ export class TasksService {
     private readonly secrets: SecretBox,
     private readonly ledger: LedgerService,
     private readonly commissions: CommissionEngine,
+    private readonly notify: NotifyService,
   ) {}
+
+  /** 我的在班状态，以及所有充值员的在班情况和手上未完成的任务数 */
+  async duty(user: AuthUser): Promise<DutyDto> {
+    const staff = await this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+        status: 'ACTIVE',
+        roles: { some: { role: { permissions: { has: 'fulfillment:handle' } } } },
+        NOT: { roles: { some: { role: { permissions: { has: ALL_PERMISSIONS } } } } },
+      },
+      select: { id: true, displayName: true, onDuty: true, onDutyChangedAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const loads = await this.prisma.fulfillmentTask.groupBy({
+      by: ['assigneeId'],
+      where: {
+        assigneeId: { in: staff.map((u) => u.id) },
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+      },
+      _count: { _all: true },
+    });
+    const me = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { onDuty: true },
+    });
+    return {
+      onDuty: me.onDuty,
+      dispatchable: staff.some((u) => u.id === user.id),
+      staff: staff.map((u) => ({
+        ...u,
+        open: loads.find((l) => l.assigneeId === u.id)?._count._all ?? 0,
+      })),
+    };
+  }
 
   async list(q: TaskQueryDto, user: AuthUser): Promise<TaskListDto> {
     const now = new Date();
@@ -497,11 +557,21 @@ export class TasksService {
     }
     await this.prisma.$transaction(async (tx) => {
       await this.lockOpenTask(tx, id, user, { allowOthersInProgress: true });
-      await tx.fulfillmentTask.update({
+      const task = await tx.fulfillmentTask.update({
         where: { id },
         // 换人之后由新负责人重新开始处理
         data: { assigneeId: assigneeId ?? null, status: 'PENDING', startedAt: null },
       });
+      if (assigneeId && assigneeId !== user.id) {
+        const d = await this.fulfillment.describeTask(tx, task);
+        await this.notify.emit(tx, {
+          event: 'task.assigned',
+          title: `${user.displayName} 转给你的任务 ${d.title}`,
+          body: d.body,
+          link: d.link,
+          to: [assigneeId],
+        });
+      }
     });
     return this.get(id);
   }
@@ -517,6 +587,15 @@ export class TasksService {
           note: note.trim(),
           assigneeId: task.assigneeId ?? user.id,
         },
+      });
+      const d = await this.fulfillment.describeTask(tx, task);
+      await this.notify.emit(tx, {
+        event: 'task.failed',
+        title: `${d.title} 处理失败`,
+        body: `${d.body}\n原因：${note.trim()}\n处理人：${user.displayName}`,
+        link: task.orderId ? `/orders/${task.orderId}` : d.link,
+        to: [d.orderOwnerId],
+        except: user.id,
       });
       if (task.ticketId) {
         await recordTicketEvent(tx, {
@@ -625,6 +704,17 @@ export class TasksService {
         }
       }
       if (charge) await this.recordCharge(tx, task, charge, dto, user.id);
+      if (DELIVERY_TASKS.includes(task.type)) {
+        const d = await this.fulfillment.describeTask(tx, task);
+        await this.notify.emit(tx, {
+          event: 'task.done',
+          title: `${d.title} 已完成，可以交付客户`,
+          body: `${d.body.split('\n截止')[0]}\n处理人：${user.displayName}`,
+          link: task.orderId ? `/orders/${task.orderId}` : d.link,
+          to: [d.orderOwnerId],
+          except: user.id,
+        });
+      }
       await tx.fulfillmentTask.update({
         where: { id },
         data: {
@@ -1050,13 +1140,36 @@ export class TasksService {
 @Controller('tasks')
 @RequirePermissions('fulfillment:handle')
 export class TasksController {
-  constructor(private readonly tasks: TasksService) {}
+  constructor(
+    private readonly tasks: TasksService,
+    private readonly fulfillment: FulfillmentService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: '任务列表（任务工作台）' })
   @ApiOkResponse({ type: TaskListDto })
   list(@Query() q: TaskQueryDto, @CurrentUser() user: AuthUser): Promise<TaskListDto> {
     return this.tasks.list(q, user);
+  }
+
+  @Get('duty')
+  @ApiOperation({ summary: '在班情况：我是否在班、各充值员是否在班和手上的任务数' })
+  @ApiOkResponse({ type: DutyDto })
+  duty(@CurrentUser() user: AuthUser): Promise<DutyDto> {
+    return this.tasks.duty(user);
+  }
+
+  @Post('duty')
+  @HttpCode(200)
+  @Audit('task.duty', '切换在班状态')
+  @ApiOperation({
+    summary:
+      '上班 / 下班。上班后任务池里没人接的任务会派出来；下班时还没开始的任务转给其他在班的人',
+  })
+  @ApiOkResponse({ type: DutyChangeDto })
+  async setDuty(@Body() dto: SetDutyDto, @CurrentUser() user: AuthUser): Promise<DutyChangeDto> {
+    const { moved } = await this.fulfillment.setDuty(user.id, dto.onDuty);
+    return { ...(await this.tasks.duty(user)), moved };
   }
 
   @Get(':id')

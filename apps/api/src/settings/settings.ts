@@ -139,6 +139,12 @@ export class BusinessSettingsDto {
   @ApiProperty({ description: '佣金基数是否包含质保费', example: false })
   @IsBoolean()
   commissionIncludeWarranty: boolean = false;
+
+  @ApiProperty({ description: '每天几点（北京时间）往企业微信群推送早报', example: 9 })
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  dailyDigestHour: number = 9;
 }
 
 export class UpdateSettingsDto {
@@ -217,6 +223,13 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsBoolean()
   commissionIncludeWarranty?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  dailyDigestHour?: number;
 }
 
 type SettingKey = keyof BusinessSettingsDto;
@@ -232,6 +245,7 @@ const KEYS: SettingKey[] = [
   'commissionRatesBp',
   'commissionFreezeDays',
   'commissionIncludeWarranty',
+  'dailyDigestHour',
 ];
 /** 存成对象的设置项：读取时和默认值合并，新增字段有默认值 */
 const OBJECT_DEFAULTS: Partial<Record<SettingKey, () => object>> = {

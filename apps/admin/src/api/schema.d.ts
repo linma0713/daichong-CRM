@@ -4,6 +4,161 @@
  */
 
 export interface paths {
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我的站内消息 */
+        get: operations["Notifications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 未读消息数（右上角铃铛） */
+        get: operations["Notifications_unreadCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 标记一条消息已读 */
+        post: operations["Notifications_read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 全部标记已读 */
+        post: operations["Notifications_readAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notify-channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 企业微信群机器人列表 */
+        get: operations["NotifyChannels_list"];
+        put?: never;
+        /** 添加企业微信群机器人 */
+        post: operations["NotifyChannels_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notify-channels/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 删除群机器人（没发出去的消息一起删除） */
+        delete: operations["NotifyChannels_remove"];
+        options?: never;
+        head?: never;
+        /** 修改群机器人：名称、订阅的事件、停用 / 启用、换地址 */
+        patch: operations["NotifyChannels_update"];
+        trace?: never;
+    };
+    "/api/notify-channels/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 马上发一条测试消息到群里 */
+        post: operations["NotifyChannels_test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notify-channels/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 群消息发送记录 */
+        get: operations["NotifyChannels_messages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notify-channels/messages/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 重发一条发送失败的群消息 */
+        post: operations["NotifyChannels_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit-logs": {
         parameters: {
             query?: never;
@@ -528,6 +683,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tasks/duty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 在班情况：我是否在班、各充值员是否在班和手上的任务数 */
+        get: operations["Tasks_duty"];
+        put?: never;
+        /** 上班 / 下班。上班后任务池里没人接的任务会派出来；下班时还没开始的任务转给其他在班的人 */
+        post: operations["Tasks_setDuty"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tasks/{id}": {
         parameters: {
             query?: never;
@@ -710,6 +883,23 @@ export interface paths {
         put?: never;
         /** 立即运行一次到期巡检（平时每小时自动运行） */
         post: operations["Jobs_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/notify-scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 立即运行一次消息巡检：任务超时、库存预警、每日早报（平时每 5 分钟自动运行） */
+        post: operations["Jobs_notify"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1042,23 +1232,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/dashboard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 首页统计（按权限返回对应板块） */
-        get: operations["Dashboard_summary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/inventory/summary": {
         parameters: {
             query?: never;
@@ -1231,6 +1404,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 首页统计（按权限返回对应板块） */
+        get: operations["Dashboard_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/report": {
         parameters: {
             query?: never;
@@ -1339,6 +1529,91 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        NotificationDto: {
+            id: string;
+            /** @enum {string} */
+            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest";
+            title: string;
+            body: string | null;
+            link: string | null;
+            /** Format: date-time */
+            readAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NotificationListDto: {
+            items: components["schemas"]["NotificationDto"][];
+            total: number;
+            /** @description 未读总数 */
+            unread: number;
+        };
+        UnreadCountDto: {
+            unread: number;
+        };
+        OkDto: {
+            /** @example true */
+            ok: boolean;
+        };
+        NotifyChannelDto: {
+            id: string;
+            name: string;
+            /** @example wecom */
+            kind: string;
+            /** @description 机器人 key 的头尾几位 */
+            webhookHint: string;
+            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest")[];
+            enabled: boolean;
+            /** Format: date-time */
+            lastSentAt: string | null;
+            lastError: string | null;
+            /** @description 待发送的消息数 */
+            pending: number;
+            /** @description 最近 7 天发送失败的消息数 */
+            failed: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateNotifyChannelDto: {
+            /** @example 充值群 */
+            name: string;
+            /**
+             * @description 企业微信群机器人地址：群设置 → 群机器人 → 添加 → 复制 Webhook 地址
+             * @example https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxx
+             */
+            webhook: string;
+            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest")[];
+        };
+        UpdateNotifyChannelDto: {
+            name?: string;
+            /** @description 换一个机器人地址；不改就不传 */
+            webhook?: string;
+            events?: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest")[];
+            enabled?: boolean;
+        };
+        TestResultDto: {
+            ok: boolean;
+            error: string | null;
+        };
+        OutboundMessageDto: {
+            id: string;
+            channelId: string;
+            channelName: string;
+            /** @enum {string} */
+            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "daily.digest";
+            content: string;
+            /** @enum {string} */
+            status: "PENDING" | "SENT" | "FAILED";
+            attempts: number;
+            lastError: string | null;
+            /** Format: date-time */
+            sentAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OutboundListDto: {
+            items: components["schemas"]["OutboundMessageDto"][];
+            total: number;
+        };
         AuditUserDto: {
             id: string;
             username: string;
@@ -1400,10 +1675,6 @@ export interface components {
         TokenPairDto: {
             accessToken: string;
             refreshToken: string;
-        };
-        OkDto: {
-            /** @example true */
-            ok: boolean;
         };
         ChangePasswordDto: {
             oldPassword: string;
@@ -1625,6 +1896,11 @@ export interface components {
              * @example false
              */
             commissionIncludeWarranty: boolean;
+            /**
+             * @description 每天几点（北京时间）往企业微信群推送早报
+             * @example 9
+             */
+            dailyDigestHour: number;
         };
         UpdateSettingsDto: {
             exchangeRate?: number;
@@ -1638,6 +1914,7 @@ export interface components {
             commissionRatesBp?: components["schemas"]["CommissionRatesDto"];
             commissionFreezeDays?: number;
             commissionIncludeWarranty?: boolean;
+            dailyDigestHour?: number;
         };
         PlanDto: {
             id: string;
@@ -2249,6 +2526,34 @@ export interface components {
             items: components["schemas"]["TaskDto"][];
             total: number;
         };
+        DutyStaffDto: {
+            id: string;
+            displayName: string;
+            onDuty: boolean;
+            /** Format: date-time */
+            onDutyChangedAt: string | null;
+            /** @description 手上未完成的任务数 */
+            open: number;
+        };
+        DutyDto: {
+            /** @description 我是否在班 */
+            onDuty: boolean;
+            /** @description 我是否参与自动派单（管理员不参与） */
+            dispatchable: boolean;
+            staff: components["schemas"]["DutyStaffDto"][];
+        };
+        SetDutyDto: {
+            onDuty: boolean;
+        };
+        DutyChangeDto: {
+            /** @description 我是否在班 */
+            onDuty: boolean;
+            /** @description 我是否参与自动派单（管理员不参与） */
+            dispatchable: boolean;
+            staff: components["schemas"]["DutyStaffDto"][];
+            /** @description 这次转手的任务数 */
+            moved: number;
+        };
         AssignTaskDto: {
             /** @description 不填或 null = 放回任务池 */
             assigneeId?: string | null;
@@ -2454,6 +2759,16 @@ export interface components {
             releasedCommissions: number;
             /** @description 每月 1 号自动生成的上月佣金对账单数 */
             statementsGenerated: number;
+        };
+        NotifyScanResultDto: {
+            /** @description 另一个实例正在扫描，这次跳过 */
+            skipped: boolean;
+            /** @description 发出的任务超时提醒 */
+            overdueTasks: number;
+            /** @description 新出现的库存预警项 */
+            inventoryAlerts: number;
+            /** @description 是否发了每日早报 */
+            digestSent: boolean;
         };
         TicketSubscriptionDto: {
             id: string;
@@ -2823,87 +3138,6 @@ export interface components {
             /** @example 金额核对有误，重新出单 */
             reason: string;
         };
-        OrderStatsDto: {
-            /** @description 待收款订单数 */
-            pendingPayment: number;
-            /** @description 已收款、开通中的订单数 */
-            fulfilling: number;
-            /** @description 今天新录入的订单数 */
-            todayOrders: number;
-            /** @description 今天确认的收款（分） */
-            todayReceivedCents: number;
-            /** @description 本月确认的收款（分） */
-            monthReceivedCents: number;
-        };
-        TaskStatsDto: {
-            /** @description 分给我的未完成任务 */
-            mine: number;
-            /** @description 任务池里没人领的 */
-            unassigned: number;
-            /** @description 已超时未完成 */
-            overdue: number;
-            /** @description 全部未完成 */
-            open: number;
-        };
-        SubscriptionStatsDto: {
-            /** @description 服务中 */
-            active: number;
-            /** @description 7 天内到期 */
-            expiringIn7Days: number;
-            /** @description 需要提醒续费（我负责的） */
-            needsReminder: number;
-            /** @description 需要提醒续费（数据范围内全部） */
-            needsReminderAll: number;
-        };
-        CustomerStatsDto: {
-            total: number;
-            /** @description 本月新增 */
-            newThisMonth: number;
-        };
-        InventoryAlertDto: {
-            /** @description 余额低于预警线的付款资源数 */
-            lowResources: number;
-            /** @description 在库成品号不足的套餐 */
-            lowPools: string[];
-            /** @description 在库成品号总数 */
-            inStock: number;
-        };
-        AftersalesStatsDto: {
-            /** @description 未解决的工单（数据范围内） */
-            open: number;
-            /** @description 我处理的未解决工单 */
-            mine: number;
-            /** @description 没人处理的 */
-            unassigned: number;
-            /** @description 已超时（含已升级） */
-            overdue: number;
-            /** @description 待审批的退款（有审批权限时才统计，否则为 0） */
-            pendingRefunds: number;
-        };
-        CommissionStatsDto: {
-            /** @description 待确认的佣金对账单 */
-            draftStatements: number;
-            /** @description 已确认、待打款的佣金对账单 */
-            unpaidStatements: number;
-            /** @description 待打款合计（分，负数表示代理要补交） */
-            unpaidCents: number;
-            /** @description 可结算、还没进对账单的佣金（分） */
-            unstatementedCents: number;
-        };
-        DashboardDto: {
-            /** @description 有「查看订单」权限时返回 */
-            orders: components["schemas"]["OrderStatsDto"] | null;
-            /** @description 有「处理开通任务」权限时返回 */
-            tasks: components["schemas"]["TaskStatsDto"] | null;
-            subscriptions: components["schemas"]["SubscriptionStatsDto"] | null;
-            customers: components["schemas"]["CustomerStatsDto"] | null;
-            /** @description 有「查看库存」权限时返回 */
-            inventory: components["schemas"]["InventoryAlertDto"] | null;
-            /** @description 有售后或退款审批权限时返回 */
-            aftersales: components["schemas"]["AftersalesStatsDto"] | null;
-            /** @description 有「佣金结算」权限时返回 */
-            commissions: components["schemas"]["CommissionStatsDto"] | null;
-        };
         StockPoolDto: {
             planId: string;
             planName: string;
@@ -3098,6 +3332,87 @@ export interface components {
             usdCents?: number;
             /** @description 付费后上游下次扣费时间，默认顺延一个月 */
             upstreamRenewAt?: string;
+        };
+        OrderStatsDto: {
+            /** @description 待收款订单数 */
+            pendingPayment: number;
+            /** @description 已收款、开通中的订单数 */
+            fulfilling: number;
+            /** @description 今天新录入的订单数 */
+            todayOrders: number;
+            /** @description 今天确认的收款（分） */
+            todayReceivedCents: number;
+            /** @description 本月确认的收款（分） */
+            monthReceivedCents: number;
+        };
+        TaskStatsDto: {
+            /** @description 分给我的未完成任务 */
+            mine: number;
+            /** @description 任务池里没人领的 */
+            unassigned: number;
+            /** @description 已超时未完成 */
+            overdue: number;
+            /** @description 全部未完成 */
+            open: number;
+        };
+        SubscriptionStatsDto: {
+            /** @description 服务中 */
+            active: number;
+            /** @description 7 天内到期 */
+            expiringIn7Days: number;
+            /** @description 需要提醒续费（我负责的） */
+            needsReminder: number;
+            /** @description 需要提醒续费（数据范围内全部） */
+            needsReminderAll: number;
+        };
+        CustomerStatsDto: {
+            total: number;
+            /** @description 本月新增 */
+            newThisMonth: number;
+        };
+        InventoryAlertDto: {
+            /** @description 余额低于预警线的付款资源数 */
+            lowResources: number;
+            /** @description 在库成品号不足的套餐 */
+            lowPools: string[];
+            /** @description 在库成品号总数 */
+            inStock: number;
+        };
+        AftersalesStatsDto: {
+            /** @description 未解决的工单（数据范围内） */
+            open: number;
+            /** @description 我处理的未解决工单 */
+            mine: number;
+            /** @description 没人处理的 */
+            unassigned: number;
+            /** @description 已超时（含已升级） */
+            overdue: number;
+            /** @description 待审批的退款（有审批权限时才统计，否则为 0） */
+            pendingRefunds: number;
+        };
+        CommissionStatsDto: {
+            /** @description 待确认的佣金对账单 */
+            draftStatements: number;
+            /** @description 已确认、待打款的佣金对账单 */
+            unpaidStatements: number;
+            /** @description 待打款合计（分，负数表示代理要补交） */
+            unpaidCents: number;
+            /** @description 可结算、还没进对账单的佣金（分） */
+            unstatementedCents: number;
+        };
+        DashboardDto: {
+            /** @description 有「查看订单」权限时返回 */
+            orders: components["schemas"]["OrderStatsDto"] | null;
+            /** @description 有「处理开通任务」权限时返回 */
+            tasks: components["schemas"]["TaskStatsDto"] | null;
+            subscriptions: components["schemas"]["SubscriptionStatsDto"] | null;
+            customers: components["schemas"]["CustomerStatsDto"] | null;
+            /** @description 有「查看库存」权限时返回 */
+            inventory: components["schemas"]["InventoryAlertDto"] | null;
+            /** @description 有售后或退款审批权限时返回 */
+            aftersales: components["schemas"]["AftersalesStatsDto"] | null;
+            /** @description 有「佣金结算」权限时返回 */
+            commissions: components["schemas"]["CommissionStatsDto"] | null;
         };
         FinanceTotalsDto: {
             /** @description 收款（分） */
@@ -3542,6 +3857,243 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    Notifications_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description 只看未读 */
+                unreadOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationListDto"];
+                };
+            };
+        };
+    };
+    Notifications_unreadCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCountDto"];
+                };
+            };
+        };
+    };
+    Notifications_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Notifications_readAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    NotifyChannels_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotifyChannelDto"][];
+                };
+            };
+        };
+    };
+    NotifyChannels_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateNotifyChannelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    NotifyChannels_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    NotifyChannels_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateNotifyChannelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    NotifyChannels_test: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestResultDto"];
+                };
+            };
+        };
+    };
+    NotifyChannels_messages: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                channelId?: string;
+                status?: "PENDING" | "SENT" | "FAILED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutboundListDto"];
+                };
+            };
+        };
+    };
+    NotifyChannels_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
     Audit_list: {
         parameters: {
             query?: {
@@ -4560,6 +5112,48 @@ export interface operations {
             };
         };
     };
+    Tasks_duty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyDto"];
+                };
+            };
+        };
+    };
+    Tasks_setDuty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDutyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyChangeDto"];
+                };
+            };
+        };
+    };
     Tasks_get: {
         parameters: {
             query?: never;
@@ -4842,6 +5436,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SweepResultDto"];
+                };
+            };
+        };
+    };
+    Jobs_notify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotifyScanResultDto"];
                 };
             };
         };
@@ -5391,25 +6004,6 @@ export interface operations {
             };
         };
     };
-    Dashboard_summary: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardDto"];
-                };
-            };
-        };
-    };
     Inventory_summary: {
         parameters: {
             query?: never;
@@ -5687,6 +6281,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StockAccountDto"];
+                };
+            };
+        };
+    };
+    Dashboard_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardDto"];
                 };
             };
         };

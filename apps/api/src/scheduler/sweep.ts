@@ -10,6 +10,8 @@ import { FulfillmentService } from '../fulfillment/fulfillment.service';
 import { CommissionEngine } from '../commissions/engine';
 import { AftersalesModule, TicketsService } from '../aftersales/aftersales';
 import { CommissionsModule, StatementsService } from '../commissions/statements';
+import { InventoryModule } from '../inventory/inventory';
+import { NotifyScanResultDto, NotifyScanService } from './notify-scan';
 
 /** 多个实例同时巡检时只让一个跑（PostgreSQL 事务级咨询锁） */
 const SWEEP_LOCK_ID = 20261120;
@@ -177,7 +179,10 @@ export class SweepService {
 @ApiBearerAuth()
 @Controller('jobs')
 export class JobsController {
-  constructor(private readonly sweep: SweepService) {}
+  constructor(
+    private readonly sweep: SweepService,
+    private readonly notifyScan: NotifyScanService,
+  ) {}
 
   @Post('sweep')
   @HttpCode(200)
@@ -188,12 +193,30 @@ export class JobsController {
   run(): Promise<SweepResultDto> {
     return this.sweep.run();
   }
+
+  @Post('notify-scan')
+  @HttpCode(200)
+  @RequirePermissions('settings:write')
+  @Audit('job.notify-scan', '手动运行消息巡检')
+  @ApiOperation({
+    summary: '立即运行一次消息巡检：任务超时、库存预警、每日早报（平时每 5 分钟自动运行）',
+  })
+  @ApiOkResponse({ type: NotifyScanResultDto })
+  notify(): Promise<NotifyScanResultDto> {
+    return this.notifyScan.run();
+  }
 }
 
 @Module({
-  imports: [SettingsModule, FulfillmentModule, AftersalesModule, CommissionsModule],
-  providers: [SweepService],
+  imports: [
+    SettingsModule,
+    FulfillmentModule,
+    AftersalesModule,
+    CommissionsModule,
+    InventoryModule,
+  ],
+  providers: [SweepService, NotifyScanService],
   controllers: [JobsController],
-  exports: [SweepService],
+  exports: [SweepService, NotifyScanService],
 })
 export class SchedulerModule {}

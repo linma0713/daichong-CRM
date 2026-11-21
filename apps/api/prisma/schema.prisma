@@ -68,6 +68,12 @@ model User {
   confirmedStatements CommissionStatement[] @relation("StatementConfirmedBy")
   paidStatements      CommissionStatement[] @relation("StatementPaidBy")
   createdStatements   CommissionStatement[] @relation("StatementCreatedBy")
+  notifications       Notification[]
+  /// 在班：自动派单优先派给在班的充值员；没人在班时照旧派给所有充值员
+  onDuty              Boolean               @default(false)
+  onDutyChangedAt     DateTime?
+  /// 上次被自动派单的时间，负载相同时轮流派
+  lastAssignedAt      DateTime?
   lastLoginAt         DateTime?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
@@ -490,35 +496,37 @@ enum TaskStatus {
 
 /// 履约任务：充值员的工作队列
 model FulfillmentTask {
-  id             String        @id @default(cuid())
+  id                String        @id @default(cuid())
   /// 任务编号，界面显示为 T00001
-  no             Int           @unique @default(autoincrement())
-  type           TaskType
-  status         TaskStatus    @default(PENDING)
-  customerId     String
-  customer       Customer      @relation(fields: [customerId], references: [id])
-  orderId        String?
-  order          Order?        @relation(fields: [orderId], references: [id])
-  subscriptionId String?
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  no                Int           @unique @default(autoincrement())
+  type              TaskType
+  status            TaskStatus    @default(PENDING)
+  customerId        String
+  customer          Customer      @relation(fields: [customerId], references: [id])
+  orderId           String?
+  order             Order?        @relation(fields: [orderId], references: [id])
+  subscriptionId    String?
+  subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
   /// 售后换号任务对应的工单
-  ticketId       String?
-  ticket         Ticket?       @relation(fields: [ticketId], references: [id])
-  assigneeId     String?
-  assignee       User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  ticketId          String?
+  ticket            Ticket?       @relation(fields: [ticketId], references: [id])
+  assigneeId        String?
+  assignee          User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
   /// 最晚完成时间
-  dueAt          DateTime
+  dueAt             DateTime
   /// 失败次数（失败后可以重新处理）
-  attempts       Int           @default(0)
+  attempts          Int           @default(0)
   /// 处理结果或失败原因
-  note           String?
+  note              String?
   /// 系统自动生成的任务用它去重，例如 INTERNAL_RENEW:订阅ID:2026-12-01
-  dedupeKey      String?       @unique
-  costEntries    CostEntry[]
-  startedAt      DateTime?
-  finishedAt     DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  dedupeKey         String?       @unique
+  /// 已经发过「超时未完成」提醒（每个任务只提醒一次）
+  overdueNotifiedAt DateTime?
+  costEntries       CostEntry[]
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   @@index([status, dueAt])
   @@index([assigneeId, status])
@@ -934,4 +942,63 @@ model CommissionStatement {
 
   @@index([agentId, month])
   @@index([status])
+}
+
+// ─────────────── M4 消息与自动化 ───────────────
+
+/// 站内消息：业务事件发给相关员工，右上角铃铛查看
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 事件，例如 task.created，见 packages/shared/src/notify.ts
+  event     String
+  title     String
+  body      String?
+  /// 点击后打开的后台页面，例如 /orders/xxx
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+/// 企业微信群机器人：按事件订阅，业务事件同时推到群里
+model NotifyChannel {
+  id          String            @id @default(cuid())
+  name        String
+  /// 目前只有 wecom（企业微信群机器人）
+  kind        String            @default("wecom")
+  /// 加密保存的机器人地址（含 key，等同于密码）
+  webhookEnc  String
+  /// 界面显示用：key 头尾几位
+  webhookHint String
+  events      String[]
+  enabled     Boolean           @default(true)
+  lastSentAt  DateTime?
+  lastError   String?
+  messages    OutboundMessage[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+/// 待推送的群消息（outbox）：和业务数据在同一个事务里写入，后台定时发送，失败自动重试
+model OutboundMessage {
+  id            String        @id @default(cuid())
+  channelId     String
+  channel       NotifyChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  event         String
+  /// 企业微信 markdown 内容
+  content       String
+  /// PENDING / SENT / FAILED
+  status        String        @default("PENDING")
+  attempts      Int           @default(0)
+  nextAttemptAt DateTime      @default(now())
+  lastError     String?
+  sentAt        DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@index([status, nextAttemptAt])
+  @@index([channelId, createdAt])
 }

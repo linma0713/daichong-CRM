@@ -40,6 +40,16 @@ export class EnvVars {
   @Type(() => Number)
   @IsInt()
   API_PORT: number = 3000;
+
+  /** 后台的访问地址（例如 https://crm.example.com），群消息里的「在后台打开」链接用它拼 */
+  @IsOptional()
+  @Matches(/^https?:\/\/[^\s]+$/, { message: 'APP_PUBLIC_URL 要以 http:// 或 https:// 开头' })
+  APP_PUBLIC_URL?: string;
+
+  /** 只在本地联调时使用：把企业微信接口指向模拟服务 */
+  @IsOptional()
+  @IsString()
+  WECOM_API_BASE?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvVars {

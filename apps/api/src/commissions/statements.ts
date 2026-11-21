@@ -32,6 +32,7 @@ import {
   PAYMENT_METHOD_VALUES,
   STATEMENT_STATUSES,
   displayNo,
+  formatCents,
   parseNo,
   shiftMonth,
   type PaymentMethod,
@@ -50,6 +51,7 @@ import {
 } from '../common/briefs';
 import { localDateKey, parseLocalDate } from '../common/dates';
 import { badRequest, notFound } from '../common/errors';
+import { NotifyService } from '../notify/notify';
 import { PageQueryDto, skipTake } from '../common/pagination';
 import { toCustomerBrief } from '../orders/orders';
 import {
@@ -243,7 +245,10 @@ interface Live {
 
 @Injectable()
 export class StatementsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notify: NotifyService,
+  ) {}
 
   /** 待确认的单按当前明细实时算金额，其余用确认 / 作废时定下的金额 */
   private toDto(s: StatementRow, live?: Live): StatementDto {
@@ -487,6 +492,16 @@ export class StatementsService {
     const done = typeof row?.value === 'string' ? row.value : null;
     if (done && done >= month) return 0;
     const r = await this.generateIn(tx, month, { userId: null, now });
+    if (r.items.length > 0) {
+      const payable = r.items.reduce((sum, i) => sum + i.payableCents, 0);
+      await this.notify.emit(tx, {
+        event: 'statement.generated',
+        title: `${month} 佣金对账单已生成：${r.items.length} 位代理`,
+        body: `应付代理合计 ${formatCents(payable)}（负数是代理要补交的代收款）\n请和代理核对后确认，再登记打款`,
+        link: `/commissions?tab=statements`,
+        toPermission: 'commission:settle',
+      });
+    }
     await tx.setting.upsert({
       where: { key: AUTO_MONTH_KEY },
       create: { key: AUTO_MONTH_KEY, value: month },

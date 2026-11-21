@@ -7,6 +7,7 @@ import {
   CalendarOutlined,
   ClusterOutlined,
   MoneyCollectOutlined,
+  NotificationOutlined,
   ControlOutlined,
   CustomerServiceOutlined,
   DashboardOutlined,
@@ -70,6 +71,7 @@ export const MENU: MenuNode[] = [
       { key: 'roles', label: '角色与权限', path: '/system/roles', permission: 'system:role:read' },
       { key: 'teams', label: '小组', path: '/system/teams', permission: 'system:user:read' },
       { key: 'settings', label: '业务设置', path: '/settings', permission: 'settings:write' },
+      { key: 'notify', label: '消息推送', path: '/system/notify', permission: 'settings:write' },
       {
         key: 'audit',
         label: '操作日志',
@@ -95,6 +97,7 @@ export const MENU_ICONS: Record<string, ReactNode> = {
   finance: <AccountBookOutlined />,
   analytics: <BarChartOutlined />,
   settings: <ControlOutlined />,
+  notify: <NotificationOutlined />,
   system: <SettingOutlined />,
   users: <TeamOutlined />,
   roles: <SafetyCertificateOutlined />,

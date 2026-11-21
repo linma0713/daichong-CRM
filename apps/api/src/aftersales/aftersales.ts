@@ -78,6 +78,10 @@ import { FulfillmentService, type Tx } from '../fulfillment/fulfillment.service'
 import { LedgerModule, LedgerService } from '../inventory/ledger';
 import { SettingsModule, SettingsService } from '../settings/settings';
 import { recordTicketEvent, resolveTicketBySystem } from './ticket-events';
+import { NotifyService } from '../notify/notify';
+
+/** 通知里引用用户写的长文字时截短 */
+const brief = (text: string, max = 80) => (text.length > max ? `${text.slice(0, max)}…` : text);
 import { WarrantyDto, faultLabel, loadWarranty } from './warranty';
 
 /** 还没解决的工单 */
@@ -543,6 +547,7 @@ export class TicketsService {
     private readonly settings: SettingsService,
     private readonly fulfillment: FulfillmentService,
     private readonly ledger: LedgerService,
+    private readonly notify: NotifyService,
   ) {}
 
   async list(q: TicketQueryDto, user: AuthUser): Promise<TicketListDto> {
@@ -671,6 +676,20 @@ export class TicketsService {
           ticket.assignee ? `自动指派给${ticket.assignee.displayName}` : '等待售后领取'
         }`,
         userId: user.id,
+      });
+      await this.notify.emit(tx, {
+        event: 'ticket.created',
+        title: `新售后工单 ${displayNo('G', ticket.no)} · ${TICKET_TYPE_LABELS[dto.type]}`,
+        body: [
+          `客户：${customer.name}（${displayNo('C', customer.no)}）`,
+          `问题：${brief(dto.description.trim())}`,
+          `处理时限：${localDateTimeText(ticket.dueAt)}`,
+          `登记人：${user.displayName}`,
+        ].join('\n'),
+        link: `/tickets/${ticket.id}`,
+        to: [assigneeId],
+        toPermission: 'ticket:handle',
+        except: user.id,
       });
       return ticket.id;
     });
@@ -880,7 +899,17 @@ export class TicketsService {
     const { ticketAutoCloseHours } = await this.settings.getAll();
     const overdue = await tx.ticket.findMany({
       where: { status: { in: TIMED }, dueAt: { lt: now }, escalatedAt: null },
-      select: { id: true, dueAt: true },
+      select: {
+        id: true,
+        no: true,
+        type: true,
+        dueAt: true,
+        description: true,
+        assigneeId: true,
+        ownerId: true,
+        assignee: { select: { displayName: true } },
+        customer: { select: { no: true, name: true } },
+      },
     });
     for (const t of overdue) {
       await tx.ticket.update({ where: { id: t.id }, data: { escalatedAt: now } });
@@ -888,6 +917,18 @@ export class TicketsService {
         ticketId: t.id,
         kind: 'escalated',
         content: `超过处理时限（${localDateTimeText(t.dueAt)}）还没解决，已升级`,
+      });
+      await this.notify.emit(tx, {
+        event: 'ticket.escalated',
+        title: `工单 ${displayNo('G', t.no)} 超时未解决，已升级`,
+        body: [
+          `${TICKET_TYPE_LABELS[t.type]} · 客户：${t.customer.name}（${displayNo('C', t.customer.no)}）`,
+          `问题：${brief(t.description)}`,
+          `处理时限：${localDateTimeText(t.dueAt)} · 负责售后：${t.assignee?.displayName ?? '没人领取'}`,
+        ].join('\n'),
+        link: `/tickets/${t.id}`,
+        to: [t.assigneeId, t.ownerId],
+        toPermission: 'ticket:handle',
       });
     }
     const stale = await tx.ticket.findMany({
@@ -962,6 +1003,7 @@ export class RefundsService {
     private readonly settings: SettingsService,
     private readonly fulfillment: FulfillmentService,
     private readonly commissions: CommissionEngine,
+    private readonly notify: NotifyService,
   ) {}
 
   async list(q: RefundQueryDto, user: AuthUser): Promise<RefundListDto> {
@@ -1040,6 +1082,22 @@ export class RefundsService {
           teamId: order.teamId,
         },
       });
+      const customer = await tx.customer.findUniqueOrThrow({
+        where: { id: order.customerId },
+        select: { no: true, name: true },
+      });
+      await this.notify.emit(tx, {
+        event: 'refund.requested',
+        title: `退款待审批 ${displayNo('K', refund.no)} · ${formatCents(dto.amountCents)}`,
+        body: [
+          `客户：${customer.name}（${displayNo('C', customer.no)}） · 订单 ${displayNo('D', order.no)}`,
+          `原因：${brief(dto.reason.trim())}${dto.terminate ? '（退款后终止服务）' : ''}`,
+          `申请人：${user.displayName}`,
+        ].join('\n'),
+        link: '/refunds',
+        toPermission: 'refund:approve',
+        except: user.id,
+      });
       if (ticket) {
         await recordTicketEvent(tx, {
           ticketId: ticket.id,
@@ -1088,6 +1146,16 @@ export class RefundsService {
       const code = displayNo('K', refund.no);
       let terminated = '';
       if (refund.terminate) terminated = await this.terminate(tx, order, code, now);
+      await this.notify.emit(tx, {
+        event: 'refund.decided',
+        title: `退款 ${code} 已通过并出账 · ${formatCents(refund.amountCents)}`,
+        body: `订单 ${displayNo('D', order.no)} · ${methodLabel(dto.method)} · 审批人：${user.displayName}${
+          terminated ? `\n${terminated}` : ''
+        }`,
+        link: `/orders/${order.id}`,
+        to: [refund.requestedById],
+        except: user.id,
+      });
       // 代理佣金按退款占比扣减：冻结中 / 可结算的直接扣，已发放的记扣回
       await this.commissions.reduceForRefund(tx, order.id, id, now);
       if (refund.ticketId) {
@@ -1122,6 +1190,14 @@ export class RefundsService {
       await tx.refund.update({
         where: { id },
         data: { status: 'REJECTED', approvedById: user.id, rejectReason: reason.trim() },
+      });
+      await this.notify.emit(tx, {
+        event: 'refund.decided',
+        title: `退款 ${displayNo('K', refund.no)} 被驳回 · ${formatCents(refund.amountCents)}`,
+        body: `原因：${brief(reason.trim())}\n审批人：${user.displayName}`,
+        link: `/orders/${refund.orderId}`,
+        to: [refund.requestedById],
+        except: user.id,
       });
       if (refund.ticketId) {
         await recordTicketEvent(tx, {

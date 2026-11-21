@@ -9,6 +9,8 @@ import { UsersPage } from './pages/system/UsersPage';
 import { RolesPage } from './pages/system/RolesPage';
 import { TeamsPage } from './pages/system/TeamsPage';
 import { AuditLogsPage } from './pages/system/AuditLogsPage';
+import { NotifyChannelsPage } from './pages/system/NotifyChannelsPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { CustomersPage } from './pages/customers/CustomersPage';
 import { CustomerDetailPage } from './pages/customers/CustomerDetailPage';
 import { CatalogPage } from './pages/catalog/CatalogPage';
@@ -235,6 +237,15 @@ const router = createBrowserRouter([
           </RequirePermission>
         ),
       },
+      {
+        path: 'system/notify',
+        element: (
+          <RequirePermission permission="settings:write">
+            <NotifyChannelsPage />
+          </RequirePermission>
+        ),
+      },
+      { path: 'notifications', element: <NotificationsPage /> },
       { path: 'account/password', element: <ChangePasswordPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

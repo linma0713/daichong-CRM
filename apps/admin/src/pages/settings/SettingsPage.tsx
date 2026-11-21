@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router';
 import {
   App,
   Button,
@@ -114,6 +115,26 @@ export function SettingsPage() {
             <Descriptions.Item label="解冻的代理佣金">{r.releasedCommissions} 条</Descriptions.Item>
             <Descriptions.Item label="自动生成的上月对账单">
               {r.statementsGenerated} 张
+            </Descriptions.Item>
+          </Descriptions>
+        ),
+      });
+    },
+  });
+
+  const notifyScan = useMutation({
+    mutationFn: () => unwrap(api.POST('/api/jobs/notify-scan')),
+    onSuccess: (r) => {
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      void queryClient.invalidateQueries({ queryKey: ['notify-channels'] });
+      modal.info({
+        title: r.skipped ? '另一个消息巡检正在运行，这次跳过' : '消息巡检完成',
+        content: (
+          <Descriptions column={1} size="small" style={{ marginTop: 12 }}>
+            <Descriptions.Item label="发出的任务超时提醒">{r.overdueTasks} 个</Descriptions.Item>
+            <Descriptions.Item label="新出现的库存预警">{r.inventoryAlerts} 项</Descriptions.Item>
+            <Descriptions.Item label="每日早报">
+              {r.digestSent ? '已推送' : '今天已推送过、还没到钟点，或没有群订阅早报'}
             </Descriptions.Item>
           </Descriptions>
         ),
@@ -269,6 +290,19 @@ export function SettingsPage() {
           >
             <InputNumber min={0} max={90} style={{ width: 200 }} />
           </Form.Item>
+          <Form.Item
+            name="dailyDigestHour"
+            label="每日早报时间（点）"
+            rules={[{ required: true }]}
+            extra={
+              <>
+                每天这个钟点（北京时间）往订阅了早报的企业微信群推送昨日经营数字和今天的待办。群机器人在
+                <Link to="/system/notify">消息推送</Link>里添加
+              </>
+            }
+          >
+            <InputNumber min={0} max={23} style={{ width: 200 }} />
+          </Form.Item>
           <Button type="primary" htmlType="submit" loading={save.isPending}>
             保存
           </Button>
@@ -281,6 +315,15 @@ export function SettingsPage() {
         </Typography.Paragraph>
         <Button loading={sweep.isPending} onClick={() => sweep.mutate()}>
           立即运行巡检
+        </Button>
+      </Card>
+      <Card title="消息巡检">
+        <Typography.Paragraph type="secondary">
+          系统每 5 分钟自动检查一次：开通 /
+          续费任务过了截止时间还没完成，提醒负责的充值员；付款资源余额或成品号库存跌破预警线，提醒管库存的人；到了早报时间往企业微信群推送早报。
+        </Typography.Paragraph>
+        <Button loading={notifyScan.isPending} onClick={() => notifyScan.mutate()}>
+          立即运行消息巡检
         </Button>
       </Card>
     </Space>

@@ -28,6 +28,7 @@ import { FinanceModule } from './finance/finance';
 import { AnalyticsModule } from './analytics/analytics';
 import { AgentsModule } from './agents/agents';
 import { CommissionsModule } from './commissions/statements';
+import { NotifyModule } from './notify/notify';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { CommissionsModule } from './commissions/statements';
     ScheduleModule.forRoot(),
     PrismaModule,
     SecretBoxModule,
+    NotifyModule,
     AuditModule,
     AuthModule,
     UsersModule,

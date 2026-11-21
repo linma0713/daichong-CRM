@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import {
   Alert,
   App,
@@ -38,6 +38,7 @@ import {
   TaskTypeTag,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
+import { NOTIFY_KEYS } from '../../components/notify';
 
 type Task = Schemas['TaskDto'];
 type View = 'mine' | 'pool' | 'open' | 'overdue' | 'closed';
@@ -63,8 +64,52 @@ const TASK_GUIDE: Record<TaskType, string> = {
     '售后换号：给客户换一个能用的账号，服务期不变。成品号从库存选新号；代充换成客户提供的新账号，一般要重新付费',
 };
 
+const VIEWS = Object.keys(VIEW_QUERY) as View[];
+
+/** 在班情况：谁在班、手上有几个没做完的任务 */
+function DutyBar() {
+  const duty = useQuery({
+    queryKey: NOTIFY_KEYS.duty,
+    queryFn: () => unwrap(api.GET('/api/tasks/duty')),
+    refetchInterval: 60_000,
+  });
+  const staff = duty.data?.staff ?? [];
+  if (staff.length === 0) return null;
+  const on = staff.filter((s) => s.onDuty);
+  const off = staff.filter((s) => !s.onDuty);
+  const name = (s: (typeof staff)[number]) => `${s.displayName}${s.open ? `（${s.open}）` : ''}`;
+  return (
+    <Typography.Paragraph type="secondary" style={{ marginTop: -4 }}>
+      {on.length > 0 ? (
+        <>
+          <Badge status="success" text={`在班：${on.map(name).join('、')}`} />
+          {off.length > 0 && (
+            <span style={{ marginLeft: 16 }}>休息：{off.map(name).join('、')}</span>
+          )}
+          <span style={{ marginLeft: 16 }}>
+            新任务只派给在班的人，手上任务少的优先，一样多就轮流
+          </span>
+        </>
+      ) : (
+        <>
+          <Badge status="default" text="现在没人在班" />
+          <span style={{ marginLeft: 16 }}>
+            新任务在所有充值员（{staff.map(name).join('、')}
+            ）之间派。充值员在右上角打开「在班」后，只派给在班的人
+          </span>
+        </>
+      )}
+    </Typography.Paragraph>
+  );
+}
+
 export function TasksPage() {
-  const [view, setView] = useState<View>('mine');
+  const [params] = useSearchParams();
+  const urlView = params.get('view') as View | null;
+  const urlKeyword = params.get('keyword') ?? undefined;
+  const [view, setView] = useState<View>(
+    urlView && VIEWS.includes(urlView) ? urlView : urlKeyword ? 'open' : 'mine',
+  );
   const [filters, setFilters] = useState<{
     page: number;
     pageSize: number;
@@ -73,7 +118,13 @@ export function TasksPage() {
   }>({
     page: 1,
     pageSize: 20,
+    keyword: urlKeyword,
   });
+  // 从消息里点进来时（例如 ?view=open&keyword=T00012）定位到那个任务
+  useEffect(() => {
+    if (urlView && VIEWS.includes(urlView)) setView(urlView);
+    if (urlKeyword !== undefined) setFilters((f) => ({ ...f, page: 1, keyword: urlKeyword }));
+  }, [urlView, urlKeyword]);
   const query: Filters = { ...filters, ...VIEW_QUERY[view] };
   const tasks = useQuery({
     queryKey: ['tasks', query],
@@ -110,9 +161,12 @@ export function TasksPage() {
           { key: 'closed', label: '已结束' },
         ]}
       />
+      <DutyBar />
       <div className="page-toolbar">
         <div className="page-toolbar-filters">
           <Input.Search
+            key={urlKeyword ?? ''}
+            defaultValue={urlKeyword}
             placeholder="任务编号、客户称呼、账号邮箱"
             allowClear
             style={{ width: 240 }}

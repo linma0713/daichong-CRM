@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../auth/AuthProvider';
 import { filterMenu, type MenuNode } from '../auth/permissions';
 import { MENU, MENU_ICONS } from '../menu';
+import { DutySwitch, NotificationBell } from '../components/notify';
 
 type MenuItem = Required<MenuProps>['items'][number];
 
@@ -145,12 +146,16 @@ export function AdminLayout() {
             icon={menuOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
             onClick={() => (isMobile ? setDrawerOpen(true) : setCollapsed(!collapsed))}
           />
-          <Dropdown menu={{ items: userMenu, onClick: onUserMenu }} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar size="small" icon={<UserOutlined />} />
-              <Typography.Text>{profile?.displayName}</Typography.Text>
-            </Space>
-          </Dropdown>
+          <Space size={isMobile ? 8 : 16}>
+            <DutySwitch />
+            <NotificationBell />
+            <Dropdown menu={{ items: userMenu, onClick: onUserMenu }} placement="bottomRight">
+              <Space style={{ cursor: 'pointer' }}>
+                <Avatar size="small" icon={<UserOutlined />} />
+                {!isMobile && <Typography.Text>{profile?.displayName}</Typography.Text>}
+              </Space>
+            </Dropdown>
+          </Space>
         </Layout.Header>
         <Layout.Content style={{ padding: isMobile ? 12 : 24 }}>
           <Outlet />

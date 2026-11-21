@@ -1,6 +1,441 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/notifications": {
+      "get": {
+        "operationId": "Notifications_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "required": false,
+            "in": "query",
+            "description": "只看未读",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "我的站内消息",
+        "tags": [
+          "消息通知"
+        ]
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "operationId": "Notifications_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "未读消息数（右上角铃铛）",
+        "tags": [
+          "消息通知"
+        ]
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "post": {
+        "operationId": "Notifications_read",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "标记一条消息已读",
+        "tags": [
+          "消息通知"
+        ]
+      }
+    },
+    "/api/notifications/read-all": {
+      "post": {
+        "operationId": "Notifications_readAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "全部标记已读",
+        "tags": [
+          "消息通知"
+        ]
+      }
+    },
+    "/api/notify-channels": {
+      "get": {
+        "operationId": "NotifyChannels_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotifyChannelDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "企业微信群机器人列表",
+        "tags": [
+          "消息通知"
+        ]
+      },
+      "post": {
+        "operationId": "NotifyChannels_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNotifyChannelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "添加企业微信群机器人",
+        "tags": [
+          "消息通知"
+        ]
+      }
+    },
+    "/api/notify-channels/{id}": {
+      "patch": {
+        "operationId": "NotifyChannels_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotifyChannelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "修改群机器人：名称、订阅的事件、停用 / 启用、换地址",
+        "tags": [
+          "消息通知"
+        ]
+      },
+      "delete": {
+        "operationId": "NotifyChannels_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "删除群机器人（没发出去的消息一起删除）",
+        "tags": [
+          "消息通知"
+        ]
+      }
+    },
+    "/api/notify-channels/{id}/test": {
+      "post": {
+        "operationId": "NotifyChannels_test",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "马上发一条测试消息到群里",
+        "tags": [
+          "消息通知"
+        ]
+      }
+    },
+    "/api/notify-channels/messages": {
+      "get": {
+        "operationId": "NotifyChannels_messages",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "channelId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "SENT",
+                "FAILED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboundListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "群消息发送记录",
+        "tags": [
+          "消息通知"
+        ]
+      }
+    },
+    "/api/notify-channels/messages/{id}/retry": {
+      "post": {
+        "operationId": "NotifyChannels_retry",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "重发一条发送失败的群消息",
+        "tags": [
+          "消息通知"
+        ]
+      }
+    },
     "/api/audit-logs": {
       "get": {
         "operationId": "Audit_list",
@@ -1898,6 +2333,68 @@
         ]
       }
     },
+    "/api/tasks/duty": {
+      "get": {
+        "operationId": "Tasks_duty",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DutyDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "在班情况：我是否在班、各充值员是否在班和手上的任务数",
+        "tags": [
+          "履约任务"
+        ]
+      },
+      "post": {
+        "operationId": "Tasks_setDuty",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDutyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DutyChangeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "上班 / 下班。上班后任务池里没人接的任务会派出来；下班时还没开始的任务转给其他在班的人",
+        "tags": [
+          "履约任务"
+        ]
+      }
+    },
     "/api/tasks/{id}": {
       "get": {
         "operationId": "Tasks_get",
@@ -2447,6 +2944,33 @@
           }
         ],
         "summary": "立即运行一次到期巡检（平时每小时自动运行）",
+        "tags": [
+          "业务设置"
+        ]
+      }
+    },
+    "/api/jobs/notify-scan": {
+      "post": {
+        "operationId": "Jobs_notify",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotifyScanResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "立即运行一次消息巡检：任务超时、库存预警、每日早报（平时每 5 分钟自动运行）",
         "tags": [
           "业务设置"
         ]
@@ -3581,33 +4105,6 @@
         ]
       }
     },
-    "/api/dashboard": {
-      "get": {
-        "operationId": "Dashboard_summary",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "首页统计（按权限返回对应板块）",
-        "tags": [
-          "首页"
-        ]
-      }
-    },
     "/api/inventory/summary": {
       "get": {
         "operationId": "Inventory_summary",
@@ -4140,6 +4637,33 @@
         ]
       }
     },
+    "/api/dashboard": {
+      "get": {
+        "operationId": "Dashboard_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "首页统计（按权限返回对应板块）",
+        "tags": [
+          "首页"
+        ]
+      }
+    },
     "/api/finance/report": {
       "get": {
         "operationId": "Finance_report",
@@ -4517,6 +5041,365 @@
       }
     },
     "schemas": {
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "task.created",
+              "task.assigned",
+              "task.overdue",
+              "task.failed",
+              "task.done",
+              "payment.received",
+              "ticket.created",
+              "ticket.escalated",
+              "refund.requested",
+              "refund.decided",
+              "inventory.low",
+              "statement.generated",
+              "daily.digest"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "link": {
+            "type": "string",
+            "nullable": true
+          },
+          "readAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "event",
+          "title",
+          "body",
+          "link",
+          "readAt",
+          "createdAt"
+        ]
+      },
+      "NotificationListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "unread": {
+            "type": "number",
+            "description": "未读总数"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "unread"
+        ]
+      },
+      "UnreadCountDto": {
+        "type": "object",
+        "properties": {
+          "unread": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "unread"
+        ]
+      },
+      "OkDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "NotifyChannelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "example": "wecom"
+          },
+          "webhookHint": {
+            "type": "string",
+            "description": "机器人 key 的头尾几位"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "task.created",
+                "task.assigned",
+                "task.overdue",
+                "task.failed",
+                "task.done",
+                "payment.received",
+                "ticket.created",
+                "ticket.escalated",
+                "refund.requested",
+                "refund.decided",
+                "inventory.low",
+                "statement.generated",
+                "daily.digest"
+              ]
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "lastSentAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "pending": {
+            "type": "number",
+            "description": "待发送的消息数"
+          },
+          "failed": {
+            "type": "number",
+            "description": "最近 7 天发送失败的消息数"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "webhookHint",
+          "events",
+          "enabled",
+          "lastSentAt",
+          "lastError",
+          "pending",
+          "failed",
+          "createdAt"
+        ]
+      },
+      "CreateNotifyChannelDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "充值群"
+          },
+          "webhook": {
+            "type": "string",
+            "description": "企业微信群机器人地址：群设置 → 群机器人 → 添加 → 复制 Webhook 地址",
+            "example": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxx"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "task.created",
+                "task.assigned",
+                "task.overdue",
+                "task.failed",
+                "task.done",
+                "payment.received",
+                "ticket.created",
+                "ticket.escalated",
+                "refund.requested",
+                "refund.decided",
+                "inventory.low",
+                "statement.generated",
+                "daily.digest"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "webhook",
+          "events"
+        ]
+      },
+      "UpdateNotifyChannelDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "webhook": {
+            "type": "string",
+            "description": "换一个机器人地址；不改就不传"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "task.created",
+                "task.assigned",
+                "task.overdue",
+                "task.failed",
+                "task.done",
+                "payment.received",
+                "ticket.created",
+                "ticket.escalated",
+                "refund.requested",
+                "refund.decided",
+                "inventory.low",
+                "statement.generated",
+                "daily.digest"
+              ]
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TestResultDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "ok",
+          "error"
+        ]
+      },
+      "OutboundMessageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "channelName": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "task.created",
+              "task.assigned",
+              "task.overdue",
+              "task.failed",
+              "task.done",
+              "payment.received",
+              "ticket.created",
+              "ticket.escalated",
+              "refund.requested",
+              "refund.decided",
+              "inventory.low",
+              "statement.generated",
+              "daily.digest"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "SENT",
+              "FAILED"
+            ]
+          },
+          "attempts": {
+            "type": "number"
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "sentAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "channelId",
+          "channelName",
+          "event",
+          "content",
+          "status",
+          "attempts",
+          "lastError",
+          "sentAt",
+          "createdAt"
+        ]
+      },
+      "OutboundListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutboundMessageDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
       "AuditUserDto": {
         "type": "object",
         "properties": {
@@ -4754,18 +5637,6 @@
         "required": [
           "accessToken",
           "refreshToken"
-        ]
-      },
-      "OkDto": {
-        "type": "object",
-        "properties": {
-          "ok": {
-            "type": "boolean",
-            "example": true
-          }
-        },
-        "required": [
-          "ok"
         ]
       },
       "ChangePasswordDto": {
@@ -5392,6 +6263,11 @@
             "type": "boolean",
             "description": "佣金基数是否包含质保费",
             "example": false
+          },
+          "dailyDigestHour": {
+            "type": "number",
+            "description": "每天几点（北京时间）往企业微信群推送早报",
+            "example": 9
           }
         },
         "required": [
@@ -5405,7 +6281,8 @@
           "ticketAutoCloseHours",
           "commissionRatesBp",
           "commissionFreezeDays",
-          "commissionIncludeWarranty"
+          "commissionIncludeWarranty",
+          "dailyDigestHour"
         ]
       },
       "UpdateSettingsDto": {
@@ -5446,6 +6323,9 @@
           },
           "commissionIncludeWarranty": {
             "type": "boolean"
+          },
+          "dailyDigestHour": {
+            "type": "number"
           }
         }
       },
@@ -7649,6 +8529,100 @@
           "total"
         ]
       },
+      "DutyStaffDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "onDuty": {
+            "type": "boolean"
+          },
+          "onDutyChangedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "open": {
+            "type": "number",
+            "description": "手上未完成的任务数"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "onDuty",
+          "onDutyChangedAt",
+          "open"
+        ]
+      },
+      "DutyDto": {
+        "type": "object",
+        "properties": {
+          "onDuty": {
+            "type": "boolean",
+            "description": "我是否在班"
+          },
+          "dispatchable": {
+            "type": "boolean",
+            "description": "我是否参与自动派单（管理员不参与）"
+          },
+          "staff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DutyStaffDto"
+            }
+          }
+        },
+        "required": [
+          "onDuty",
+          "dispatchable",
+          "staff"
+        ]
+      },
+      "SetDutyDto": {
+        "type": "object",
+        "properties": {
+          "onDuty": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "onDuty"
+        ]
+      },
+      "DutyChangeDto": {
+        "type": "object",
+        "properties": {
+          "onDuty": {
+            "type": "boolean",
+            "description": "我是否在班"
+          },
+          "dispatchable": {
+            "type": "boolean",
+            "description": "我是否参与自动派单（管理员不参与）"
+          },
+          "staff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DutyStaffDto"
+            }
+          },
+          "moved": {
+            "type": "number",
+            "description": "这次转手的任务数"
+          }
+        },
+        "required": [
+          "onDuty",
+          "dispatchable",
+          "staff",
+          "moved"
+        ]
+      },
       "AssignTaskDto": {
         "type": "object",
         "properties": {
@@ -8320,6 +9294,33 @@
           "closedTickets",
           "releasedCommissions",
           "statementsGenerated"
+        ]
+      },
+      "NotifyScanResultDto": {
+        "type": "object",
+        "properties": {
+          "skipped": {
+            "type": "boolean",
+            "description": "另一个实例正在扫描，这次跳过"
+          },
+          "overdueTasks": {
+            "type": "number",
+            "description": "发出的任务超时提醒"
+          },
+          "inventoryAlerts": {
+            "type": "number",
+            "description": "新出现的库存预警项"
+          },
+          "digestSent": {
+            "type": "boolean",
+            "description": "是否发了每日早报"
+          }
+        },
+        "required": [
+          "skipped",
+          "overdueTasks",
+          "inventoryAlerts",
+          "digestSent"
         ]
       },
       "TicketSubscriptionDto": {
@@ -9585,274 +10586,6 @@
           "reason"
         ]
       },
-      "OrderStatsDto": {
-        "type": "object",
-        "properties": {
-          "pendingPayment": {
-            "type": "number",
-            "description": "待收款订单数"
-          },
-          "fulfilling": {
-            "type": "number",
-            "description": "已收款、开通中的订单数"
-          },
-          "todayOrders": {
-            "type": "number",
-            "description": "今天新录入的订单数"
-          },
-          "todayReceivedCents": {
-            "type": "number",
-            "description": "今天确认的收款（分）"
-          },
-          "monthReceivedCents": {
-            "type": "number",
-            "description": "本月确认的收款（分）"
-          }
-        },
-        "required": [
-          "pendingPayment",
-          "fulfilling",
-          "todayOrders",
-          "todayReceivedCents",
-          "monthReceivedCents"
-        ]
-      },
-      "TaskStatsDto": {
-        "type": "object",
-        "properties": {
-          "mine": {
-            "type": "number",
-            "description": "分给我的未完成任务"
-          },
-          "unassigned": {
-            "type": "number",
-            "description": "任务池里没人领的"
-          },
-          "overdue": {
-            "type": "number",
-            "description": "已超时未完成"
-          },
-          "open": {
-            "type": "number",
-            "description": "全部未完成"
-          }
-        },
-        "required": [
-          "mine",
-          "unassigned",
-          "overdue",
-          "open"
-        ]
-      },
-      "SubscriptionStatsDto": {
-        "type": "object",
-        "properties": {
-          "active": {
-            "type": "number",
-            "description": "服务中"
-          },
-          "expiringIn7Days": {
-            "type": "number",
-            "description": "7 天内到期"
-          },
-          "needsReminder": {
-            "type": "number",
-            "description": "需要提醒续费（我负责的）"
-          },
-          "needsReminderAll": {
-            "type": "number",
-            "description": "需要提醒续费（数据范围内全部）"
-          }
-        },
-        "required": [
-          "active",
-          "expiringIn7Days",
-          "needsReminder",
-          "needsReminderAll"
-        ]
-      },
-      "CustomerStatsDto": {
-        "type": "object",
-        "properties": {
-          "total": {
-            "type": "number"
-          },
-          "newThisMonth": {
-            "type": "number",
-            "description": "本月新增"
-          }
-        },
-        "required": [
-          "total",
-          "newThisMonth"
-        ]
-      },
-      "InventoryAlertDto": {
-        "type": "object",
-        "properties": {
-          "lowResources": {
-            "type": "number",
-            "description": "余额低于预警线的付款资源数"
-          },
-          "lowPools": {
-            "description": "在库成品号不足的套餐",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "inStock": {
-            "type": "number",
-            "description": "在库成品号总数"
-          }
-        },
-        "required": [
-          "lowResources",
-          "lowPools",
-          "inStock"
-        ]
-      },
-      "AftersalesStatsDto": {
-        "type": "object",
-        "properties": {
-          "open": {
-            "type": "number",
-            "description": "未解决的工单（数据范围内）"
-          },
-          "mine": {
-            "type": "number",
-            "description": "我处理的未解决工单"
-          },
-          "unassigned": {
-            "type": "number",
-            "description": "没人处理的"
-          },
-          "overdue": {
-            "type": "number",
-            "description": "已超时（含已升级）"
-          },
-          "pendingRefunds": {
-            "type": "number",
-            "description": "待审批的退款（有审批权限时才统计，否则为 0）"
-          }
-        },
-        "required": [
-          "open",
-          "mine",
-          "unassigned",
-          "overdue",
-          "pendingRefunds"
-        ]
-      },
-      "CommissionStatsDto": {
-        "type": "object",
-        "properties": {
-          "draftStatements": {
-            "type": "number",
-            "description": "待确认的佣金对账单"
-          },
-          "unpaidStatements": {
-            "type": "number",
-            "description": "已确认、待打款的佣金对账单"
-          },
-          "unpaidCents": {
-            "type": "number",
-            "description": "待打款合计（分，负数表示代理要补交）"
-          },
-          "unstatementedCents": {
-            "type": "number",
-            "description": "可结算、还没进对账单的佣金（分）"
-          }
-        },
-        "required": [
-          "draftStatements",
-          "unpaidStatements",
-          "unpaidCents",
-          "unstatementedCents"
-        ]
-      },
-      "DashboardDto": {
-        "type": "object",
-        "properties": {
-          "orders": {
-            "nullable": true,
-            "description": "有「查看订单」权限时返回",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/OrderStatsDto"
-              }
-            ]
-          },
-          "tasks": {
-            "nullable": true,
-            "description": "有「处理开通任务」权限时返回",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TaskStatsDto"
-              }
-            ]
-          },
-          "subscriptions": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/SubscriptionStatsDto"
-              }
-            ]
-          },
-          "customers": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/CustomerStatsDto"
-              }
-            ]
-          },
-          "inventory": {
-            "nullable": true,
-            "description": "有「查看库存」权限时返回",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/InventoryAlertDto"
-              }
-            ]
-          },
-          "aftersales": {
-            "nullable": true,
-            "description": "有售后或退款审批权限时返回",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AftersalesStatsDto"
-              }
-            ]
-          },
-          "commissions": {
-            "nullable": true,
-            "description": "有「佣金结算」权限时返回",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/CommissionStatsDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "orders",
-          "tasks",
-          "subscriptions",
-          "customers",
-          "inventory",
-          "aftersales",
-          "commissions"
-        ]
-      },
       "StockPoolDto": {
         "type": "object",
         "properties": {
@@ -10497,6 +11230,274 @@
         },
         "required": [
           "resourceId"
+        ]
+      },
+      "OrderStatsDto": {
+        "type": "object",
+        "properties": {
+          "pendingPayment": {
+            "type": "number",
+            "description": "待收款订单数"
+          },
+          "fulfilling": {
+            "type": "number",
+            "description": "已收款、开通中的订单数"
+          },
+          "todayOrders": {
+            "type": "number",
+            "description": "今天新录入的订单数"
+          },
+          "todayReceivedCents": {
+            "type": "number",
+            "description": "今天确认的收款（分）"
+          },
+          "monthReceivedCents": {
+            "type": "number",
+            "description": "本月确认的收款（分）"
+          }
+        },
+        "required": [
+          "pendingPayment",
+          "fulfilling",
+          "todayOrders",
+          "todayReceivedCents",
+          "monthReceivedCents"
+        ]
+      },
+      "TaskStatsDto": {
+        "type": "object",
+        "properties": {
+          "mine": {
+            "type": "number",
+            "description": "分给我的未完成任务"
+          },
+          "unassigned": {
+            "type": "number",
+            "description": "任务池里没人领的"
+          },
+          "overdue": {
+            "type": "number",
+            "description": "已超时未完成"
+          },
+          "open": {
+            "type": "number",
+            "description": "全部未完成"
+          }
+        },
+        "required": [
+          "mine",
+          "unassigned",
+          "overdue",
+          "open"
+        ]
+      },
+      "SubscriptionStatsDto": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "number",
+            "description": "服务中"
+          },
+          "expiringIn7Days": {
+            "type": "number",
+            "description": "7 天内到期"
+          },
+          "needsReminder": {
+            "type": "number",
+            "description": "需要提醒续费（我负责的）"
+          },
+          "needsReminderAll": {
+            "type": "number",
+            "description": "需要提醒续费（数据范围内全部）"
+          }
+        },
+        "required": [
+          "active",
+          "expiringIn7Days",
+          "needsReminder",
+          "needsReminderAll"
+        ]
+      },
+      "CustomerStatsDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "newThisMonth": {
+            "type": "number",
+            "description": "本月新增"
+          }
+        },
+        "required": [
+          "total",
+          "newThisMonth"
+        ]
+      },
+      "InventoryAlertDto": {
+        "type": "object",
+        "properties": {
+          "lowResources": {
+            "type": "number",
+            "description": "余额低于预警线的付款资源数"
+          },
+          "lowPools": {
+            "description": "在库成品号不足的套餐",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "inStock": {
+            "type": "number",
+            "description": "在库成品号总数"
+          }
+        },
+        "required": [
+          "lowResources",
+          "lowPools",
+          "inStock"
+        ]
+      },
+      "AftersalesStatsDto": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "number",
+            "description": "未解决的工单（数据范围内）"
+          },
+          "mine": {
+            "type": "number",
+            "description": "我处理的未解决工单"
+          },
+          "unassigned": {
+            "type": "number",
+            "description": "没人处理的"
+          },
+          "overdue": {
+            "type": "number",
+            "description": "已超时（含已升级）"
+          },
+          "pendingRefunds": {
+            "type": "number",
+            "description": "待审批的退款（有审批权限时才统计，否则为 0）"
+          }
+        },
+        "required": [
+          "open",
+          "mine",
+          "unassigned",
+          "overdue",
+          "pendingRefunds"
+        ]
+      },
+      "CommissionStatsDto": {
+        "type": "object",
+        "properties": {
+          "draftStatements": {
+            "type": "number",
+            "description": "待确认的佣金对账单"
+          },
+          "unpaidStatements": {
+            "type": "number",
+            "description": "已确认、待打款的佣金对账单"
+          },
+          "unpaidCents": {
+            "type": "number",
+            "description": "待打款合计（分，负数表示代理要补交）"
+          },
+          "unstatementedCents": {
+            "type": "number",
+            "description": "可结算、还没进对账单的佣金（分）"
+          }
+        },
+        "required": [
+          "draftStatements",
+          "unpaidStatements",
+          "unpaidCents",
+          "unstatementedCents"
+        ]
+      },
+      "DashboardDto": {
+        "type": "object",
+        "properties": {
+          "orders": {
+            "nullable": true,
+            "description": "有「查看订单」权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderStatsDto"
+              }
+            ]
+          },
+          "tasks": {
+            "nullable": true,
+            "description": "有「处理开通任务」权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskStatsDto"
+              }
+            ]
+          },
+          "subscriptions": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionStatsDto"
+              }
+            ]
+          },
+          "customers": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerStatsDto"
+              }
+            ]
+          },
+          "inventory": {
+            "nullable": true,
+            "description": "有「查看库存」权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InventoryAlertDto"
+              }
+            ]
+          },
+          "aftersales": {
+            "nullable": true,
+            "description": "有售后或退款审批权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AftersalesStatsDto"
+              }
+            ]
+          },
+          "commissions": {
+            "nullable": true,
+            "description": "有「佣金结算」权限时返回",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommissionStatsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "orders",
+          "tasks",
+          "subscriptions",
+          "customers",
+          "inventory",
+          "aftersales",
+          "commissions"
         ]
       },
       "FinanceTotalsDto": {
