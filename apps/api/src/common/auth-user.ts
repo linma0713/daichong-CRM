@@ -11,4 +11,8 @@ export interface AuthUser {
   permissions: string[];
   dataScope: DataScope;
   mustChangePassword: boolean;
+  /** 已开启两步验证 */
+  totpEnabled: boolean;
+  /** 角色要求两步验证但还没开：除了设置两步验证，别的接口都不能用 */
+  mustSetupTotp: boolean;
 }

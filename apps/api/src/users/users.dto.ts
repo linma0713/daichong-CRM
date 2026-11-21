@@ -117,6 +117,9 @@ export class UserDto {
   @ApiProperty({ type: [RoleBriefDto] }) roles: RoleBriefDto[];
   @ApiProperty({ type: Date, nullable: true }) lastLoginAt: Date | null;
   @ApiProperty() createdAt: Date;
+  @ApiProperty({ description: '已开启两步验证' }) totpEnabled: boolean;
+  @ApiProperty({ type: Date, nullable: true, description: '输错太多次锁定到这个时间' })
+  lockedUntil: Date | null;
 }
 
 export class UserListDto {

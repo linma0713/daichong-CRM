@@ -18,7 +18,7 @@ export function setSessionExpiredHandler(fn: (() => void) | null): void {
   onSessionExpired = fn;
 }
 
-const NO_REFRESH_PATHS = ['/api/auth/login', '/api/auth/refresh'];
+const NO_REFRESH_PATHS = ['/api/auth/login', '/api/auth/login/totp', '/api/auth/refresh'];
 
 /** 同一时刻只发一个刷新请求，其他请求等它的结果 */
 let refreshing: Promise<boolean> | null = null;

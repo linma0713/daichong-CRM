@@ -3,6 +3,8 @@ import { RequireAuth, RequirePermission } from './auth/guards';
 import { AdminLayout } from './layouts/AdminLayout';
 import { LoginPage } from './pages/LoginPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import { SecurityPage } from './pages/account/SecurityPage';
+import { SetupTotpPage } from './pages/account/SetupTotpPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { UsersPage } from './pages/system/UsersPage';
@@ -42,6 +44,14 @@ const router = createBrowserRouter([
     element: (
       <RequireAuth allowPendingPassword>
         <ChangePasswordPage forced />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/setup-2fa',
+    element: (
+      <RequireAuth allowPendingTotp>
+        <SetupTotpPage />
       </RequireAuth>
     ),
   },
@@ -265,6 +275,7 @@ const router = createBrowserRouter([
       },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'account/password', element: <ChangePasswordPage /> },
+      { path: 'account/security', element: <SecurityPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

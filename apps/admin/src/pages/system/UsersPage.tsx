@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Card,
+  Descriptions,
   Form,
   Input,
   Modal,
@@ -15,7 +16,7 @@ import {
   Typography,
   type TableColumnsType,
 } from 'antd';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, SafetyOutlined } from '@ant-design/icons';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ALL_PERMISSIONS, PASSWORD_RULE } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
@@ -52,6 +53,7 @@ export function UsersPage() {
   const [filters, setFilters] = useState<Filters>({ page: 1, pageSize: 20 });
   const [editing, setEditing] = useState<User | 'new' | null>(null);
   const [resetting, setResetting] = useState<User | null>(null);
+  const [securing, setSecuring] = useState<User | null>(null);
 
   const users = useQuery({
     queryKey: queryKeys.users(filters),
@@ -130,6 +132,16 @@ export function UsersPage() {
               待修改初始密码
             </Typography.Text>
           )}
+          {u.lockedUntil && (
+            <Typography.Text type="danger" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+              输错锁定到 {formatTime(u.lockedUntil).slice(11)}
+            </Typography.Text>
+          )}
+          {u.totpEnabled && (
+            <Typography.Text type="success" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+              <SafetyOutlined /> 两步验证
+            </Typography.Text>
+          )}
         </Space>
       ),
     },
@@ -155,6 +167,13 @@ export function UsersPage() {
             </Button>
             <Button type="link" size="small" onClick={() => setResetting(u)}>
               重置密码
+            </Button>
+            <Button type="link" size="small" onClick={() => setSecuring(u)}>
+              {u.lockedUntil ? (
+                <Typography.Text type="danger">解锁 / 安全</Typography.Text>
+              ) : (
+                '安全'
+              )}
             </Button>
             {u.status === 'ACTIVE' ? (
               <Popconfirm
@@ -275,7 +294,141 @@ export function UsersPage() {
         />
       )}
       {resetting && <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />}
+      {securing && (
+        <UserSecurityModal
+          user={securing}
+          isSelf={securing.id === profile?.id}
+          onClose={() => setSecuring(null)}
+          onChanged={(u) => {
+            setSecuring(u);
+            invalidate();
+          }}
+        />
+      )}
     </Card>
+  );
+}
+
+/** 员工的账号安全：解锁、重置两步验证、看登录设备、强制下线 */
+function UserSecurityModal({
+  user,
+  isSelf,
+  onClose,
+  onChanged,
+}: {
+  user: User;
+  isSelf: boolean;
+  onClose: () => void;
+  onChanged: (u: User) => void;
+}) {
+  const { message } = App.useApp();
+  const sessions = useQuery({
+    queryKey: ['users', user.id, 'sessions'],
+    queryFn: () =>
+      unwrap(api.GET('/api/users/{id}/sessions', { params: { path: { id: user.id } } })),
+  });
+  const path = { params: { path: { id: user.id } } };
+  const unlock = useMutation({
+    mutationFn: () => unwrap(api.POST('/api/users/{id}/unlock', path)),
+    onSuccess: () => {
+      message.success('已解锁，可以重新登录了');
+      onChanged({ ...user, lockedUntil: null });
+    },
+  });
+  const resetTotp = useMutation({
+    mutationFn: () => unwrap(api.POST('/api/users/{id}/reset-totp', path)),
+    onSuccess: () => {
+      message.success('已重置两步验证，下次登录只需要密码');
+      onChanged({ ...user, totpEnabled: false });
+    },
+  });
+  const kick = useMutation({
+    mutationFn: () => unwrap(api.POST('/api/users/{id}/force-logout', path)),
+    onSuccess: (r) => {
+      message.success(r.count ? `已让 ${r.count} 个设备退出登录` : '没有设备在登录');
+      void sessions.refetch();
+    },
+  });
+  const count = sessions.data?.length ?? 0;
+  return (
+    <Modal
+      open
+      title={`账号安全：${user.displayName}`}
+      footer={null}
+      width={680}
+      onCancel={onClose}
+    >
+      <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>
+        <Descriptions.Item label="登录锁定">
+          {user.lockedUntil ? (
+            <Space wrap>
+              <Typography.Text type="danger">
+                密码或验证码输错太多次，锁定到 {formatTime(user.lockedUntil)}
+              </Typography.Text>
+              <Button size="small" loading={unlock.isPending} onClick={() => unlock.mutate()}>
+                解锁
+              </Button>
+            </Space>
+          ) : (
+            '正常'
+          )}
+        </Descriptions.Item>
+        <Descriptions.Item label="两步验证">
+          {user.totpEnabled ? (
+            <Space wrap>
+              <Typography.Text type="success">
+                <SafetyOutlined /> 已开启
+              </Typography.Text>
+              <Popconfirm
+                title="重置这个员工的两步验证？"
+                description="员工手机丢了、换了才需要重置。重置后下次登录只要密码；岗位要求的话会让他重新设置。"
+                okText="重置"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => resetTotp.mutateAsync()}
+              >
+                <Button size="small" danger>
+                  重置
+                </Button>
+              </Popconfirm>
+            </Space>
+          ) : (
+            <Typography.Text type="secondary">没开启</Typography.Text>
+          )}
+        </Descriptions.Item>
+        <Descriptions.Item label="最近登录">{formatTime(user.lastLoginAt)}</Descriptions.Item>
+      </Descriptions>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+        <Typography.Text strong>登录着的设备（{count}）</Typography.Text>
+        {!isSelf && count > 0 && (
+          <Popconfirm
+            title="让这个员工所有设备都退出登录？"
+            description="员工需要重新输入密码登录。怀疑账号被盗时先强制下线，再重置密码。"
+            okText="强制下线"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => kick.mutateAsync()}
+          >
+            <Button size="small" danger>
+              强制下线
+            </Button>
+          </Popconfirm>
+        )}
+      </div>
+      <Table<Schemas['SessionDto']>
+        rowKey="id"
+        size="small"
+        loading={sessions.isLoading}
+        dataSource={sessions.data}
+        pagination={{ pageSize: 8, hideOnSinglePage: true, showSizeChanger: false }}
+        scroll={{ x: 520 }}
+        locale={{ emptyText: '没有设备在登录' }}
+        columns={[
+          { title: '设备', dataIndex: 'device' },
+          { title: 'IP', dataIndex: 'ip', render: (v) => v ?? '—' },
+          { title: '登录时间', key: 'c', render: (_, x) => formatTime(x.createdAt) },
+          { title: '最近活跃', key: 's', render: (_, x) => formatTime(x.lastSeenAt) },
+        ]}
+      />
+    </Modal>
   );
 }
 

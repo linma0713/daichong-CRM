@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } fr
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthUser } from '../common/auth-user';
 import { OkDto } from '../auth/auth.dto';
+import { RevokeResultDto, SessionDto } from '../auth/security';
 import { Audit, CurrentUser, RequirePermissions } from '../auth/decorators';
 import {
   CreateUserDto,
@@ -70,6 +71,46 @@ export class UsersController {
   ): Promise<OkDto> {
     await this.users.resetPassword(id, dto.password, actor);
     return { ok: true };
+  }
+
+  @Post(':id/unlock')
+  @HttpCode(200)
+  @RequirePermissions('system:user:write')
+  @Audit('user.unlock', '解锁员工账号')
+  @ApiOperation({ summary: '解除输错密码造成的锁定' })
+  @ApiOkResponse({ type: OkDto })
+  async unlock(@Param('id') id: string): Promise<OkDto> {
+    await this.users.unlock(id);
+    return { ok: true };
+  }
+
+  @Post(':id/reset-totp')
+  @HttpCode(200)
+  @RequirePermissions('system:user:write')
+  @Audit('user.totp_reset', '重置员工的两步验证')
+  @ApiOperation({ summary: '重置两步验证（员工手机丢了、换了）' })
+  @ApiOkResponse({ type: OkDto })
+  async resetTotp(@Param('id') id: string, @CurrentUser() actor: AuthUser): Promise<OkDto> {
+    await this.users.resetTotp(id, actor);
+    return { ok: true };
+  }
+
+  @Get(':id/sessions')
+  @RequirePermissions('system:user:read')
+  @ApiOperation({ summary: '员工登录着的设备' })
+  @ApiOkResponse({ type: [SessionDto] })
+  sessions(@Param('id') id: string): Promise<SessionDto[]> {
+    return this.users.sessions(id);
+  }
+
+  @Post(':id/force-logout')
+  @HttpCode(200)
+  @RequirePermissions('system:user:write')
+  @Audit('user.force_logout', '强制员工下线')
+  @ApiOperation({ summary: '强制下线：所有设备上的登录立即失效' })
+  @ApiOkResponse({ type: RevokeResultDto })
+  forceLogout(@Param('id') id: string, @CurrentUser() actor: AuthUser): Promise<RevokeResultDto> {
+    return this.users.forceLogout(id, actor);
   }
 
   @Delete(':id')

@@ -73,3 +73,42 @@ body {
   border-color: #1677ff;
   color: #1677ff;
 }
+
+/* 两步验证 */
+.recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.recovery-codes code {
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.totp-setup {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.totp-setup-qr {
+  flex: none;
+  padding: 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fff;
+}
+.totp-setup-text {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 575px) {
+  .totp-setup {
+    flex-direction: column;
+    align-items: center;
+  }
+}

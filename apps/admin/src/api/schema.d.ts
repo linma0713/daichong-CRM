@@ -193,6 +193,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/login/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 登录第二步：输入两步验证码或恢复码 */
+        post: operations["Auth_loginTotp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/refresh": {
         parameters: {
             query?: never;
@@ -261,6 +278,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我的两步验证状态 */
+        get: operations["Security_totpStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/totp/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 开始设置两步验证：生成密钥和二维码 */
+        post: operations["Security_setup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/totp/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 输入验证码确认，开启两步验证，返回恢复码 */
+        post: operations["Security_enable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/totp/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 关闭两步验证（要输登录密码） */
+        post: operations["Security_disable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/totp/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 重新生成恢复码，旧的全部作废（要输登录密码） */
+        post: operations["Security_regenerate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我登录着的设备 */
+        get: operations["Security_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 让某个设备退出登录 */
+        delete: operations["Security_revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/sessions/revoke-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 除了现在这个浏览器，其他设备全部退出登录 */
+        post: operations["Security_revokeOthers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我最近的登录记录（30 条） */
+        get: operations["Security_loginHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users": {
         parameters: {
             query?: never;
@@ -309,6 +479,74 @@ export interface paths {
         put?: never;
         /** 重置员工密码（员工下次登录需修改） */
         post: operations["Users_resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}/unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 解除输错密码造成的锁定 */
+        post: operations["Users_unlock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}/reset-totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 重置两步验证（员工手机丢了、换了） */
+        post: operations["Users_resetTotp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 员工登录着的设备 */
+        get: operations["Users_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}/force-logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 强制下线：所有设备上的登录立即失效 */
+        post: operations["Users_forceLogout"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1861,7 +2099,7 @@ export interface components {
         NotificationDto: {
             id: string;
             /** @enum {string} */
-            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest";
+            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest";
             title: string;
             body: string | null;
             link: string | null;
@@ -1890,7 +2128,7 @@ export interface components {
             kind: string;
             /** @description 机器人 key 的头尾几位 */
             webhookHint: string;
-            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest")[];
+            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest")[];
             enabled: boolean;
             /** Format: date-time */
             lastSentAt: string | null;
@@ -1910,13 +2148,13 @@ export interface components {
              * @example https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxx
              */
             webhook: string;
-            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest")[];
+            events: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest")[];
         };
         UpdateNotifyChannelDto: {
             name?: string;
             /** @description 换一个机器人地址；不改就不传 */
             webhook?: string;
-            events?: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest")[];
+            events?: ("task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest")[];
             enabled?: boolean;
         };
         TestResultDto: {
@@ -1928,7 +2166,7 @@ export interface components {
             channelId: string;
             channelName: string;
             /** @enum {string} */
-            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "daily.digest";
+            event: "task.created" | "task.assigned" | "task.overdue" | "task.failed" | "task.done" | "payment.received" | "ticket.created" | "ticket.escalated" | "refund.requested" | "refund.decided" | "inventory.low" | "statement.generated" | "referral.created" | "security.new_device" | "security.locked" | "daily.digest";
             content: string;
             /** @enum {string} */
             status: "PENDING" | "SENT" | "FAILED";
@@ -1973,6 +2211,8 @@ export interface components {
             username: string;
             /** @example Admin@123456 */
             password: string;
+            /** @description 浏览器生成的设备编号，用来判断是不是新设备登录 */
+            deviceId?: string;
         };
         RoleBriefDto: {
             id: string;
@@ -1992,11 +2232,26 @@ export interface components {
             dataScope: components["schemas"]["DataScope"];
             /** @description 是否需要先修改初始密码 */
             mustChangePassword: boolean;
+            /** @description 已开启两步验证 */
+            totpEnabled: boolean;
+            /** @description 角色要求两步验证但还没开，需要先设置 */
+            mustSetupTotp: boolean;
         };
         LoginResponseDto: {
-            accessToken: string;
-            refreshToken: string;
-            user: components["schemas"]["ProfileDto"];
+            /** @description 需要输入两步验证码 */
+            totpRequired: boolean;
+            /** @description 两步验证用的中间令牌，5 分钟内有效 */
+            challenge?: string;
+            accessToken?: string;
+            refreshToken?: string;
+            user?: components["schemas"]["ProfileDto"];
+        };
+        LoginTotpDto: {
+            /** @description 第一步登录返回的 challenge */
+            challenge: string;
+            /** @description 验证器里的 6 位数字，或者一个恢复码（xxxx-xxxx） */
+            code: string;
+            deviceId?: string;
         };
         RefreshDto: {
             refreshToken: string;
@@ -2009,6 +2264,66 @@ export interface components {
             oldPassword: string;
             /** @description 密码至少 8 位，需同时包含字母和数字 */
             newPassword: string;
+        };
+        TotpStatusDto: {
+            enabled: boolean;
+            /** Format: date-time */
+            enabledAt: string | null;
+            /** @description 还剩几个恢复码 */
+            recoveryCodesLeft: number;
+            /** @description 角色要求必须开启（开了以后不能关） */
+            required: boolean;
+        };
+        TotpSetupDto: {
+            /** @description 密钥，扫不了码时手动输入 */
+            secret: string;
+            /** @description 二维码内容 */
+            otpauthUrl: string;
+        };
+        TotpCodeDto: {
+            /** @description 验证器里的 6 位数字 */
+            code: string;
+        };
+        RecoveryCodesDto: {
+            /** @description 只显示这一次，请让员工抄下来或下载保存 */
+            recoveryCodes: string[];
+        };
+        PasswordConfirmDto: {
+            /** @description 当前登录密码 */
+            password: string;
+        };
+        SessionDto: {
+            id: string;
+            /** @example Chrome · Windows */
+            device: string;
+            ip: string | null;
+            /**
+             * Format: date-time
+             * @description 登录时间
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description 最近活跃
+             */
+            lastSeenAt: string | null;
+            /** @description 就是现在这个浏览器 */
+            current: boolean;
+        };
+        RevokeResultDto: {
+            /** @description 退出了几个设备 */
+            count: number;
+        };
+        LoginEventDto: {
+            id: string;
+            /** Format: date-time */
+            at: string;
+            /** @example auth.login */
+            action: string;
+            /** @example 登录 */
+            summary: string;
+            ip: string | null;
+            device: string | null;
         };
         /** @enum {string} */
         UserStatus: "ACTIVE" | "DISABLED";
@@ -2028,6 +2343,13 @@ export interface components {
             lastLoginAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            /** @description 已开启两步验证 */
+            totpEnabled: boolean;
+            /**
+             * Format: date-time
+             * @description 输错太多次锁定到这个时间
+             */
+            lockedUntil: string | null;
         };
         UserListDto: {
             items: components["schemas"]["UserDto"][];
@@ -2095,6 +2417,8 @@ export interface components {
             dataScope: components["schemas"]["DataScope"];
             /** @description 内置角色不能删除 */
             builtIn: boolean;
+            /** @description 这个角色的员工必须开启两步验证 */
+            requireTotp: boolean;
             /** @description 有多少员工使用这个角色 */
             userCount: number;
         };
@@ -2109,12 +2433,16 @@ export interface components {
             description?: string;
             permissions: string[];
             dataScope: components["schemas"]["DataScope"];
+            /** @description 这个角色的员工必须开启两步验证 */
+            requireTotp?: boolean;
         };
         UpdateRoleDto: {
             name?: string;
             description?: string;
             permissions?: string[];
             dataScope?: components["schemas"]["DataScope"];
+            /** @description 这个角色的员工必须开启两步验证 */
+            requireTotp?: boolean;
         };
         TeamDto: {
             id: string;
@@ -4865,6 +5193,29 @@ export interface operations {
             };
         };
     };
+    Auth_loginTotp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginTotpDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponseDto"];
+                };
+            };
+        };
+    };
     Auth_refresh: {
         parameters: {
             query?: never;
@@ -4945,6 +5296,191 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Security_totpStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotpStatusDto"];
+                };
+            };
+        };
+    };
+    Security_setup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotpSetupDto"];
+                };
+            };
+        };
+    };
+    Security_enable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TotpCodeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodesDto"];
+                };
+            };
+        };
+    };
+    Security_disable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordConfirmDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Security_regenerate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordConfirmDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodesDto"];
+                };
+            };
+        };
+    };
+    Security_sessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"][];
+                };
+            };
+        };
+    };
+    Security_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Security_revokeOthers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokeResultDto"];
+                };
+            };
+        };
+    };
+    Security_loginHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginEventDto"][];
                 };
             };
         };
@@ -5087,6 +5623,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Users_unlock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Users_resetTotp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkDto"];
+                };
+            };
+        };
+    };
+    Users_sessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"][];
+                };
+            };
+        };
+    };
+    Users_forceLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokeResultDto"];
                 };
             };
         };

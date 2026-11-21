@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsNotEmpty,
   IsOptional,
@@ -37,6 +38,11 @@ export class CreateRoleDto {
   @ApiProperty({ enum: DATA_SCOPES, enumName: 'DataScope' })
   @IsIn(DATA_SCOPES)
   dataScope: DataScope;
+
+  @ApiPropertyOptional({ description: '这个角色的员工必须开启两步验证' })
+  @IsOptional()
+  @IsBoolean()
+  requireTotp?: boolean;
 }
 
 export class UpdateRoleDto {
@@ -64,6 +70,11 @@ export class UpdateRoleDto {
   @IsOptional()
   @IsIn(DATA_SCOPES)
   dataScope?: DataScope;
+
+  @ApiPropertyOptional({ description: '这个角色的员工必须开启两步验证' })
+  @IsOptional()
+  @IsBoolean()
+  requireTotp?: boolean;
 }
 
 export class RoleDto {
@@ -74,6 +85,7 @@ export class RoleDto {
   @ApiProperty({ type: [String] }) permissions: string[];
   @ApiProperty({ enum: DATA_SCOPES, enumName: 'DataScope' }) dataScope: DataScope;
   @ApiProperty({ description: '内置角色不能删除' }) builtIn: boolean;
+  @ApiProperty({ description: '这个角色的员工必须开启两步验证' }) requireTotp: boolean;
   @ApiProperty({ description: '有多少员工使用这个角色' }) userCount: number;
 }
 

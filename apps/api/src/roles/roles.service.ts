@@ -20,6 +20,7 @@ function toDto(r: RoleWithCount): RoleDto {
     permissions: r.permissions,
     dataScope: r.dataScope as DataScope,
     builtIn: r.builtIn,
+    requireTotp: r.requireTotp,
     userCount: r._count.users,
   };
 }
@@ -57,6 +58,7 @@ export class RolesService {
         description: dto.description,
         permissions: cleanPermissions(dto.permissions),
         dataScope: dto.dataScope,
+        requireTotp: dto.requireTotp ?? false,
       },
       include: roleInclude,
     });
@@ -76,6 +78,7 @@ export class RolesService {
         description: dto.description,
         permissions: dto.permissions ? cleanPermissions(dto.permissions) : undefined,
         dataScope: dto.dataScope,
+        requireTotp: dto.requireTotp,
       },
       include: roleInclude,
     });

@@ -5,14 +5,21 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError, errorMessage } from './api/errors';
-import { AuthProvider } from './auth/AuthProvider';
+import { AuthProvider, ME_KEY } from './auth/AuthProvider';
 
 dayjs.locale('zh-cn');
 
 /** 接口出错时统一弹提示；由 ErrorBridge 接到 antd 的 message 上 */
 let notifyError: (text: string) => void = (text) => console.error(text);
 
+/** 管理员刚要求改密码 / 开两步验证：重新拉登录信息，页面守卫会带员工去设置 */
+const SETUP_REQUIRED = ['PASSWORD_CHANGE_REQUIRED', 'TOTP_SETUP_REQUIRED'];
+
 function shouldNotify(err: unknown): boolean {
+  if (err instanceof ApiError && err.code && SETUP_REQUIRED.includes(err.code)) {
+    void queryClient.invalidateQueries({ queryKey: ME_KEY });
+    return false;
+  }
   // 401 会自动跳转登录页，不重复提示
   return !(err instanceof ApiError && err.status === 401);
 }
