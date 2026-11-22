@@ -99,7 +99,7 @@ export class LedgerService {
   async consume(
     tx: Tx,
     resourceId: string,
-    data: { usdCents: number; note?: string; userId: string },
+    data: { usdCents: number; note?: string; userId: string; accountId?: string },
   ): Promise<ConsumeResult> {
     if (data.usdCents <= 0) throw badRequest('扣费金额必须大于 0');
     const r = await this.lockResource(tx, resourceId);
@@ -125,6 +125,7 @@ export class LedgerService {
         cnyCents: -costCents,
         balanceAfterUsdCents: balance,
         note: data.note?.trim() || null,
+        accountId: data.accountId ?? null,
         userId: data.userId,
       },
     });

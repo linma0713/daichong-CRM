@@ -1,4 +1,4 @@
-const SENSITIVE = /pass(word)?|secret|token|credential|verification/i;
+const SENSITIVE = /pass(word)?|secret|token|credential|verification|card_?(number|no)/i;
 
 /** 写日志前把密码、令牌等字段替换掉，嵌套对象和数组也会处理 */
 export function redact(value: unknown, depth = 0): unknown {

@@ -8,6 +8,7 @@ import { configureApp } from '../src/bootstrap';
 import { addDays, addMonths } from '../src/common/dates';
 import { SweepService } from '../src/scheduler/sweep';
 import { runSeed } from '../prisma/seed';
+import { eventually } from './test-db';
 
 const PASSWORD = 'Crm2026test';
 
@@ -444,6 +445,7 @@ describe('M2 库存与成本', () => {
       await as('fulfiller')
         .post(`/tasks/${taskId}/complete`, { stockAccountId: ids.stock1 })
         .expect(200);
+      ids.stockOrder1 = orderId;
       const order = await as('admin').get(`/orders/${orderId}`).expect(200);
       expect(order.body.profit.costCents).toBe(Number(ids.stock1Cost));
       expect(order.body.profit.costs[0].kind).toBe('ACCOUNT_STOCK');
@@ -525,6 +527,170 @@ describe('M2 库存与成本', () => {
       expect(new Date(res.body.upstreamRenewAt).getTime()).toBe(
         addMonths(account.upstreamRenewAt!, 1).getTime(),
       );
+    });
+  });
+
+  describe('付款卡：每张订单看到用的哪张卡、持卡人是谁', () => {
+    const fullA = '4242424242424242';
+    const fullB = '5555555555554444';
+    type Card = {
+      code: string;
+      last4: string | null;
+      holderName: string | null;
+      hasCardNumber: boolean;
+      charges: number;
+      stockCharges: number;
+    };
+    const cardsOf = async (orderId: string, who: 'admin' | 'sales' = 'admin') =>
+      (await as(who).get(`/orders/${orderId}`).expect(200)).body.paymentCards as Card[];
+
+    it('录入完整卡号和持卡人实名：自动取后四位，卡号加密保存', async () => {
+      const bad = await as('admin')
+        .patch(`/resources/${ids.card}`, { cardNumber: '4242#4242' })
+        .expect(400);
+      expect(bad.body.message).toContain('卡号');
+      const res = await as('admin')
+        .patch(`/resources/${ids.card}`, {
+          cardNumber: '4242-4242 4242 4242',
+          holderName: ' 王小明 ',
+          last4: '9999',
+        })
+        .expect(200);
+      expect(res.body).toMatchObject({ last4: '4242', holderName: '王小明', hasCardNumber: true });
+      expect(JSON.stringify(res.body)).not.toContain(fullA);
+      const row = await prisma.paymentResource.findUniqueOrThrow({ where: { id: ids.card } });
+      expect(row.cardNumberEnc).toBeTruthy();
+      expect(row.cardNumberEnc).not.toContain(fullA);
+      // 修改记录里的卡号要脱敏
+      const log = await eventually(
+        () =>
+          prisma.auditLog.findFirst({
+            where: { action: 'resource.update', resourceId: ids.card },
+            orderBy: { createdAt: 'desc' },
+          }),
+        (l) => !!l,
+      );
+      expect(JSON.stringify(log?.detail)).not.toContain('4242 4242');
+      expect(log?.detail).toMatchObject({ cardNumber: '***', holderName: ' 王小明 ' });
+
+      const b = await as('admin')
+        .post('/resources', {
+          type: 'VIRTUAL_CARD',
+          name: 'Master 虚拟卡 B',
+          cardNumber: '5555 5555 5555 4444',
+          holderName: '李四',
+          initialUsdCents: 20000,
+          initialCnyCents: 146000,
+        })
+        .expect(201);
+      expect(b.body).toMatchObject({ last4: '4444', holderName: '李四', hasCardNumber: true });
+      ids.cardB = b.body.id;
+      const list = await as('fulfiller').get('/resources').expect(200);
+      expect(JSON.stringify(list.body)).not.toContain(fullB);
+    });
+
+    it('订单详情、列表和导出都带上用过的卡；客服也能看尾号和持卡人，但拿不到完整卡号', async () => {
+      const cards = await cardsOf(ids.order1, 'sales');
+      expect(cards).toEqual([
+        expect.objectContaining({
+          code: 'R00001',
+          name: 'Visa 虚拟卡 A',
+          last4: '4242',
+          holderName: '王小明',
+          hasCardNumber: true,
+          charges: 1,
+          stockCharges: 0,
+        }),
+      ]);
+      // 内部续费扣的卡记在续费订单上
+      expect(await cardsOf(ids.renewal1)).toEqual([
+        expect.objectContaining({ code: 'R00001', charges: 1 }),
+      ]);
+      const detail = await as('sales').get(`/orders/${ids.order1}`).expect(200);
+      expect(JSON.stringify(detail.body)).not.toContain(fullA);
+
+      const list = await as('sales').get(`/orders?customerId=${ids.customer}`).expect(200);
+      const row = list.body.items.find((o: { id: string }) => o.id === ids.order1);
+      expect(row.paymentCards).toEqual([expect.objectContaining({ holderName: '王小明' })]);
+      const exp = await as('admin').get(`/exports/orders?customerId=${ids.customer}`).expect(200);
+      const exported = exp.body.items.find((o: { id: string }) => o.id === ids.order1);
+      expect(exported.paymentCards[0].last4).toBe('4242');
+
+      await as('sales').get(`/resources/${ids.card}/card-number`).expect(403);
+    });
+
+    it('有「查看付款卡完整卡号」权限的人点开完整卡号，记日志并写上从哪张订单点开的', async () => {
+      const order = await prisma.order.findUniqueOrThrow({ where: { id: ids.order1 } });
+      const code = `D${String(order.no).padStart(5, '0')}`;
+      const res = await as('fulfiller')
+        .get(`/resources/${ids.card}/card-number?orderId=${ids.order1}`)
+        .expect(200);
+      expect(res.body).toEqual({
+        name: 'Visa 虚拟卡 A',
+        last4: '4242',
+        holderName: '王小明',
+        cardNumber: fullA,
+      });
+      const log = await eventually(
+        () => prisma.auditLog.findFirst({ where: { action: 'resource.card_view' } }),
+        (l) => !!l,
+      );
+      expect(log).toMatchObject({ userId: ids.fulfiller, resourceId: ids.card });
+      expect(log?.summary).toContain(code);
+      expect(log?.detail).toMatchObject({ order: code, holderName: '王小明' });
+
+      // 只有「查看账号敏感信息」不够：完整卡号是单独的权限
+      const role = await prisma.role.create({
+        data: { code: 'secret_only', name: '只看账号密码', permissions: ['account:secret:view'] },
+      });
+      const viewer = await createStaff('secret_only', '只看账号密码', role.code);
+      await http()
+        .get(`/api/resources/${ids.card}/card-number`)
+        .auth(viewer.token, { type: 'bearer' })
+        .expect(403);
+    });
+
+    it('成品号订单：显示备号时扣的卡；回收后再发给别人，只算回收之后的扣费', async () => {
+      // 第一次发号：只有入库时的备号扣费，回收后在库续费那笔不算进来
+      expect(await cardsOf(ids.stockOrder1)).toEqual([
+        expect.objectContaining({ code: 'R00001', charges: 1, stockCharges: 1 }),
+      ]);
+      // 回收后在库期间：之前用卡 A 扣过一次，这里再用卡 B 扣一次，然后发给新客户
+      await as('admin')
+        .post(`/stock-accounts/${ids.stock1}/charge`, { resourceId: ids.cardB })
+        .expect(200);
+      const { orderId, taskId } = await paidOrder({
+        customerId: ids.customer,
+        kind: 'NEW',
+        productId: ids.proAccount,
+      });
+      await as('fulfiller')
+        .post(`/tasks/${taskId}/complete`, { stockAccountId: ids.stock1 })
+        .expect(200);
+      const cards = await cardsOf(orderId);
+      expect(cards).toEqual([
+        expect.objectContaining({ code: 'R00001', charges: 1, stockCharges: 1 }),
+        expect.objectContaining({
+          code: 'R00002',
+          holderName: '李四',
+          charges: 1,
+          stockCharges: 1,
+        }),
+      ]);
+      expect(await cardsOf(ids.stockOrder1)).toHaveLength(1);
+    });
+
+    it('改卡号后四位跟着变；传空清除卡号和持卡人', async () => {
+      const changed = await as('admin')
+        .patch(`/resources/${ids.cardB}`, { cardNumber: '5555555555551234' })
+        .expect(200);
+      expect(changed.body.last4).toBe('1234');
+      const cleared = await as('admin')
+        .patch(`/resources/${ids.cardB}`, { cardNumber: '', holderName: null })
+        .expect(200);
+      expect(cleared.body).toMatchObject({ hasCardNumber: false, holderName: null, last4: '1234' });
+      const res = await as('admin').get(`/resources/${ids.cardB}/card-number`).expect(200);
+      expect(res.body.cardNumber).toBeNull();
     });
   });
 });

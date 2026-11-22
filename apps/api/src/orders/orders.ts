@@ -38,6 +38,7 @@ import {
   AGENT_COLLECTED,
   RECEIPT_METHOD_VALUES,
   REFUND_STATUSES,
+  RESOURCE_TYPES,
   TASK_STATUSES,
   TASK_TYPES,
   displayNo,
@@ -56,6 +57,7 @@ import {
   type PaymentMethod,
   type ReceiptMethod,
   type RefundStatus,
+  type ResourceType,
   type TaskStatus,
   type TaskType,
 } from '@crm/shared';
@@ -276,8 +278,30 @@ export class OrderDto {
   @ApiProperty() createdAt: Date;
 }
 
+/** 订单用过的付款卡（给上游付款的虚拟卡、礼品卡等），完整卡号要单独点开 */
+export class OrderPaymentCardDto {
+  @ApiProperty() resourceId: string;
+  @ApiProperty({ example: 'R00001' }) code: string;
+  @ApiProperty({ enum: RESOURCE_TYPES, enumName: 'ResourceType' }) type: ResourceType;
+  @ApiProperty() name: string;
+  @ApiProperty({ type: String, nullable: true, description: '卡号后四位' }) last4: string | null;
+  @ApiProperty({ type: String, nullable: true, description: '持卡人实名' })
+  holderName: string | null;
+  @ApiProperty({ description: '录入了完整卡号（有「查看付款卡完整卡号」权限的人可以点开）' })
+  hasCardNumber: boolean;
+  @ApiProperty({ description: '这单用这张卡扣了几次' }) charges: number;
+  @ApiProperty({ description: '其中成品号备号、在库续费时扣的次数' }) stockCharges: number;
+  @ApiProperty() firstChargedAt: Date;
+  @ApiProperty() lastChargedAt: Date;
+}
+
+export class OrderListItemDto extends OrderDto {
+  @ApiProperty({ type: [OrderPaymentCardDto], description: '这单用过的付款卡，按首次扣费排' })
+  paymentCards: OrderPaymentCardDto[];
+}
+
 export class OrderListDto {
-  @ApiProperty({ type: [OrderDto] }) items: OrderDto[];
+  @ApiProperty({ type: [OrderListItemDto] }) items: OrderListItemDto[];
   @ApiProperty() total: number;
 }
 
@@ -371,6 +395,8 @@ export class OrderRefundDto {
 }
 
 export class OrderDetailDto extends OrderDto {
+  @ApiProperty({ type: [OrderPaymentCardDto], description: '这单用过的付款卡，按首次扣费排' })
+  paymentCards: OrderPaymentCardDto[];
   @ApiProperty({ type: [PaymentDto] }) payments: PaymentDto[];
   @ApiProperty({ type: [PaymentLinkDto], description: '在线收款链接，新的在前' })
   paymentLinks: PaymentLinkDto[];
@@ -490,6 +516,17 @@ function toOrderDto(o: OrderRow, user: AuthUser): OrderDto {
   };
 }
 
+const cardResourceSelect = {
+  id: true,
+  no: true,
+  type: true,
+  name: true,
+  last4: true,
+  holderName: true,
+  cardNumberEnc: true,
+} satisfies Prisma.PaymentResourceSelect;
+type CardResource = Prisma.PaymentResourceGetPayload<{ select: typeof cardResourceSelect }>;
+
 export function visibleOrders(user: AuthUser): Prisma.OrderWhereInput {
   return scopeWhere(user);
 }
@@ -538,7 +575,103 @@ export class OrdersService {
       }),
       this.prisma.order.count({ where }),
     ]);
-    return { items: rows.map((o) => toOrderDto(o, user)), total };
+    const cards = await this.paymentCardsOf(rows.map((o) => o.id));
+    return {
+      items: rows.map((o) => ({ ...toOrderDto(o, user), paymentCards: cards.get(o.id) ?? [] })),
+      total,
+    };
+  }
+
+  /**
+   * 订单用过的付款卡：订单上的上游扣费（开通、续费、内部续费），
+   * 加上成品号订单里这个号备号、在库续费时的扣费（上一次发号之后、这次发号之前的那些）。
+   */
+  async paymentCardsOf(orderIds: string[]): Promise<Map<string, OrderPaymentCardDto[]>> {
+    const out = new Map<string, OrderPaymentCardDto[]>();
+    if (orderIds.length === 0) return out;
+    const entries = await this.prisma.costEntry.findMany({
+      where: {
+        orderId: { in: orderIds },
+        OR: [{ resourceTxId: { not: null } }, { kind: 'ACCOUNT_STOCK', accountId: { not: null } }],
+      },
+      select: {
+        orderId: true,
+        kind: true,
+        accountId: true,
+        createdAt: true,
+        resourceTx: { select: { createdAt: true, resource: { select: cardResourceSelect } } },
+      },
+    });
+    const uses: { orderId: string; resource: CardResource; at: Date; stock: boolean }[] = [];
+    for (const e of entries) {
+      if (e.orderId && e.resourceTx) {
+        uses.push({
+          orderId: e.orderId,
+          resource: e.resourceTx.resource,
+          at: e.resourceTx.createdAt,
+          stock: false,
+        });
+      }
+    }
+    const issues = entries.filter((e) => e.kind === 'ACCOUNT_STOCK' && e.accountId && e.orderId);
+    if (issues.length > 0) {
+      const accountIds = [...new Set(issues.map((e) => e.accountId!))];
+      const [allIssues, stockCharges] = await Promise.all([
+        this.prisma.costEntry.findMany({
+          where: { kind: 'ACCOUNT_STOCK', accountId: { in: accountIds } },
+          select: { accountId: true, createdAt: true },
+        }),
+        this.prisma.resourceTransaction.findMany({
+          where: { accountId: { in: accountIds }, type: 'CONSUME' },
+          select: { accountId: true, createdAt: true, resource: { select: cardResourceSelect } },
+        }),
+      ]);
+      for (const e of issues) {
+        // 同一个号可能回收后再发给别人：只算上一次发号之后的扣费
+        const prev = allIssues
+          .filter((i) => i.accountId === e.accountId && i.createdAt < e.createdAt)
+          .reduce<Date | null>((m, i) => (!m || i.createdAt > m ? i.createdAt : m), null);
+        for (const c of stockCharges) {
+          if (c.accountId !== e.accountId || c.createdAt > e.createdAt) continue;
+          if (prev && c.createdAt <= prev) continue;
+          uses.push({ orderId: e.orderId!, resource: c.resource, at: c.createdAt, stock: true });
+        }
+      }
+    }
+    const byOrder = new Map<string, Map<string, OrderPaymentCardDto>>();
+    for (const u of uses) {
+      let cards = byOrder.get(u.orderId);
+      if (!cards) byOrder.set(u.orderId, (cards = new Map()));
+      const c = cards.get(u.resource.id);
+      if (c) {
+        c.charges++;
+        if (u.stock) c.stockCharges++;
+        if (u.at < c.firstChargedAt) c.firstChargedAt = u.at;
+        if (u.at > c.lastChargedAt) c.lastChargedAt = u.at;
+        continue;
+      }
+      const r = u.resource;
+      cards.set(r.id, {
+        resourceId: r.id,
+        code: displayNo('R', r.no),
+        type: r.type,
+        name: r.name,
+        last4: r.last4,
+        holderName: r.holderName,
+        hasCardNumber: !!r.cardNumberEnc,
+        charges: 1,
+        stockCharges: u.stock ? 1 : 0,
+        firstChargedAt: u.at,
+        lastChargedAt: u.at,
+      });
+    }
+    for (const [orderId, cards] of byOrder) {
+      out.set(
+        orderId,
+        [...cards.values()].sort((a, b) => a.firstChargedAt.getTime() - b.firstChargedAt.getTime()),
+      );
+    }
+    return out;
   }
 
   async get(id: string, user: AuthUser): Promise<OrderDetailDto> {
@@ -583,8 +716,10 @@ export class OrdersService {
       .filter((r) => r.status === 'PENDING')
       .reduce((sum, r) => sum + r.amountCents, 0);
     const terminated = o.refunds.some((r) => r.status === 'PAID' && r.terminate);
+    const cards = await this.paymentCardsOf([o.id]);
     return {
       ...toOrderDto(o, user),
+      paymentCards: cards.get(o.id) ?? [],
       profit: canSeeCost(user) ? await this.profit(o, terminated) : null,
       commissions: commissions ? commissions.map(toCommissionDto) : null,
       refunds: o.refunds.map((r) => ({

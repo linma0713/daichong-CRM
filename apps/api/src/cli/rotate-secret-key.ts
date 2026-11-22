@@ -48,7 +48,19 @@ export const SECRET_TARGETS: Target[] = [
       db.claudeAccount.update({ where: { id }, data: { secretNoteEnc: value } }),
   },
   {
-    label: '付款资源敏感信息（卡号等）',
+    label: '付款资源完整卡号',
+    load: async (db) =>
+      (
+        await db.paymentResource.findMany({
+          where: { cardNumberEnc: { not: null } },
+          select: { id: true, cardNumberEnc: true },
+        })
+      ).map((r) => ({ id: r.id, value: r.cardNumberEnc })),
+    save: (db, id, value) =>
+      db.paymentResource.update({ where: { id }, data: { cardNumberEnc: value } }),
+  },
+  {
+    label: '付款资源其他敏感信息（CVV 等）',
     load: async (db) =>
       (
         await db.paymentResource.findMany({

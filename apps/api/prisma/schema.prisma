@@ -442,12 +442,12 @@ model Payment {
 
 /// Claude 账号。代充时是客户自己的号，成品号是公司准备的号；密码等敏感信息加密保存
 model ClaudeAccount {
-  id              String              @id @default(cuid())
-  email           String              @unique
+  id              String                @id @default(cuid())
+  email           String                @unique
   /// CUSTOMER 客户自己的号 / COMPANY 公司的成品号
   ownership       String
   customerId      String?
-  customer        Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customer        Customer?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
   /// 加密后的登录密码（AES-256-GCM）
   passwordEnc     String?
   /// 加密后的其他敏感信息（恢复邮箱、备用码等）
@@ -457,16 +457,18 @@ model ClaudeAccount {
   stockStatus     AccountStockStatus?
   /// 成品号对应的套餐，库存按套餐分池
   planId          String?
-  plan            Plan?               @relation(fields: [planId], references: [id])
+  plan            Plan?                 @relation(fields: [planId], references: [id])
   /// 还没结转到订单的备号成本（分）：备号、在库期间的上游扣费，发号时转到订单
-  stockCostCents  Int                 @default(0)
+  stockCostCents  Int                   @default(0)
   /// 在库时上游下次扣费时间（已付费到这一天）
   upstreamRenewAt DateTime?
   stockedAt       DateTime?
   subscriptions   Subscription[]
   orders          Order[]
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  /// 备号、在库续费时的上游扣费
+  stockCharges    ResourceTransaction[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
   @@index([customerId])
   @@index([stockStatus, planId])
@@ -630,8 +632,12 @@ model PaymentResource {
   /// 余额低于这个值时预警（美分）
   lowBalanceUsdCents Int                   @default(0)
   active             Boolean               @default(true)
-  /// 加密保存的卡号、CVV、登录信息等
+  /// 加密保存的 CVV、登录信息等其他敏感信息
   secretNoteEnc      String?
+  /// 完整卡号（加密保存，查看会记录日志）
+  cardNumberEnc      String?
+  /// 持卡人实名
+  holderName         String?
   remark             String?
   transactions       ResourceTransaction[]
   createdAt          DateTime              @default(now())
@@ -659,12 +665,16 @@ model ResourceTransaction {
   cnyCents             Int
   balanceAfterUsdCents Int
   note                 String?
+  /// 成品号备号、在库续费的扣费记到这个号上，发号后订单能查到当时用的哪张卡
+  accountId            String?
+  account              ClaudeAccount?  @relation(fields: [accountId], references: [id])
   userId               String
   user                 User            @relation(fields: [userId], references: [id])
   costEntry            CostEntry?
   createdAt            DateTime        @default(now())
 
   @@index([resourceId, createdAt])
+  @@index([accountId])
   @@index([createdAt])
 }
 

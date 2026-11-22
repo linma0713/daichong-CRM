@@ -77,6 +77,10 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [
       { code: 'inventory:read', name: '查看付款资源与成品号库存' },
       { code: 'inventory:write', name: '入库 / 调整库存' },
+      {
+        code: 'resource:card:view',
+        name: '查看付款卡完整卡号（库存和订单里都能点开，会记录日志）',
+      },
     ],
   },
   {

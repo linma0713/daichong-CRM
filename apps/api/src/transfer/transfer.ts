@@ -35,7 +35,7 @@ import {
   CustomersService,
   assertCanAssign,
 } from '../customers/customers';
-import { OrderDto, OrderQueryDto, OrdersModule, OrdersService } from '../orders/orders';
+import { OrderListItemDto, OrderQueryDto, OrdersModule, OrdersService } from '../orders/orders';
 
 /** 一次最多导入多少行、导出多少条 */
 export const IMPORT_MAX_ROWS = 500;
@@ -117,7 +117,7 @@ export class CustomerExportDto {
 }
 
 export class OrderExportDto {
-  @ApiProperty({ type: [OrderDto] }) items: OrderDto[];
+  @ApiProperty({ type: [OrderListItemDto] }) items: OrderListItemDto[];
   @ApiProperty() total: number;
   @ApiProperty() truncated: boolean;
 }

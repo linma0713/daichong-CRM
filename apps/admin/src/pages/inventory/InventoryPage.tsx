@@ -44,10 +44,13 @@ import { usePlans, useResources } from '../../api/queries';
 import { useAuth } from '../../auth/AuthProvider';
 import {
   AccountSecretButton,
+  CardNumberButton,
   CustomerLink,
   Money,
   StockStatusTag,
   Usd,
+  maskedCard,
+  resourceOption,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
 import { parseAccountLines } from './parse';
@@ -183,7 +186,7 @@ function ResourcesTab() {
         loading={resources.isLoading}
         dataSource={resources.data}
         pagination={false}
-        scroll={{ x: 960 }}
+        scroll={{ x: 1100 }}
         locale={{
           emptyText: canWrite ? '还没有付款资源，点右上角「新增付款资源」' : '还没有付款资源',
         }}
@@ -193,10 +196,7 @@ function ResourcesTab() {
             key: 'name',
             render: (_, r) => (
               <Space direction="vertical" size={0}>
-                <Space size={4}>
-                  <Typography.Text strong>{r.name}</Typography.Text>
-                  {r.last4 && <Typography.Text type="secondary">尾号 {r.last4}</Typography.Text>}
-                </Space>
+                <Typography.Text strong>{r.name}</Typography.Text>
                 <Space size={4}>
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                     {r.code}
@@ -204,6 +204,23 @@ function ResourcesTab() {
                   <Tag>{RESOURCE_TYPE_LABELS[r.type]}</Tag>
                   {!r.active && <Tag>已停用</Tag>}
                 </Space>
+              </Space>
+            ),
+          },
+          {
+            title: '卡号 / 持卡人',
+            key: 'card',
+            render: (_, r) => (
+              <Space direction="vertical" size={0}>
+                <Space size={0}>
+                  <Typography.Text style={{ whiteSpace: 'nowrap' }}>
+                    {maskedCard(r.last4)}
+                  </Typography.Text>
+                  <CardNumberButton card={{ resourceId: r.id, hasCardNumber: r.hasCardNumber }} />
+                </Space>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {r.holderName ?? '持卡人未录入'}
+                </Typography.Text>
               </Space>
             ),
           },
@@ -298,7 +315,7 @@ function ResourceSecretButton({ resource }: { resource: Resource }) {
       unwrap(api.GET('/api/resources/{id}/secret', { params: { path: { id: resource.id } } })),
     onSuccess: (s) =>
       modal.info({
-        title: `敏感信息：${s.name}`,
+        title: `其他敏感信息：${s.name}`,
         width: 480,
         content: s.secretNote ? (
           <Typography.Paragraph copyable style={{ whiteSpace: 'pre-wrap', marginTop: 12 }}>
@@ -311,7 +328,7 @@ function ResourceSecretButton({ resource }: { resource: Resource }) {
   });
   if (!can('account:secret:view') || !resource.hasSecretNote) return null;
   return (
-    <Tooltip title="查看卡号等敏感信息（会记录操作日志）">
+    <Tooltip title="查看 CVV、有效期等其他敏感信息（会记录操作日志）">
       <Button
         type="link"
         size="small"
@@ -326,6 +343,8 @@ function ResourceSecretButton({ resource }: { resource: Resource }) {
 interface ResourceForm {
   type: ResourceType;
   name: string;
+  cardNumber?: string;
+  holderName?: string;
   last4?: string;
   feePercent?: number;
   feeFixedUsd?: number;
@@ -345,6 +364,7 @@ function ResourceModal({ resource, onClose }: { resource: Resource | null; onClo
     mutationFn: (v: ResourceForm) => {
       const common = {
         name: v.name,
+        cardNumber: v.cardNumber?.trim() || undefined,
         last4: v.last4 || undefined,
         feeBp: v.feePercent ? Math.round(v.feePercent * 100) : 0,
         feeFixedUsdCents: yuanToCents(v.feeFixedUsd) ?? 0,
@@ -356,13 +376,15 @@ function ResourceModal({ resource, onClose }: { resource: Resource | null; onClo
         ? unwrap(
             api.PATCH('/api/resources/{id}', {
               params: { path: { id: resource.id } },
-              body: { ...common, active: v.active },
+              // 编辑时把持卡人清空就是删除
+              body: { ...common, holderName: v.holderName?.trim() || null, active: v.active },
             }),
           )
         : unwrap(
             api.POST('/api/resources', {
               body: {
                 ...common,
+                holderName: v.holderName?.trim() || undefined,
                 type: v.type,
                 initialUsdCents: yuanToCents(v.initialUsd),
                 initialCnyCents: yuanToCents(v.initialCny),
@@ -394,6 +416,7 @@ function ResourceModal({ resource, onClose }: { resource: Resource | null; onClo
             ? {
                 type: resource.type,
                 name: resource.name,
+                holderName: resource.holderName ?? undefined,
                 last4: resource.last4 ?? undefined,
                 feePercent: resource.feeBp / 100,
                 feeFixedUsd: resource.feeFixedUsdCents / 100,
@@ -421,8 +444,42 @@ function ResourceModal({ resource, onClose }: { resource: Resource | null; onClo
           </Col>
         </Row>
         <Row gutter={12}>
+          <Col span={14}>
+            <Form.Item
+              name="cardNumber"
+              label="完整卡号"
+              rules={[
+                {
+                  pattern: /^[0-9A-Za-z\s-]{6,40}$/,
+                  message: '卡号只能是数字或字母，可以带空格或横线',
+                },
+              ]}
+              extra={
+                resource?.hasCardNumber
+                  ? `已录入（尾号 ${resource.last4 ?? '—'}）；不填则不改`
+                  : '加密保存；订单里显示尾号，点开完整卡号会记录操作日志'
+              }
+            >
+              <Input
+                maxLength={40}
+                autoComplete="off"
+                placeholder={resource?.hasCardNumber ? '要换卡号再填' : '例如 4111 1111 1111 1111'}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={10}>
+            <Form.Item
+              name="holderName"
+              label="持卡人实名"
+              extra="订单详情里会显示，方便核对是谁的卡"
+            >
+              <Input maxLength={50} autoComplete="off" />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={12}>
           <Col span={8}>
-            <Form.Item name="last4" label="尾号">
+            <Form.Item name="last4" label="尾号" tooltip="填了完整卡号会自动取后四位">
               <Input maxLength={8} />
             </Form.Item>
           </Col>
@@ -464,7 +521,7 @@ function ResourceModal({ resource, onClose }: { resource: Resource | null; onClo
         )}
         <Form.Item
           name="secretNote"
-          label="卡号等敏感信息"
+          label="其他敏感信息（CVV、有效期、登录信息等）"
           extra={resource?.hasSecretNote ? '已录入；不填则不改' : '加密保存，查看会记录操作日志'}
         >
           <Input.TextArea rows={2} maxLength={1000} />
@@ -979,12 +1036,7 @@ function AddStockModal({ onClose }: { onClose: () => void }) {
             >
               <Select
                 allowClear
-                options={resources.data
-                  ?.filter((r) => r.active)
-                  .map((r) => ({
-                    value: r.id,
-                    label: `${r.name}（余额 ${formatCents(r.balanceUsdCents, '$')}）`,
-                  }))}
+                options={resources.data?.filter((r) => r.active).map(resourceOption)}
               />
             </Form.Item>
           </Col>
@@ -1054,14 +1106,7 @@ function ChargeStockModal({ account, onClose }: { account: StockAccount; onClose
           label="付款资源"
           rules={[{ required: true, message: '请选择付款资源' }]}
         >
-          <Select
-            options={resources.data
-              ?.filter((r) => r.active)
-              .map((r) => ({
-                value: r.id,
-                label: `${r.name}（余额 ${formatCents(r.balanceUsdCents, '$')}）`,
-              }))}
-          />
+          <Select options={resources.data?.filter((r) => r.active).map(resourceOption)} />
         </Form.Item>
         <Form.Item
           name="usd"

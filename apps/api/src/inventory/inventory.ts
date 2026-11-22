@@ -88,9 +88,15 @@ export class ResourceDto {
   @ApiProperty({ description: '余额低于预警线' }) low: boolean;
   @ApiProperty() active: boolean;
   @ApiProperty() hasSecretNote: boolean;
+  @ApiProperty({ description: '是否录入了完整卡号' }) hasCardNumber: boolean;
+  @ApiProperty({ type: String, nullable: true, description: '持卡人实名' })
+  holderName: string | null;
   @ApiProperty({ type: String, nullable: true }) remark: string | null;
   @ApiProperty() createdAt: Date;
 }
+
+const CARD_NUMBER_HINT =
+  '完整卡号，可以带空格或横线；填了会自动取后四位（加密保存，查看会记录日志）';
 
 export class CreateResourceDto {
   @ApiProperty({ enum: RESOURCE_TYPES, enumName: 'ResourceType' })
@@ -130,7 +136,19 @@ export class CreateResourceDto {
   @Max(100_000_00)
   lowBalanceUsdCents?: number;
 
-  @ApiPropertyOptional({ description: '卡号、CVV、登录信息等（加密保存，查看会记录日志）' })
+  @ApiPropertyOptional({ description: CARD_NUMBER_HINT, example: '4111 1111 1111 1111' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  cardNumber?: string;
+
+  @ApiPropertyOptional({ description: '持卡人实名', example: '王小明' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  holderName?: string;
+
+  @ApiPropertyOptional({ description: 'CVV、登录信息等（加密保存，查看会记录日志）' })
   @IsOptional()
   @IsString()
   @MaxLength(1000)
@@ -196,6 +214,18 @@ export class UpdateResourceDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @ApiPropertyOptional({ description: `${CARD_NUMBER_HINT}；传空字符串表示清除` })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  cardNumber?: string;
+
+  @ApiPropertyOptional({ type: String, nullable: true, description: '持卡人实名；传空表示清除' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  holderName?: string | null;
 
   @ApiPropertyOptional({ description: '新的敏感信息；传空字符串表示清除' })
   @IsOptional()
@@ -267,6 +297,21 @@ export class ResourceTxDto {
 export class ResourceTxListDto {
   @ApiProperty({ type: [ResourceTxDto] }) items: ResourceTxDto[];
   @ApiProperty() total: number;
+}
+
+export class ResourceCardDto {
+  @ApiProperty() name: string;
+  @ApiProperty({ type: String, nullable: true }) last4: string | null;
+  @ApiProperty({ type: String, nullable: true }) holderName: string | null;
+  @ApiProperty({ type: String, nullable: true, description: '完整卡号（没录入时为空）' })
+  cardNumber: string | null;
+}
+
+export class RevealCardQueryDto {
+  @ApiPropertyOptional({ description: '从哪张订单点开的（写进操作日志）' })
+  @IsOptional()
+  @IsString()
+  orderId?: string;
 }
 
 export class ResourceSecretDto {
@@ -479,9 +524,24 @@ function toResourceDto(r: ResourceRow): ResourceDto {
     low: r.active && r.balanceUsdCents < r.lowBalanceUsdCents,
     active: r.active,
     hasSecretNote: !!r.secretNoteEnc,
+    hasCardNumber: !!r.cardNumberEnc,
+    holderName: r.holderName,
     remark: r.remark,
     createdAt: r.createdAt,
   };
+}
+
+/**
+ * 整理卡号：去掉空格和横线。虚拟卡是 12–19 位数字，礼品卡可能带字母，所以只限制成数字和字母。
+ * 返回 null 表示没填（清除）。
+ */
+export function normalizeCardNumber(raw: string): string | null {
+  const v = raw.replace(/[\s-]/g, '').toUpperCase();
+  if (!v) return null;
+  if (!/^[0-9A-Z]{6,30}$/.test(v)) {
+    throw badRequest('卡号只能是数字或字母（6–30 位，可以带空格或横线）');
+  }
+  return v;
 }
 
 const stockInclude = {
@@ -533,12 +593,15 @@ export class InventoryService {
     if (dto.initialCnyCents !== undefined && dto.initialUsdCents === undefined) {
       throw badRequest('填了入库花费，也要填入库的美元金额');
     }
+    const card = dto.cardNumber === undefined ? null : normalizeCardNumber(dto.cardNumber);
     const id = await this.prisma.$transaction(async (tx) => {
       const r = await tx.paymentResource.create({
         data: {
           type: dto.type,
           name: dto.name.trim(),
-          last4: dto.last4?.trim() || null,
+          last4: card ? card.slice(-4) : dto.last4?.trim() || null,
+          cardNumberEnc: card ? this.secrets.encrypt(card) : null,
+          holderName: dto.holderName?.trim() || null,
           feeBp: dto.feeBp ?? 0,
           feeFixedUsdCents: dto.feeFixedUsdCents ?? 0,
           lowBalanceUsdCents: dto.lowBalanceUsdCents ?? 0,
@@ -561,11 +624,20 @@ export class InventoryService {
 
   async updateResource(id: string, dto: UpdateResourceDto): Promise<ResourceDto> {
     await this.getResource(id);
+    const card = dto.cardNumber === undefined ? undefined : normalizeCardNumber(dto.cardNumber);
     await this.prisma.paymentResource.update({
       where: { id },
       data: {
         name: dto.name?.trim(),
-        last4: dto.last4 === undefined ? undefined : dto.last4?.trim() || null,
+        // 填了完整卡号时后四位跟着卡号走
+        last4: card
+          ? card.slice(-4)
+          : dto.last4 === undefined
+            ? undefined
+            : dto.last4?.trim() || null,
+        cardNumberEnc:
+          card === undefined ? undefined : card === null ? null : this.secrets.encrypt(card),
+        holderName: dto.holderName === undefined ? undefined : dto.holderName?.trim() || null,
         feeBp: dto.feeBp,
         feeFixedUsdCents: dto.feeFixedUsdCents,
         lowBalanceUsdCents: dto.lowBalanceUsdCents,
@@ -626,7 +698,7 @@ export class InventoryService {
     if (!r) throw notFound('付款资源');
     await this.audit.record({
       action: 'resource.secret_view',
-      summary: '查看付款资源敏感信息',
+      summary: '查看付款资源其他敏感信息',
       userId: user.id,
       method: req.method,
       path: req.originalUrl.split('?')[0],
@@ -637,6 +709,42 @@ export class InventoryService {
     return {
       name: r.name,
       secretNote: r.secretNoteEnc ? this.secrets.decrypt(r.secretNoteEnc) : null,
+    };
+  }
+
+  async revealCard(
+    id: string,
+    q: RevealCardQueryDto,
+    user: AuthUser,
+    req: Request,
+  ): Promise<ResourceCardDto> {
+    const r = await this.prisma.paymentResource.findUnique({ where: { id } });
+    if (!r) throw notFound('付款资源');
+    const order = q.orderId
+      ? await this.prisma.order.findUnique({ where: { id: q.orderId }, select: { no: true } })
+      : null;
+    await this.audit.record({
+      action: 'resource.card_view',
+      summary: order
+        ? `在订单 ${displayNo('D', order.no)} 查看付款卡完整卡号`
+        : '查看付款卡完整卡号',
+      userId: user.id,
+      method: req.method,
+      path: req.originalUrl.split('?')[0],
+      resourceId: id,
+      detail: {
+        name: r.name,
+        last4: r.last4,
+        holderName: r.holderName,
+        ...(order ? { order: displayNo('D', order.no) } : {}),
+      },
+      ip: req.ip ?? null,
+    });
+    return {
+      name: r.name,
+      last4: r.last4,
+      holderName: r.holderName,
+      cardNumber: r.cardNumberEnc ? this.secrets.decrypt(r.cardNumberEnc) : null,
     };
   }
 
@@ -704,16 +812,7 @@ export class InventoryService {
     await this.prisma.$transaction(
       async (tx) => {
         for (const a of toCreate) {
-          let cost = dto.costCnyCents ?? 0;
-          if (dto.resourceId) {
-            const r = await this.ledger.consume(tx, dto.resourceId, {
-              usdCents: dto.chargeUsdCents ?? plan.upstreamMonthlyUsdCents,
-              note: `成品号备号：${a.email}`,
-              userId: user.id,
-            });
-            cost += r.costCents;
-          }
-          await tx.claudeAccount.create({
+          const account = await tx.claudeAccount.create({
             data: {
               email: a.email,
               ownership: 'COMPANY',
@@ -721,7 +820,7 @@ export class InventoryService {
               planId: plan.id,
               passwordEnc: this.secrets.encrypt(a.password),
               secretNoteEnc: this.secrets.encryptOptional(a.secretNote),
-              stockCostCents: cost,
+              stockCostCents: dto.costCnyCents ?? 0,
               upstreamRenewAt: dto.upstreamRenewAt
                 ? new Date(dto.upstreamRenewAt)
                 : dto.resourceId
@@ -731,6 +830,19 @@ export class InventoryService {
               remark: dto.remark?.trim() || null,
             },
           });
+          if (dto.resourceId) {
+            // 扣费记到这个号上，发号后订单能查到备号时用的哪张卡
+            const r = await this.ledger.consume(tx, dto.resourceId, {
+              usdCents: dto.chargeUsdCents ?? plan.upstreamMonthlyUsdCents,
+              note: `成品号备号：${a.email}`,
+              userId: user.id,
+              accountId: account.id,
+            });
+            await tx.claudeAccount.update({
+              where: { id: account.id },
+              data: { stockCostCents: { increment: r.costCents } },
+            });
+          }
         }
       },
       { timeout: 60_000 },
@@ -785,6 +897,7 @@ export class InventoryService {
         usdCents: dto.usdCents ?? a.plan.upstreamMonthlyUsdCents,
         note: `成品号在库续费：${a.email}`,
         userId: user.id,
+        accountId: a.id,
       });
       const now = new Date();
       await tx.claudeAccount.update({
@@ -895,7 +1008,7 @@ export class InventoryController {
   @Patch('resources/:id')
   @RequirePermissions('inventory:write')
   @Audit('resource.update', '修改付款资源')
-  @ApiOperation({ summary: '修改付款资源（名称、手续费、预警线、停用）' })
+  @ApiOperation({ summary: '修改付款资源（名称、卡号、持卡人、手续费、预警线、停用）' })
   @ApiOkResponse({ type: ResourceDto })
   updateResource(@Param('id') id: string, @Body() dto: UpdateResourceDto): Promise<ResourceDto> {
     return this.inventory.updateResource(id, dto);
@@ -940,9 +1053,22 @@ export class InventoryController {
     return this.inventory.listTransactions(id, q);
   }
 
+  @Get('resources/:id/card-number')
+  @RequirePermissions('resource:card:view')
+  @ApiOperation({ summary: '查看付款卡完整卡号（每次查看都记录操作日志）' })
+  @ApiOkResponse({ type: ResourceCardDto })
+  revealCard(
+    @Param('id') id: string,
+    @Query() q: RevealCardQueryDto,
+    @CurrentUser() user: AuthUser,
+    @Req() req: Request,
+  ): Promise<ResourceCardDto> {
+    return this.inventory.revealCard(id, q, user, req);
+  }
+
   @Get('resources/:id/secret')
   @RequirePermissions('account:secret:view')
-  @ApiOperation({ summary: '查看付款资源的卡号等敏感信息（每次查看都记录操作日志）' })
+  @ApiOperation({ summary: '查看付款资源的 CVV 等其他敏感信息（每次查看都记录操作日志）' })
   @ApiOkResponse({ type: ResourceSecretDto })
   revealResource(
     @Param('id') id: string,

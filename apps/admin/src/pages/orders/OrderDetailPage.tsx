@@ -31,6 +31,7 @@ import {
   COST_KIND_LABELS,
   FULFILLMENT_TYPE_LABELS,
   RECEIPT_METHODS,
+  RESOURCE_TYPE_LABELS,
   formatCents,
   formatRate,
   receiptMethodLabel,
@@ -41,6 +42,7 @@ import { api, unwrap, type Schemas } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
 import {
   AgentLink,
+  CardNumberButton,
   CustomerLink,
   FulfillmentTag,
   Money,
@@ -48,6 +50,7 @@ import {
   OrderStatusTag,
   TaskStatusTag,
   TaskTypeTag,
+  maskedCard,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
 import { ScriptPicker } from '../../components/scripts';
@@ -368,6 +371,8 @@ export function OrderDetailPage() {
         />
       </Card>
 
+      <PaymentCardsCard order={o} />
+
       {o.refunds.length > 0 && (
         <Card title="退款" size="small">
           <RefundTable refunds={o.refunds} />
@@ -416,6 +421,88 @@ export function OrderDetailPage() {
         />
       )}
     </Space>
+  );
+}
+
+/** 这单给上游付款用了哪些卡：尾号和持卡人大家都能看，完整卡号要权限点开 */
+function PaymentCardsCard({ order: o }: { order: Schemas['OrderDetailDto'] }) {
+  const waiting = o.status === 'PENDING_PAYMENT' || o.status === 'FULFILLING';
+  return (
+    <Card
+      title={
+        <Space size={4}>
+          付款卡
+          <Tooltip title="给上游（官方）付款用的虚拟卡、礼品卡等，在「库存与成本」里管理；不是客户付款用的卡">
+            <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal' }}>
+              （给上游付款用的卡）
+            </Typography.Text>
+          </Tooltip>
+        </Space>
+      }
+      size="small"
+    >
+      <Table<Schemas['OrderPaymentCardDto']>
+        rowKey="resourceId"
+        size="small"
+        pagination={false}
+        dataSource={o.paymentCards}
+        locale={{
+          emptyText: waiting
+            ? '充值员完成开通并登记扣费后显示'
+            : '这单没有登记用卡扣费（例如客户自己付的，或当时还没配置付款资源）',
+        }}
+        scroll={{ x: 600 }}
+        columns={[
+          {
+            title: '卡',
+            key: 'name',
+            render: (_, c) => (
+              <Space direction="vertical" size={0}>
+                <span>{c.name}</span>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {c.code} · {RESOURCE_TYPE_LABELS[c.type]}
+                </Typography.Text>
+              </Space>
+            ),
+          },
+          {
+            title: '卡号',
+            key: 'number',
+            render: (_, c) => (
+              <Space size={0}>
+                <Typography.Text style={{ whiteSpace: 'nowrap' }}>
+                  {maskedCard(c.last4)}
+                </Typography.Text>
+                <CardNumberButton card={c} orderId={o.id} />
+              </Space>
+            ),
+          },
+          {
+            title: '持卡人',
+            key: 'holder',
+            render: (_, c) =>
+              c.holderName ?? <Typography.Text type="secondary">未录入</Typography.Text>,
+          },
+          {
+            title: '扣费',
+            key: 'charges',
+            render: (_, c) => (
+              <Space direction="vertical" size={0}>
+                <span>{c.charges} 次</span>
+                {c.stockCharges > 0 && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {c.stockCharges === c.charges
+                      ? '成品号备号时扣的'
+                      : `含备号时 ${c.stockCharges} 次`}
+                  </Typography.Text>
+                )}
+              </Space>
+            ),
+          },
+          { title: '最近扣费', key: 'last', render: (_, c) => formatTime(c.lastChargedAt) },
+        ]}
+      />
+    </Card>
   );
 }
 
@@ -522,7 +609,7 @@ function ProfitCard({
   status,
 }: {
   profit: Schemas['OrderProfitDto'];
-  status: Schemas['OrderDto']['status'];
+  status: Schemas['OrderDetailDto']['status'];
 }) {
   const pending = p.chargesExpected - p.chargesDone;
   return (

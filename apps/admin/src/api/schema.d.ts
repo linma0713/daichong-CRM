@@ -1552,7 +1552,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 修改付款资源（名称、手续费、预警线、停用） */
+        /** 修改付款资源（名称、卡号、持卡人、手续费、预警线、停用） */
         patch: operations["Inventory_updateResource"];
         trace?: never;
     };
@@ -1607,6 +1607,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/resources/{id}/card-number": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查看付款卡完整卡号（每次查看都记录操作日志） */
+        get: operations["Inventory_revealCard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/resources/{id}/secret": {
         parameters: {
             query?: never;
@@ -1614,7 +1631,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 查看付款资源的卡号等敏感信息（每次查看都记录操作日志） */
+        /** 查看付款资源的 CVV 等其他敏感信息（每次查看都记录操作日志） */
         get: operations["Inventory_revealResource"];
         put?: never;
         post?: never;
@@ -3057,7 +3074,30 @@ export interface components {
             id: string;
             code: string;
         };
-        OrderDto: {
+        /** @enum {string} */
+        ResourceType: "VIRTUAL_CARD" | "GIFT_CARD" | "BALANCE";
+        OrderPaymentCardDto: {
+            resourceId: string;
+            /** @example R00001 */
+            code: string;
+            type: components["schemas"]["ResourceType"];
+            name: string;
+            /** @description 卡号后四位 */
+            last4: string | null;
+            /** @description 持卡人实名 */
+            holderName: string | null;
+            /** @description 录入了完整卡号（有「查看付款卡完整卡号」权限的人可以点开） */
+            hasCardNumber: boolean;
+            /** @description 这单用这张卡扣了几次 */
+            charges: number;
+            /** @description 其中成品号备号、在库续费时扣的次数 */
+            stockCharges: number;
+            /** Format: date-time */
+            firstChargedAt: string;
+            /** Format: date-time */
+            lastChargedAt: string;
+        };
+        OrderListItemDto: {
             id: string;
             /** @example D00012 */
             code: string;
@@ -3109,9 +3149,11 @@ export interface components {
             marginCents: number | null;
             /** Format: date-time */
             createdAt: string;
+            /** @description 这单用过的付款卡，按首次扣费排 */
+            paymentCards: components["schemas"]["OrderPaymentCardDto"][];
         };
         OrderListDto: {
-            items: components["schemas"]["OrderDto"][];
+            items: components["schemas"]["OrderListItemDto"][];
             total: number;
         };
         PaymentDto: {
@@ -3338,6 +3380,8 @@ export interface components {
             marginCents: number | null;
             /** Format: date-time */
             createdAt: string;
+            /** @description 这单用过的付款卡，按首次扣费排 */
+            paymentCards: components["schemas"]["OrderPaymentCardDto"][];
             payments: components["schemas"]["PaymentDto"][];
             /** @description 在线收款链接，新的在前 */
             paymentLinks: components["schemas"]["PaymentLinkDto"][];
@@ -4095,8 +4139,6 @@ export interface components {
             /** @description 在库数量低于预警线 */
             low: boolean;
         };
-        /** @enum {string} */
-        ResourceType: "VIRTUAL_CARD" | "GIFT_CARD" | "BALANCE";
         ResourceDto: {
             id: string;
             /** @example R00003 */
@@ -4120,6 +4162,10 @@ export interface components {
             low: boolean;
             active: boolean;
             hasSecretNote: boolean;
+            /** @description 是否录入了完整卡号 */
+            hasCardNumber: boolean;
+            /** @description 持卡人实名 */
+            holderName: string | null;
             remark: string | null;
             /** Format: date-time */
             createdAt: string;
@@ -4147,7 +4193,17 @@ export interface components {
             feeFixedUsdCents?: number;
             /** @description 余额低于这个值预警（美分） */
             lowBalanceUsdCents?: number;
-            /** @description 卡号、CVV、登录信息等（加密保存，查看会记录日志） */
+            /**
+             * @description 完整卡号，可以带空格或横线；填了会自动取后四位（加密保存，查看会记录日志）
+             * @example 4111 1111 1111 1111
+             */
+            cardNumber?: string;
+            /**
+             * @description 持卡人实名
+             * @example 王小明
+             */
+            holderName?: string;
+            /** @description CVV、登录信息等（加密保存，查看会记录日志） */
             secretNote?: string;
             remark?: string;
             /** @description 首次入库的美元金额（美分） */
@@ -4162,6 +4218,10 @@ export interface components {
             feeFixedUsdCents?: number;
             lowBalanceUsdCents?: number;
             active?: boolean;
+            /** @description 完整卡号，可以带空格或横线；填了会自动取后四位（加密保存，查看会记录日志）；传空字符串表示清除 */
+            cardNumber?: string;
+            /** @description 持卡人实名；传空表示清除 */
+            holderName?: string | null;
             /** @description 新的敏感信息；传空字符串表示清除 */
             secretNote?: string;
             remark?: string | null;
@@ -4200,6 +4260,13 @@ export interface components {
         ResourceTxListDto: {
             items: components["schemas"]["ResourceTxDto"][];
             total: number;
+        };
+        ResourceCardDto: {
+            name: string;
+            last4: string | null;
+            holderName: string | null;
+            /** @description 完整卡号（没录入时为空） */
+            cardNumber: string | null;
         };
         ResourceSecretDto: {
             name: string;
@@ -5065,7 +5132,7 @@ export interface components {
             truncated: boolean;
         };
         OrderExportDto: {
-            items: components["schemas"]["OrderDto"][];
+            items: components["schemas"]["OrderListItemDto"][];
             total: number;
             truncated: boolean;
         };
@@ -7772,6 +7839,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResourceTxListDto"];
+                };
+            };
+        };
+    };
+    Inventory_revealCard: {
+        parameters: {
+            query?: {
+                /** @description 从哪张订单点开的（写进操作日志） */
+                orderId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceCardDto"];
                 };
             };
         };

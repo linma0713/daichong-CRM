@@ -71,6 +71,7 @@ export const BUILT_IN_ROLES: BuiltInRole[] = [
       'subscription:read',
       'account:secret:view',
       'inventory:read',
+      'resource:card:view',
     ],
     dataScope: 'ALL',
   },
