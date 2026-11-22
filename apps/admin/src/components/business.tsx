@@ -258,6 +258,76 @@ export function CustomerLink({ customer }: { customer: Schemas['CustomerBriefDto
   );
 }
 
+/** 卡号尾号的显示：•••• 4242 */
+export const maskedCard = (last4: string | null | undefined) => (last4 ? `•••• ${last4}` : '—');
+
+/** 完整卡号每 4 位空一格，方便核对 */
+export const groupCardNumber = (n: string) => n.replace(/(.{4})(?=.)/g, '$1 ');
+
+/** 一张付款卡的简短文字：名称 尾号 持卡人（导出、下拉框用） */
+export function cardText(c: { name: string; last4: string | null; holderName: string | null }) {
+  return [c.name, c.last4 && `尾号${c.last4}`, c.holderName].filter(Boolean).join(' ');
+}
+
+/** 付款资源下拉选项：名称、尾号、持卡人和余额，充值员按卡选 */
+export function resourceOption(r: Schemas['ResourceDto']) {
+  return { value: r.id, label: `${cardText(r)}（余额 ${formatCents(r.balanceUsdCents, '$')}）` };
+}
+
+/**
+ * 查看付款卡完整卡号：要「查看付款卡完整卡号」权限，每次查看后端都会记操作日志；
+ * 从订单里点开时带上订单，日志里能看到是哪张订单
+ */
+export function CardNumberButton({
+  card,
+  orderId,
+}: {
+  card: { resourceId: string; hasCardNumber: boolean };
+  orderId?: string;
+}) {
+  const { can } = useAuth();
+  const { modal } = App.useApp();
+  const reveal = useMutation({
+    mutationFn: () =>
+      unwrap(
+        api.GET('/api/resources/{id}/card-number', {
+          params: { path: { id: card.resourceId }, query: { orderId } },
+        }),
+      ),
+    onSuccess: (c) =>
+      modal.info({
+        title: `付款卡：${c.name}`,
+        width: 480,
+        content: (
+          <Descriptions column={1} size="small" style={{ marginTop: 12 }}>
+            <Descriptions.Item label="完整卡号">
+              {c.cardNumber ? (
+                <Typography.Text copyable={{ text: c.cardNumber }} style={{ fontSize: 16 }}>
+                  {groupCardNumber(c.cardNumber)}
+                </Typography.Text>
+              ) : (
+                '未录入'
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label="持卡人">{c.holderName ?? '未录入'}</Descriptions.Item>
+          </Descriptions>
+        ),
+      }),
+  });
+  if (!can('resource:card:view') || !card.hasCardNumber) return null;
+  return (
+    <Tooltip title="查看完整卡号（会记录操作日志）">
+      <Button
+        type="link"
+        size="small"
+        icon={<EyeOutlined />}
+        loading={reveal.isPending}
+        onClick={() => reveal.mutate()}
+      />
+    </Tooltip>
+  );
+}
+
 /** 查看账号密码：需要权限，每次查看后端都会记操作日志 */
 export function AccountSecretButton({
   account,

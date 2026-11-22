@@ -249,7 +249,12 @@ describe('M4 上云准备', () => {
       });
       ids.account = account.id;
       const resource = await prisma.paymentResource.create({
-        data: { type: 'VIRTUAL_CARD', name: '测试卡', secretNoteEnc: oldBox.encrypt('4111 1111') },
+        data: {
+          type: 'VIRTUAL_CARD',
+          name: '测试卡',
+          cardNumberEnc: oldBox.encrypt('4111111111111111'),
+          secretNoteEnc: oldBox.encrypt('CVV 123'),
+        },
       });
       ids.resource = resource.id;
       const channel = await prisma.notifyChannel.create({
@@ -273,7 +278,8 @@ describe('M4 上云准备', () => {
       expect(r.lines.map((l) => [l.label, l.toRotate])).toEqual([
         ['Claude 账号密码', 1],
         ['Claude 账号其他敏感信息', 1],
-        ['付款资源敏感信息（卡号等）', 1],
+        ['付款资源完整卡号', 1],
+        ['付款资源其他敏感信息（CVV 等）', 1],
         ['企业微信群机器人地址', 1],
         ['员工两步验证密钥', 1],
       ]);
@@ -305,7 +311,8 @@ describe('M4 上云准备', () => {
       expect(newBox.decrypt(a.secretNoteEnc!)).toBe('恢复码 1234');
       expect(() => oldBox.decrypt(a.passwordEnc!)).toThrow();
       const res = await prisma.paymentResource.findUniqueOrThrow({ where: { id: ids.resource } });
-      expect(newBox.decrypt(res.secretNoteEnc!)).toBe('4111 1111');
+      expect(newBox.decrypt(res.cardNumberEnc!)).toBe('4111111111111111');
+      expect(newBox.decrypt(res.secretNoteEnc!)).toBe('CVV 123');
       const ch = await prisma.notifyChannel.findUniqueOrThrow({ where: { id: ids.channel } });
       expect(newBox.decrypt(ch.webhookEnc)).toContain('key=abc');
       const u = await prisma.user.findUniqueOrThrow({ where: { username: 'admin' } });
@@ -314,7 +321,7 @@ describe('M4 上云准备', () => {
       const again = await rotateSecretKey(prisma, oldBox, newBox, true);
       expect(again.applied).toBe(false);
       expect(again.lines.every((l) => l.toRotate === 0 && l.failed.length === 0)).toBe(true);
-      expect(again.lines.reduce((n, l) => n + l.alreadyNew, 0)).toBe(5);
+      expect(again.lines.reduce((n, l) => n + l.alreadyNew, 0)).toBe(6);
     });
   });
   describe('服务器上重置密码', () => {

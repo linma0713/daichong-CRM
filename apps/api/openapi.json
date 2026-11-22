@@ -4845,7 +4845,7 @@
             "bearer": []
           }
         ],
-        "summary": "修改付款资源（名称、手续费、预警线、停用）",
+        "summary": "修改付款资源（名称、卡号、持卡人、手续费、预警线、停用）",
         "tags": [
           "库存与成本"
         ]
@@ -5008,6 +5008,51 @@
         ]
       }
     },
+    "/api/resources/{id}/card-number": {
+      "get": {
+        "operationId": "Inventory_revealCard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderId",
+            "required": false,
+            "in": "query",
+            "description": "从哪张订单点开的（写进操作日志）",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceCardDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "查看付款卡完整卡号（每次查看都记录操作日志）",
+        "tags": [
+          "库存与成本"
+        ]
+      }
+    },
     "/api/resources/{id}/secret": {
       "get": {
         "operationId": "Inventory_revealResource",
@@ -5038,7 +5083,7 @@
             "bearer": []
           }
         ],
-        "summary": "查看付款资源的卡号等敏感信息（每次查看都记录操作日志）",
+        "summary": "查看付款资源的 CVV 等其他敏感信息（每次查看都记录操作日志）",
         "tags": [
           "库存与成本"
         ]
@@ -9805,7 +9850,80 @@
           "code"
         ]
       },
-      "OrderDto": {
+      "ResourceType": {
+        "type": "string",
+        "enum": [
+          "VIRTUAL_CARD",
+          "GIFT_CARD",
+          "BALANCE"
+        ]
+      },
+      "OrderPaymentCardDto": {
+        "type": "object",
+        "properties": {
+          "resourceId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "R00001"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceType"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "last4": {
+            "type": "string",
+            "nullable": true,
+            "description": "卡号后四位"
+          },
+          "holderName": {
+            "type": "string",
+            "nullable": true,
+            "description": "持卡人实名"
+          },
+          "hasCardNumber": {
+            "type": "boolean",
+            "description": "录入了完整卡号（有「查看付款卡完整卡号」权限的人可以点开）"
+          },
+          "charges": {
+            "type": "number",
+            "description": "这单用这张卡扣了几次"
+          },
+          "stockCharges": {
+            "type": "number",
+            "description": "其中成品号备号、在库续费时扣的次数"
+          },
+          "firstChargedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastChargedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resourceId",
+          "code",
+          "type",
+          "name",
+          "last4",
+          "holderName",
+          "hasCardNumber",
+          "charges",
+          "stockCharges",
+          "firstChargedAt",
+          "lastChargedAt"
+        ]
+      },
+      "OrderListItemDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -9973,6 +10091,13 @@
           "createdAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "paymentCards": {
+            "description": "这单用过的付款卡，按首次扣费排",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderPaymentCardDto"
+            }
           }
         },
         "required": [
@@ -10010,7 +10135,8 @@
           "parentRateBp",
           "commissionBaseCents",
           "marginCents",
-          "createdAt"
+          "createdAt",
+          "paymentCards"
         ]
       },
       "OrderListDto": {
@@ -10019,7 +10145,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/OrderDto"
+              "$ref": "#/components/schemas/OrderListItemDto"
             }
           },
           "total": {
@@ -10801,6 +10927,13 @@
             "format": "date-time",
             "type": "string"
           },
+          "paymentCards": {
+            "description": "这单用过的付款卡，按首次扣费排",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderPaymentCardDto"
+            }
+          },
           "payments": {
             "type": "array",
             "items": {
@@ -10890,6 +11023,7 @@
           "commissionBaseCents",
           "marginCents",
           "createdAt",
+          "paymentCards",
           "payments",
           "paymentLinks",
           "tasks",
@@ -13406,14 +13540,6 @@
           "low"
         ]
       },
-      "ResourceType": {
-        "type": "string",
-        "enum": [
-          "VIRTUAL_CARD",
-          "GIFT_CARD",
-          "BALANCE"
-        ]
-      },
       "ResourceDto": {
         "type": "object",
         "properties": {
@@ -13473,6 +13599,15 @@
           "hasSecretNote": {
             "type": "boolean"
           },
+          "hasCardNumber": {
+            "type": "boolean",
+            "description": "是否录入了完整卡号"
+          },
+          "holderName": {
+            "type": "string",
+            "nullable": true,
+            "description": "持卡人实名"
+          },
           "remark": {
             "type": "string",
             "nullable": true
@@ -13497,6 +13632,8 @@
           "low",
           "active",
           "hasSecretNote",
+          "hasCardNumber",
+          "holderName",
           "remark",
           "createdAt"
         ]
@@ -13568,9 +13705,19 @@
             "type": "number",
             "description": "余额低于这个值预警（美分）"
           },
+          "cardNumber": {
+            "type": "string",
+            "description": "完整卡号，可以带空格或横线；填了会自动取后四位（加密保存，查看会记录日志）",
+            "example": "4111 1111 1111 1111"
+          },
+          "holderName": {
+            "type": "string",
+            "description": "持卡人实名",
+            "example": "王小明"
+          },
           "secretNote": {
             "type": "string",
-            "description": "卡号、CVV、登录信息等（加密保存，查看会记录日志）"
+            "description": "CVV、登录信息等（加密保存，查看会记录日志）"
           },
           "remark": {
             "type": "string"
@@ -13610,6 +13757,15 @@
           },
           "active": {
             "type": "boolean"
+          },
+          "cardNumber": {
+            "type": "string",
+            "description": "完整卡号，可以带空格或横线；填了会自动取后四位（加密保存，查看会记录日志）；传空字符串表示清除"
+          },
+          "holderName": {
+            "type": "string",
+            "nullable": true,
+            "description": "持卡人实名；传空表示清除"
           },
           "secretNote": {
             "type": "string",
@@ -13741,6 +13897,33 @@
         "required": [
           "items",
           "total"
+        ]
+      },
+      "ResourceCardDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "last4": {
+            "type": "string",
+            "nullable": true
+          },
+          "holderName": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardNumber": {
+            "type": "string",
+            "nullable": true,
+            "description": "完整卡号（没录入时为空）"
+          }
+        },
+        "required": [
+          "name",
+          "last4",
+          "holderName",
+          "cardNumber"
         ]
       },
       "ResourceSecretDto": {
@@ -16650,7 +16833,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/OrderDto"
+              "$ref": "#/components/schemas/OrderListItemDto"
             }
           },
           "total": {

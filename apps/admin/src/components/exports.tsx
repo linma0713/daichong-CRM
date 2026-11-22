@@ -10,6 +10,7 @@ import {
   ORDER_STATUS_LABELS,
 } from '@crm/shared';
 import type { Schemas } from '../api/client';
+import { cardText } from './business';
 import { downloadCsv, yuan, type CsvCell } from './csv';
 
 const time = (v: string | null | undefined) => (v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '');
@@ -65,7 +66,7 @@ export function customerCsv(items: Schemas['CustomerDto'][]): CsvCell[][] {
   ];
 }
 
-export function orderCsv(items: Schemas['OrderDto'][]): CsvCell[][] {
+export function orderCsv(items: Schemas['OrderListItemDto'][]): CsvCell[][] {
   const margin = items.some((o) => o.marginCents !== null);
   return [
     [
@@ -88,6 +89,7 @@ export function orderCsv(items: Schemas['OrderDto'][]): CsvCell[][] {
       ...(margin ? ['毛利（元）'] : []),
       '负责人',
       '代理',
+      '付款卡（尾号 持卡人）',
       '下单时间',
       '收款时间',
       '完成时间',
@@ -114,6 +116,7 @@ export function orderCsv(items: Schemas['OrderDto'][]): CsvCell[][] {
       ...(margin ? [o.marginCents === null ? '' : yuan(o.marginCents)] : []),
       o.owner?.displayName,
       o.agent ? `${o.agent.name}（${o.agent.code}）` : '',
+      o.paymentCards.map(cardText).join('；'),
       time(o.createdAt),
       time(o.paidAt),
       time(o.completedAt),

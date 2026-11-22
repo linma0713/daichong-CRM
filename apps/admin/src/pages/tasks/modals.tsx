@@ -16,9 +16,10 @@ import {
 } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs, { type Dayjs } from 'dayjs';
-import { TASK_TYPE_LABELS, formatCents, type TaskType } from '@crm/shared';
+import { TASK_TYPE_LABELS, type TaskType } from '@crm/shared';
 import { api, unwrap, type Schemas } from '../../api/client';
 import { useResources, useStaffOptions } from '../../api/queries';
+import { resourceOption } from '../../components/business';
 
 type Task = Schemas['TaskDto'];
 
@@ -301,11 +302,9 @@ export function CompleteModal({
                 >
                   <Select
                     allowClear
+                    popupMatchSelectWidth={false}
                     loading={resources.isLoading}
-                    options={activeResources.map((r) => ({
-                      value: r.id,
-                      label: `${r.name}（余额 ${formatCents(r.balanceUsdCents, '$')}）`,
-                    }))}
+                    options={activeResources.map(resourceOption)}
                   />
                 </Form.Item>
                 <Form.Item

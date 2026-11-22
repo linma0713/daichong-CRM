@@ -7,6 +7,7 @@ import {
   Select,
   Space,
   Table,
+  Tooltip,
   Typography,
   type TableColumnsType,
   type TablePaginationConfig,
@@ -31,11 +32,12 @@ import {
   Money,
   OrderKindTag,
   OrderStatusTag,
+  maskedCard,
 } from '../../components/business';
 import { formatTime } from '../../components/format';
 import { ExportButton, orderCsv } from '../../components/exports';
 
-type Order = Schemas['OrderDto'];
+type Order = Schemas['OrderListItemDto'];
 type Filters = QueryOf<'/api/orders'> & { page: number; pageSize: number };
 
 export function OrdersPage() {
@@ -208,6 +210,36 @@ export function OrderTable({
         ]
       : []),
     { title: '状态', key: 'status', render: (_, o) => <OrderStatusTag status={o.status} /> },
+    ...(data?.some((o) => o.paymentCards.length > 0)
+      ? [
+          {
+            title: '付款卡',
+            key: 'cards',
+            render: (_: unknown, o: Order) =>
+              o.paymentCards.length === 0 ? (
+                '—'
+              ) : (
+                <Space direction="vertical" size={0}>
+                  {o.paymentCards.map((c) => (
+                    <Tooltip
+                      key={c.resourceId}
+                      title={`${c.name}（${c.code}），扣费 ${c.charges} 次`}
+                    >
+                      <span style={{ whiteSpace: 'nowrap' }}>
+                        {maskedCard(c.last4)}
+                        {c.holderName && (
+                          <Typography.Text type="secondary" style={{ marginLeft: 6 }}>
+                            {c.holderName}
+                          </Typography.Text>
+                        )}
+                      </span>
+                    </Tooltip>
+                  ))}
+                </Space>
+              ),
+          },
+        ]
+      : []),
     ...(data?.some((o) => o.marginCents !== null)
       ? [
           {
@@ -233,7 +265,7 @@ export function OrderTable({
       columns={columns}
       dataSource={data}
       loading={loading}
-      scroll={{ x: 860 }}
+      scroll={{ x: 960 }}
       pagination={pagination}
     />
   );

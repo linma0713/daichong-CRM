@@ -10,6 +10,12 @@ describe('redact 日志脱敏', () => {
     });
   });
 
+  it('替换完整卡号，保留后四位和持卡人', () => {
+    expect(redact({ cardNumber: '4242424242424242', last4: '4242', holderName: '王小明' })).toEqual(
+      { cardNumber: '***', last4: '4242', holderName: '王小明' },
+    );
+  });
+
   it('处理嵌套对象和数组', () => {
     expect(redact({ list: [{ secret: 1, name: 'n' }] })).toEqual({
       list: [{ secret: '***', name: 'n' }],
